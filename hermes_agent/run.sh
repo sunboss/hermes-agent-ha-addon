@@ -182,19 +182,9 @@ set +a
 
 /usr/local/bin/ttyd \
   --port "${HERMES_TTYD_PORT}" \
-  --interface lo \
   --base-path /ttyd \
-  --cwd "${MESSAGING_CWD}" \
   --writable \
-  --max-clients 4 \
-  --ping-interval 30 \
-  -t rendererType=webgl \
-  -t fontSize=15 \
-  -t cursorStyle=bar \
-  -t cursorBlink=true \
-  -t enableZmodem=true \
-  -t enableSixel=true \
-  /bin/bash --noprofile --norc -i &
+  /bin/sh -lc 'cd "${MESSAGING_CWD}" && exec /bin/bash --noprofile --norc -i' &
 
 python3 "${HERMES_UI_DIR}/server.py" &
 
