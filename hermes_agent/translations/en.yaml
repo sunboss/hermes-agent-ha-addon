@@ -1,0 +1,37 @@
+configuration:
+  llm_model:
+    name: Model Name
+    description: Main Hermes model name, such as anthropic/claude-sonnet-4 or openai/gpt-4o.
+  openrouter_api_key:
+    name: OpenRouter API Key
+    description: Optional. Set this when using OpenRouter as the model provider.
+  openai_base_url:
+    name: OpenAI-Compatible Base URL
+    description: Optional. Use this for OpenAI or self-hosted OpenAI-compatible endpoints.
+  openai_api_key:
+    name: OpenAI-Compatible API Key
+    description: Optional. API key for the OpenAI-compatible endpoint.
+  watch_domains:
+    name: Watch Domains
+    description: Home Assistant domains Hermes should watch for state changes.
+  watch_entities:
+    name: Watch Entities
+    description: Specific Home Assistant entities Hermes should watch.
+  ignore_entities:
+    name: Ignore Entities
+    description: Entities Hermes should always ignore.
+  watch_all:
+    name: Watch All Entities
+    description: Forward all Home Assistant state changes to Hermes. Usually leave this disabled.
+  cooldown_seconds:
+    name: Event Cooldown Seconds
+    description: Minimum seconds between repeated events for the same entity.
+  messaging_cwd:
+    name: Working Directory
+    description: Default working directory for Hermes gateway sessions.
+  api_server_enabled:
+    name: Enable API Server
+    description: Expose Hermes' OpenAI-compatible API server inside the container.
+  api_server_key:
+    name: API Server Key
+    description: Optional authentication key for the Hermes API server.
