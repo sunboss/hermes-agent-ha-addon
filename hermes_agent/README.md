@@ -5,10 +5,9 @@ This folder contains the Home Assistant add-on definition for Hermes Agent.
 ## Files
 
 - `config.yaml`: add-on metadata and user options
-- `build.yaml`: pinned upstream Hermes source ref
-- `Dockerfile`: custom image build from upstream source
+- `build.yaml`: pinned upstream Hermes image tag
+- `Dockerfile`: thin wrapper over the official Hermes image
 - `run.sh`: startup wrapper that writes Hermes config and launches the gateway
-- `custom_overlay/`: local overrides copied into the upstream Hermes tree during build
 
 ## First run checklist
 

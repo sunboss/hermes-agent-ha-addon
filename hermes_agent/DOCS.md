@@ -2,7 +2,7 @@
 
 ## What this add-on does
 
-This add-on builds Hermes Agent from upstream source and wires it into Home Assistant using the Supervisor proxy.
+This add-on wraps the official Hermes Agent image and wires it into Home Assistant using the Supervisor proxy.
 
 It writes:
 
@@ -23,11 +23,6 @@ The add-on uses the Supervisor proxy instead of requiring a manually created lon
 - Home Assistant WebSocket API: `ws://supervisor/core/websocket`
 - Auth token: `SUPERVISOR_TOKEN`
 
-## Custom overlay
-
-If you want to patch Hermes without forking this add-on layout, place overrides under `custom_overlay/`.
-During the image build, those files are copied into the upstream Hermes checkout after the pinned ref is checked out.
-
 ## Recommended first setup
 
 1. Set `llm_model`
@@ -37,7 +32,7 @@ During the image build, those files are copied into the upstream Hermes checkout
 
 ## Upgrade workflow
 
-1. Update `HERMES_REF` in `Dockerfile`
+1. Update `HERMES_IMAGE_TAG` in `Dockerfile`
 2. Bump `version` in `config.yaml`
 3. Rebuild and test the add-on
 4. Publish only after verifying Hermes can start and call Home Assistant tools successfully

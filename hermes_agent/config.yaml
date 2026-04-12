@@ -1,5 +1,5 @@
 name: "Hermes Agent"
-description: "Builds Hermes Agent from source as a Home Assistant add-on."
+description: "Wraps the official Hermes Agent image as a Home Assistant add-on."
 version: "0.1.0"
 slug: "hermes_agent"
 init: false
@@ -38,4 +38,5 @@ schema:
   messaging_cwd: "str?"
   api_server_enabled: "bool"
   api_server_key: "password?"
+
 

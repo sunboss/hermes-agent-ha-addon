@@ -43,5 +43,6 @@ Check these first:
 
 - Wrong or missing model credentials
 - Unsupported model id in `llm_model`
-- Build failure while cloning or installing upstream Hermes dependencies
+- Pull failure for the upstream official Hermes image
 - Too-broad Home Assistant watch settings creating noisy startup behavior
+
