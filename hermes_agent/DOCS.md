@@ -24,7 +24,8 @@ The add-on uses the Supervisor proxy instead of requiring a manually created lon
 1. Set `llm_model`
 2. Set either `openrouter_api_key` or `openai_base_url` + `openai_api_key`
 3. Start with a narrow `watch_domains` list such as `climate`, `binary_sensor`, or `light`
-4. Leave `watch_all` disabled unless you really need every state change
+4. Choose `terminal_backend` based on where Hermes should run shell commands
+5. Leave `watch_all` disabled unless you really need every state change
 
 ## Upgrade workflow
 

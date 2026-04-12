@@ -6,7 +6,7 @@ The wrapper does three things:
 
 - pins the upstream official Hermes image tag so upgrades stay intentional
 - injects Home Assistant Supervisor API access into Hermes
-- patches only the needed Home Assistant settings into `/data/config.yaml` and `/data/.env`
+- patches only the needed Home Assistant settings into `/data/config.yaml` and `/data/.env`, including `terminal.backend` from the add-on UI
 
 ## Layout
 
@@ -48,3 +48,5 @@ For a Home Assistant-style test build, use the official builder against the add-
 - Do not track upstream `latest` automatically.
 - Bump the pinned upstream Hermes image tag in [`hermes_agent/Dockerfile`](./hermes_agent/Dockerfile) and [`hermes_agent/build.yaml`](./hermes_agent/build.yaml) on purpose.
 - Smoke test startup, Home Assistant API access, and the built-in Home Assistant toolset before publishing a new add-on version.
+
+

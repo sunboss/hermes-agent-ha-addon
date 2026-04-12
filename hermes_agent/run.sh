@@ -77,6 +77,7 @@ for key in sorted(env_map):
     env_lines.append(f"{key}={env_quote(env_map[key])}")
 env_path.write_text("\n".join(env_lines) + "\n", encoding="utf-8")
 
+terminal_backend = str(options.get("terminal_backend") or "local")
 watch_domains = options.get("watch_domains") or []
 watch_entities = options.get("watch_entities") or []
 ignore_entities = options.get("ignore_entities") or []
@@ -97,7 +98,7 @@ terminal = config.get("terminal")
 if not isinstance(terminal, dict):
     terminal = {}
 config["terminal"] = terminal
-terminal["backend"] = "local"
+terminal["backend"] = terminal_backend
 terminal["cwd"] = messaging_cwd
 
 platforms = config.get("platforms")

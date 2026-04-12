@@ -14,6 +14,7 @@ options:
   openrouter_api_key: ""
   openai_base_url: ""
   openai_api_key: ""
+  terminal_backend: "local"
   watch_domains: []
   watch_entities: []
   ignore_entities: []
@@ -27,6 +28,7 @@ schema:
   openrouter_api_key: "password?"
   openai_base_url: "str?"
   openai_api_key: "password?"
+  terminal_backend: "list(local|docker|ssh|modal|daytona|singularity)"
   watch_domains:
     - "str"
   watch_entities:
@@ -38,5 +40,3 @@ schema:
   messaging_cwd: "str?"
   api_server_enabled: "bool"
   api_server_key: "password?"
-
-

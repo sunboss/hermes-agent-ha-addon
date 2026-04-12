@@ -24,6 +24,7 @@ Use a narrow first-run setup:
 - `llm_model`: your chosen model id
 - `openrouter_api_key`: if using OpenRouter
 - or `openai_base_url` + `openai_api_key`: if using OpenAI-compatible endpoints
+- `terminal_backend`: start with `local` unless you specifically need another Hermes backend
 - `watch_domains`: start with `climate`, `binary_sensor`, or `light`
 - `watch_all`: keep `false`
 - `cooldown_seconds`: leave `30`
@@ -33,7 +34,7 @@ Use a narrow first-run setup:
 After starting the add-on, check the logs for these milestones:
 
 1. The wrapper script starts without shell errors.
-2. Hermes writes `/data/.hermes/.env` and `/data/.hermes/config.yaml`.
+2. Hermes writes `/data/.env` and `/data/config.yaml`.
 3. Hermes starts the gateway successfully.
 4. Home Assistant events are received for the configured watched domains or entities.
 
@@ -45,4 +46,3 @@ Check these first:
 - Unsupported model id in `llm_model`
 - Pull failure for the upstream official Hermes image
 - Too-broad Home Assistant watch settings creating noisy startup behavior
-
