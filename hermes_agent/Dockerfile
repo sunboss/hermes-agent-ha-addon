@@ -6,7 +6,7 @@ FROM nousresearch/hermes-agent:${HERMES_IMAGE_TAG}
 ARG BUILD_VERSION
 
 ENV HERMES_INSTALL_DIR=/opt/hermes
-ENV HERMES_HOME=/data/.hermes
+ENV HERMES_HOME=/data
 ENV PATH=/opt/hermes/.venv/bin:$PATH
 
 LABEL \
@@ -17,4 +17,4 @@ LABEL \
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
-CMD ["/run.sh"]
+ENTRYPOINT ["/run.sh"]

@@ -1,12 +1,12 @@
 # Hermes Agent Home Assistant Add-on
 
-This repository contains a Home Assistant add-on that wraps the official [`nousresearch/hermes-agent`](https://hub.docker.com/r/nousresearch/hermes-agent) image.
+This repository contains a Home Assistant add-on that wraps the official [`nousresearch/hermes-agent`](https://hub.docker.com/r/nousresearch/hermes-agent) image while staying as close as possible to the native Hermes Docker runtime.
 
 The wrapper does three things:
 
 - pins the upstream official Hermes image tag so upgrades stay intentional
 - injects Home Assistant Supervisor API access into Hermes
-- translates add-on options into `~/.hermes/config.yaml` and `~/.hermes/.env`
+- patches only the needed Home Assistant settings into `/data/config.yaml` and `/data/.env`
 
 ## Layout
 
@@ -35,6 +35,13 @@ docker build -t local/hermes-agent-addon .
 ```
 
 For a Home Assistant-style test build, use the official builder against the add-on folder.
+
+## Native-ish behavior
+
+- Reuses the official Hermes Docker image unchanged as the base image
+- Keeps Hermes data in `/data`, matching the add-on persistent volume
+- Preserves the official Hermes Docker entrypoint and startup flow after injecting Home Assistant-specific settings
+- Avoids replacing the whole Hermes config when only a few keys need to be set
 
 ## Upgrade policy
 

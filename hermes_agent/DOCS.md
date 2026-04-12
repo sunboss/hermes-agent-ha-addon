@@ -2,18 +2,14 @@
 
 ## What this add-on does
 
-This add-on wraps the official Hermes Agent image and wires it into Home Assistant using the Supervisor proxy.
+This add-on wraps the official Hermes Agent image and wires it into Home Assistant using the Supervisor proxy while staying close to the native Hermes Docker startup flow.
 
-It writes:
+It updates:
 
-- `/data/.hermes/.env` for secrets and environment variables
-- `/data/.hermes/config.yaml` for Hermes runtime settings
+- `/data/.env` for secrets and environment variables
+- `/data/config.yaml` for Hermes runtime settings
 
-Then it starts:
-
-```bash
-hermes gateway
-```
+Then it hands off to the official Hermes Docker entrypoint and starts `hermes gateway`.
 
 ## Home Assistant access
 
