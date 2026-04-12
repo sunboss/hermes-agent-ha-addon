@@ -1,6 +1,6 @@
-name: "Hermes Agent"
+﻿name: "Hermes Agent"
 description: "Wraps the official Hermes Agent image as a Home Assistant add-on with an ingress Web UI."
-version: "0.4.0"
+version: "0.5.0"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -19,6 +19,9 @@ options:
   auth_mode: "api_key"
   auth_provider: "openai_web"
   auth_storage_path: "/data/auth"
+  openai_oauth_client_id: ""
+  openai_oauth_redirect_uri: "http://127.0.0.1:1455/auth/callback"
+  openai_oauth_scopes: "openid profile email offline_access"
   terminal_backend: "local"
   watch_domains: []
   watch_entities: []
@@ -35,6 +38,9 @@ schema:
   auth_mode: "list(api_key|web_login)"
   auth_provider: "list(openai_web|custom)"
   auth_storage_path: "str?"
+  openai_oauth_client_id: "str?"
+  openai_oauth_redirect_uri: "str?"
+  openai_oauth_scopes: "str?"
   terminal_backend: "list(local|docker|ssh|modal|daytona|singularity)"
   watch_domains:
     - "str"

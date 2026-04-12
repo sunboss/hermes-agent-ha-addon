@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 set -euo pipefail
 
 export HOME=/data
@@ -35,6 +35,9 @@ messaging_cwd = options.get("messaging_cwd") or "/data/workspace"
 auth_mode = str(options.get("auth_mode") or "api_key")
 auth_provider = str(options.get("auth_provider") or "openai_web")
 auth_storage_path = Path(options.get("auth_storage_path") or "/data/auth")
+openai_oauth_client_id = str(options.get("openai_oauth_client_id") or "")
+openai_oauth_redirect_uri = str(options.get("openai_oauth_redirect_uri") or "http://127.0.0.1:1455/auth/callback")
+openai_oauth_scopes = str(options.get("openai_oauth_scopes") or "openid profile email offline_access")
 
 Path(messaging_cwd).mkdir(parents=True, exist_ok=True)
 auth_storage_path.mkdir(parents=True, exist_ok=True)
@@ -70,6 +73,9 @@ env_map["MESSAGING_CWD"] = messaging_cwd
 env_map["AUTH_MODE"] = auth_mode
 env_map["AUTH_PROVIDER"] = auth_provider
 env_map["AUTH_STORAGE_PATH"] = str(auth_storage_path)
+env_map["OPENAI_OAUTH_CLIENT_ID"] = openai_oauth_client_id
+env_map["OPENAI_OAUTH_REDIRECT_URI"] = openai_oauth_redirect_uri
+env_map["OPENAI_OAUTH_SCOPES"] = openai_oauth_scopes
 env_map["API_SERVER_ENABLED"] = "true"
 env_map["API_SERVER_HOST"] = "127.0.0.1"
 env_map["API_SERVER_PORT"] = "8642"
@@ -104,6 +110,7 @@ auth_state["mode"] = auth_mode
 auth_state["provider"] = auth_provider
 auth_state.setdefault("updated_at", None)
 auth_state.setdefault("session", None)
+auth_state.setdefault("pending_login", None)
 if auth_mode == "api_key":
     auth_state["status"] = "not_required"
 else:

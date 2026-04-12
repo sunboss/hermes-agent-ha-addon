@@ -1,4 +1,4 @@
-configuration:
+﻿configuration:
   llm_model:
     name: Model Name
     description: Main Hermes model name, such as anthropic/claude-sonnet-4 or openai/gpt-4o.
@@ -13,13 +13,22 @@ configuration:
     description: Optional. API key for the OpenAI-compatible endpoint.
   auth_mode:
     name: Authentication Mode
-    description: Choose between direct API keys and a future web-login bridge workflow.
+    description: Choose between direct API keys and the web-login bridge workflow.
   auth_provider:
     name: Web Login Provider
     description: Provider profile used when auth_mode is set to web_login.
   auth_storage_path:
     name: Auth Storage Path
-    description: Directory used to persist auth sessions, bridge state, and future login tokens.
+    description: Directory used to persist auth sessions, bridge state, and login tokens.
+  openai_oauth_client_id:
+    name: OpenAI OAuth Client ID
+    description: Required for OpenAI Codex web login mode. Leave empty when using API key mode.
+  openai_oauth_redirect_uri:
+    name: OpenAI OAuth Redirect URI
+    description: Redirect URI used during the PKCE web login flow. The default matches OpenClaw's loopback callback flow.
+  openai_oauth_scopes:
+    name: OpenAI OAuth Scopes
+    description: Space-separated scopes requested during OpenAI Codex web login.
   terminal_backend:
     name: Terminal Backend
     description: Where Hermes should execute shell commands: local, docker, ssh, modal, daytona, or singularity.

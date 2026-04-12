@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
@@ -39,6 +39,28 @@
             <strong id="model-name" class="status-value">Detecting...</strong>
           </article>
         </div>
+
+        <section class="auth-panel" aria-label="Authentication status">
+          <div class="auth-head">
+            <div>
+              <p id="label-auth" class="micro-label"></p>
+              <h3 id="auth-title" class="auth-title"></h3>
+            </div>
+            <span id="auth-pill" class="auth-pill" data-state="checking"></span>
+          </div>
+          <p id="auth-copy" class="auth-copy"></p>
+          <div class="auth-actions">
+            <button id="auth-start" class="ghost-button" type="button"></button>
+            <button id="auth-refresh" class="ghost-button" type="button"></button>
+            <button id="auth-logout" class="ghost-button" type="button"></button>
+          </div>
+          <label id="auth-input-label" class="micro-label" for="auth-callback-input"></label>
+          <textarea id="auth-callback-input" class="auth-textarea" name="auth-callback-input" rows="4"></textarea>
+          <div class="auth-footer">
+            <button id="auth-exchange" class="send-button auth-submit" type="button"></button>
+            <p id="auth-helper" class="auth-helper"></p>
+          </div>
+        </section>
 
         <section class="prompt-bank" aria-label="Quick prompts">
           <p id="quick-prompts-label" class="micro-label"></p>

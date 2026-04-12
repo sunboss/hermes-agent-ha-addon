@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 from __future__ import annotations
 
 import ipaddress
@@ -6,12 +6,13 @@ import json
 import mimetypes
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from auth_bridge import clear_session, get_status, start_login
+from auth_bridge import clear_session, complete_login, get_status, refresh_session, start_login
 
 UI_DIR = Path(os.environ.get("HERMES_UI_DIR", "/opt/hermes-ha-ui"))
 PORT = int(os.environ.get("HERMES_UI_PORT", "8099"))
@@ -25,7 +26,7 @@ ALLOWED_NETWORKS = [
 
 
 class HermesUiHandler(BaseHTTPRequestHandler):
-    server_version = "HermesIngressUI/0.2"
+    server_version = "HermesIngressUI/0.3"
 
     def _remote_allowed(self) -> bool:
         try:
@@ -46,6 +47,10 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self._send_common_headers(status, "application/json")
         self.wfile.write(json.dumps(payload).encode("utf-8"))
 
+    def _send_html(self, status: int, html: str) -> None:
+        self._send_common_headers(status, "text/html; charset=utf-8")
+        self.wfile.write(html.encode("utf-8"))
+
     def _reject_if_needed(self) -> bool:
         if self._remote_allowed():
             return False
@@ -54,14 +59,30 @@ class HermesUiHandler(BaseHTTPRequestHandler):
 
     def _serve_file(self, target: Path) -> None:
         content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        if target.suffix == ".js":
+            content_type = "application/javascript; charset=utf-8"
+        elif target.suffix == ".css":
+            content_type = "text/css; charset=utf-8"
+        elif target.suffix == ".html":
+            content_type = "text/html; charset=utf-8"
         self._send_common_headers(HTTPStatus.OK, content_type)
         self.wfile.write(target.read_bytes())
 
     def _serve_index(self) -> None:
         self._serve_file(UI_DIR / "index.html")
 
-    def _proxy(self) -> None:
-        upstream_url = f"{API_BASE}{self.path[len('/api'):] or '/'}"
+    def _read_json_body(self) -> dict:
+        length = self.headers.get("Content-Length")
+        if not length:
+            return {}
+        body = self.rfile.read(int(length))
+        if not body:
+            return {}
+        payload = json.loads(body.decode("utf-8"))
+        return payload if isinstance(payload, dict) else {}
+
+    def _proxy(self, upstream_path: str) -> None:
+        upstream_url = f"{API_BASE}{upstream_path}"
         body = None
         length = self.headers.get("Content-Length")
         if length:
@@ -93,6 +114,53 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
 
+    def _callback_page(self, ok: bool, message: str) -> str:
+        title = "登录成功" if ok else "登录失败"
+        tone = "#74f2d4" if ok else "#ff7a7a"
+        return f"""<!doctype html>
+<html lang=\"zh-CN\">
+  <head>
+    <meta charset=\"utf-8\">
+    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
+    <title>{title}</title>
+    <style>
+      body {{
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(180deg, #070b17 0%, #040711 48%, #02040a 100%);
+        color: #eef4fb;
+        font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+      }}
+      .panel {{
+        width: min(92vw, 560px);
+        padding: 32px;
+        border-radius: 28px;
+        border: 1px solid rgba(168, 188, 221, 0.18);
+        background: rgba(7, 12, 24, 0.84);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+      }}
+      .eyebrow {{
+        margin: 0 0 12px;
+        color: {tone};
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-size: 0.74rem;
+      }}
+      h1 {{ margin: 0 0 14px; font-size: 2rem; }}
+      p {{ margin: 0; line-height: 1.75; color: #9cabbe; }}
+    </style>
+  </head>
+  <body>
+    <section class=\"panel\">
+      <p class=\"eyebrow\">Hermes Web Login</p>
+      <h1>{title}</h1>
+      <p>{message}</p>
+    </section>
+  </body>
+</html>"""
+
     def do_OPTIONS(self) -> None:  # noqa: N802
         if self._reject_if_needed():
             return
@@ -103,21 +171,37 @@ class HermesUiHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if self._reject_if_needed():
             return
-        if self.path.startswith("/api/"):
-            self._proxy()
+        parsed = urllib.parse.urlsplit(self.path)
+        path = parsed.path
+        if path.startswith("/api/"):
+            upstream_path = path[len("/api") :] or "/"
+            if parsed.query:
+                upstream_path = f"{upstream_path}?{parsed.query}"
+            self._proxy(upstream_path)
             return
-        if self.path == "/auth/status":
+        if path == "/auth/status":
             self._send_json(HTTPStatus.OK, get_status())
             return
-        if self.path == "/auth/start":
+        if path == "/auth/start":
             status, payload = start_login()
             self._send_json(status, payload)
             return
-        if self.path == "/health":
+        if path == "/auth/callback":
+            query = urllib.parse.parse_qs(parsed.query)
+            status, payload = complete_login(
+                code=query.get("code", [None])[0],
+                state_value=query.get("state", [None])[0],
+            )
+            if status == HTTPStatus.OK:
+                self._send_html(status, self._callback_page(True, "OpenAI 登录已完成。可以回到 Home Assistant 页面继续使用 Hermes。"))
+            else:
+                self._send_html(status, self._callback_page(False, payload.get("message") or "登录回调处理失败。"))
+            return
+        if path == "/health":
             self._send_json(HTTPStatus.OK, {"status": "ok"})
             return
 
-        candidate = self.path.lstrip("/") or "index.html"
+        candidate = path.lstrip("/") or "index.html"
         target = (UI_DIR / candidate).resolve()
         try:
             target.relative_to(UI_DIR.resolve())
@@ -135,10 +219,32 @@ class HermesUiHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         if self._reject_if_needed():
             return
-        if self.path.startswith("/api/"):
-            self._proxy()
+        parsed = urllib.parse.urlsplit(self.path)
+        path = parsed.path
+        if path.startswith("/api/"):
+            upstream_path = path[len("/api") :] or "/"
+            if parsed.query:
+                upstream_path = f"{upstream_path}?{parsed.query}"
+            self._proxy(upstream_path)
             return
-        if self.path == "/auth/logout":
+        if path == "/auth/exchange":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_json"})
+                return
+            status, body = complete_login(
+                callback_url=payload.get("callback_url"),
+                code=payload.get("code"),
+                state_value=payload.get("state"),
+            )
+            self._send_json(status, body)
+            return
+        if path == "/auth/refresh":
+            status, body = refresh_session()
+            self._send_json(status, body)
+            return
+        if path == "/auth/logout":
             clear_session()
             self._send_json(HTTPStatus.OK, get_status())
             return
@@ -147,10 +253,15 @@ class HermesUiHandler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:  # noqa: N802
         if self._reject_if_needed():
             return
-        if self.path.startswith("/api/"):
-            self._proxy()
+        parsed = urllib.parse.urlsplit(self.path)
+        path = parsed.path
+        if path.startswith("/api/"):
+            upstream_path = path[len("/api") :] or "/"
+            if parsed.query:
+                upstream_path = f"{upstream_path}?{parsed.query}"
+            self._proxy(upstream_path)
             return
-        if self.path == "/auth/logout":
+        if path == "/auth/logout":
             clear_session()
             self._send_json(HTTPStatus.OK, get_status())
             return
