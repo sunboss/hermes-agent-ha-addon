@@ -34,6 +34,9 @@ const uiText = {
     terminalTitle: "用完整 ttyd 终端直接配置",
     terminalCopy: "需要更接近官方 Hermes 的终端体验时，切到独立命令行面板。手机端会自动压缩布局，方便直接在 HA App 里操作。",
     terminalLaunch: "进入命令行面板",
+    heroTerminalLaunch: "立即打开命令行",
+    heroTerminalInline: "在终端里配置 Hermes",
+    mobileTerminalLaunch: "打开终端",
   },
   prompts: [
     {
@@ -132,6 +135,9 @@ function applyStaticText() {
   document.getElementById("terminal-title").textContent = uiText.labels.terminalTitle;
   document.getElementById("terminal-copy").textContent = uiText.labels.terminalCopy;
   document.getElementById("terminal-launch").textContent = uiText.labels.terminalLaunch;
+  document.getElementById("hero-terminal-launch").textContent = uiText.labels.heroTerminalLaunch;
+  document.getElementById("hero-terminal-inline").textContent = uiText.labels.heroTerminalInline;
+  document.getElementById("mobile-terminal-launch").textContent = uiText.labels.mobileTerminalLaunch;
   authTitle.textContent = uiText.labels.authTitle;
   authInput.placeholder = uiText.labels.authInputPlaceholder;
   authStartButton.textContent = uiText.labels.authStart;

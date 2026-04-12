@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #050816;
   --bg-deep: #03050d;
   --panel: rgba(7, 12, 24, 0.72);
@@ -425,6 +425,60 @@ textarea:focus {
   line-height: 1.75;
 }
 
+.hero-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.hero-terminal-button,
+.hero-inline-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.hero-terminal-button {
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(116, 242, 212, 0.96), rgba(66, 196, 214, 0.9));
+  color: #031018;
+  font-weight: 700;
+  box-shadow: 0 18px 48px rgba(116, 242, 212, 0.26);
+}
+
+.hero-terminal-button:hover,
+.hero-terminal-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 52px rgba(116, 242, 212, 0.32);
+  outline: none;
+}
+
+.hero-inline-link {
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(168, 188, 221, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+}
+
+.hero-inline-link:hover,
+.hero-inline-link:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(116, 242, 212, 0.34);
+  background: rgba(116, 242, 212, 0.08);
+  color: var(--text);
+  outline: none;
+}
+
 .hero-meta {
   position: relative;
   z-index: 1;
@@ -602,6 +656,24 @@ textarea {
   box-shadow: none;
 }
 
+.mobile-terminal-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  padding: 0 18px;
+  border-radius: 999px;
+  text-decoration: none;
+  background: linear-gradient(135deg, rgba(116, 242, 212, 0.96), rgba(66, 196, 214, 0.92));
+  color: #031018;
+  font-weight: 700;
+  box-shadow: 0 20px 48px rgba(3, 8, 22, 0.52);
+}
+
 @keyframes drift {
   0%,
   100% {
@@ -649,6 +721,10 @@ textarea {
 
   .hero {
     grid-template-columns: 1fr;
+  }
+
+  .hero-actions {
+    align-items: stretch;
   }
 
   .transcript-head,
@@ -702,6 +778,20 @@ textarea {
 
   .message {
     max-width: 100%;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-terminal-button,
+  .hero-inline-link {
+    width: 100%;
+  }
+
+  .mobile-terminal-fab {
+    display: inline-flex;
   }
 }
 
