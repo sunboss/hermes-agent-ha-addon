@@ -55,7 +55,7 @@
     authNotRequired: "使用 API Key",
     authNeedsLogin: "等待登录",
     authAwaiting: "等待回调",
-    authAuthenticated: "已登录",
+    authAuthenticated: "会话已保存",
     authExpired: "已过期",
     authError: "不可用",
   },
@@ -68,10 +68,11 @@
     noVisibleText: "Hermes 没有返回可见内容。",
     requestFailed: "请求在 Hermes 作答前失败了。请检查配置或稍后再试。",
     authMissing: "当前处于网页登录模式，请先完成 OpenAI Codex 登录。",
+    authSessionOnly: "网页登录会话已经保存，但 provider shim 还没接入 Hermes 请求链路，当前版本还不能直接在这里发起对话。",
     authStarted: "登录地址已打开。完成浏览器授权后，把回调链接粘贴回来。",
-    authCompleted: "网页登录已完成，现在可以继续使用 Hermes。",
+    authCompleted: "网页登录已完成，会话已经保存。下一步还需要把 provider shim 接到 Hermes 请求链路。",
     authCleared: "已清除当前网页登录会话。",
-    authRefreshed: "网页登录会话已刷新。",
+    authRefreshed: "网页登录会话已刷新，但 provider shim 仍需接入请求链路。",
   },
 };
 
@@ -456,8 +457,12 @@ chatForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (authStatus?.mode === "web_login" && !authStatus?.ready) {
-    setError(uiText.messages.authMissing);
+  if (authStatus?.mode === "web_login") {
+    if (!authStatus?.has_session) {
+      setError(uiText.messages.authMissing);
+    } else {
+      setError(uiText.messages.authSessionOnly);
+    }
     return;
   }
 
@@ -509,4 +514,3 @@ async function init() {
 }
 
 init();
-

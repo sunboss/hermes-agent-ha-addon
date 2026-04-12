@@ -1,4 +1,4 @@
-# Hermes Agent Home Assistant Add-on Repository
+﻿# Hermes Agent Home Assistant Add-on Repository
 
 ![Hermes Agent Home Assistant Add-on](./hermes_agent/logo.png)
 
@@ -48,7 +48,7 @@ Wraps the official [`nousresearch/hermes-agent`](https://hub.docker.com/r/nousre
 Start with these settings:
 
 - `llm_model`
-- `auth_mode: api_key` for the current stable path
+- `auth_mode: api_key` for the current working chat path
 - `openrouter_api_key` or `openai_base_url` + `openai_api_key`
 - `terminal_backend: local`
 - a narrow `watch_domains` list such as `climate`, `binary_sensor`, or `light`
@@ -58,14 +58,15 @@ Start with these settings:
 - Uses Home Assistant Ingress, so no extra port mapping is needed
 - Talks to Hermes through the add-on's internal OpenAI-compatible API server
 - Keeps the Hermes API bound to `127.0.0.1` and proxies requests through the ingress-only UI server
-- Ships with a minimal chat-first interface instead of a full Lovelace dashboard
-- Exposes `/auth/status`, `/auth/start`, and `/auth/logout` for the future browser-login bridge
+- Ships with a chat-first control surface instead of a full Lovelace dashboard
+- Exposes `/auth/status`, `/auth/start`, `/auth/exchange`, `/auth/refresh`, and `/auth/logout`
 
 ## Browser Login Bridge
 
-- `auth_mode=web_login` now creates persistent auth storage in `/data/auth`
-- The add-on now persists bridge state and exposes auth status APIs
-- The provider-specific OpenClaw-style browser login flow is still the next step
+- `auth_mode=web_login` now supports a real PKCE login flow for `openai_web`
+- The bridge can generate a browser login URL, accept the callback URL, exchange the code, refresh the stored session, and persist state in `/data/auth`
+- The current bridge stores and manages the OpenAI Codex browser session honestly, but the OpenAI-compatible provider shim is still not connected to Hermes request execution yet
+- That means `auth_mode=web_login` is currently for session bootstrapping and validation, while direct chat still uses the `api_key` path
 
 ## Notes
 
