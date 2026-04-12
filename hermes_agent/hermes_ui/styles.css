@@ -1,0 +1,244 @@
+:root {
+  --bg: #07111f;
+  --bg-alt: #0d1728;
+  --panel: rgba(10, 18, 32, 0.78);
+  --line: rgba(148, 163, 184, 0.18);
+  --text: #e5eef8;
+  --muted: #9aa9bc;
+  --accent: #42d8c4;
+  --accent-strong: #7ee787;
+  --danger: #ff7b72;
+  --shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Space Grotesk", "Segoe UI Variable", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(66, 216, 196, 0.18), transparent 32%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.2), transparent 28%),
+    linear-gradient(180deg, #091221, #050b14 62%);
+  color: var(--text);
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+}
+
+.rail,
+.workspace {
+  padding: 28px;
+}
+
+.rail {
+  border-right: 1px solid var(--line);
+  background: rgba(4, 9, 18, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.brand-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  font-weight: 700;
+  background: linear-gradient(145deg, #0f766e, #0f4c81);
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+h1,
+h2,
+.message-role {
+  margin: 0;
+  font-weight: 700;
+}
+
+.lede,
+.hero-copy,
+.label,
+.message-meta,
+.status-block .label {
+  color: var(--muted);
+}
+
+.lede {
+  margin: 20px 0 28px;
+  line-height: 1.6;
+}
+
+.status-block {
+  display: grid;
+  gap: 18px;
+  padding: 18px 0 28px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.status-block strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1rem;
+}
+
+.ghost-button,
+.send-button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ghost-button {
+  margin-top: 24px;
+  padding: 0;
+  color: var(--accent);
+  background: none;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 24px;
+}
+
+.hero {
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+  background: linear-gradient(145deg, rgba(14, 23, 40, 0.95), rgba(6, 14, 26, 0.78));
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+}
+
+.hero h2 {
+  max-width: 12ch;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.98;
+}
+
+.hero-copy {
+  max-width: 52ch;
+  line-height: 1.6;
+}
+
+.chat-log {
+  overflow: auto;
+  display: grid;
+  gap: 18px;
+  padding-right: 8px;
+}
+
+.message {
+  padding: 18px 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.message[data-role="assistant"] {
+  border-color: rgba(66, 216, 196, 0.25);
+}
+
+.message-meta {
+  margin-bottom: 12px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.message-body {
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+
+.composer {
+  padding: 22px;
+  background: rgba(9, 17, 31, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(4, 10, 18, 0.84);
+  color: var(--text);
+  font: inherit;
+}
+
+textarea:focus {
+  outline: 2px solid rgba(66, 216, 196, 0.42);
+  outline-offset: 2px;
+}
+
+.composer-row {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.error-message {
+  margin: 0;
+  color: var(--danger);
+}
+
+.send-button {
+  padding: 12px 20px;
+  border-radius: 999px;
+  color: #041019;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  font-weight: 700;
+}
+
+@media (max-width: 920px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .workspace {
+    grid-template-rows: auto auto auto;
+  }
+}

@@ -21,6 +21,7 @@ If you prefer to add it manually:
 2. Open the overflow menu in the top-right corner and choose `Repositories`.
 3. Add `https://github.com/sunboss/hermes-agent-ha-addon`.
 4. Find **Hermes Agent** in the store and open it.
+5. After startup, use **OPEN WEB UI** to launch the built-in ingress chat interface.
 
 ## Quick Start
 
@@ -30,6 +31,7 @@ If you prefer to add it manually:
 4. Keep `terminal_backend` on `local` for the first run.
 5. Start with a narrow `watch_domains` list.
 6. Start the add-on and check the logs.
+7. Open **OPEN WEB UI** from the add-on page.
 
 ## Add-ons
 
@@ -49,10 +51,18 @@ Start with these settings:
 - `terminal_backend: local`
 - a narrow `watch_domains` list such as `climate`, `binary_sensor`, or `light`
 
+## Web UI
+
+- Uses Home Assistant Ingress, so no extra port mapping is needed
+- Talks to Hermes through the add-on's internal OpenAI-compatible API server
+- Keeps the Hermes API bound to `127.0.0.1` and proxies requests through the ingress-only UI server
+- Ships with a minimal chat-first interface instead of a full Lovelace dashboard
+
 ## Notes
 
 - The add-on stores Hermes runtime data in `/data`.
 - The wrapper patches `/data/config.yaml` and `/data/.env` instead of replacing the whole runtime layout.
+- The internal Hermes API server is enabled automatically for the ingress UI.
 - Upstream Hermes image updates are pinned intentionally rather than following `latest`.
 
 ## Docs

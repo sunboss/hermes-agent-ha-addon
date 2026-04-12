@@ -32,9 +32,6 @@ configuration:
   messaging_cwd:
     name: Working Directory
     description: Default working directory for Hermes gateway sessions and local terminal execution.
-  api_server_enabled:
-    name: Enable API Server
-    description: Expose Hermes' OpenAI-compatible API server inside the container.
   api_server_key:
     name: API Server Key
-    description: Optional authentication key for the Hermes API server.
+    description: Optional authentication key for the built-in Hermes API server that powers the ingress Web UI.

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Hermes Agent</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="rail">
+        <div class="brand">
+          <div class="brand-mark">H</div>
+          <div>
+            <p class="eyebrow">Home Assistant Ingress</p>
+            <h1>Hermes Agent</h1>
+          </div>
+        </div>
+        <p class="lede">A quiet control surface for talking to Hermes inside Home Assistant.</p>
+        <div class="status-block">
+          <div>
+            <span class="label">Gateway</span>
+            <strong id="health-status">Checking...</strong>
+          </div>
+          <div>
+            <span class="label">Conversation</span>
+            <strong id="conversation-id">pending</strong>
+          </div>
+        </div>
+        <button id="reset-chat" class="ghost-button" type="button">New conversation</button>
+      </aside>
+
+      <main class="workspace">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">Native-ish web UI</p>
+            <h2>Chat, inspect, and steer your Hermes gateway.</h2>
+          </div>
+          <p class="hero-copy">
+            This UI talks to the add-on's internal Hermes API server through a same-origin ingress proxy.
+          </p>
+        </header>
+
+        <section id="chat-log" class="chat-log" aria-live="polite"></section>
+
+        <form id="chat-form" class="composer">
+          <label class="label" for="chat-input">Message</label>
+          <textarea id="chat-input" name="chat-input" rows="4" placeholder="Ask Hermes to inspect Home Assistant, your workspace, or a device state." required></textarea>
+          <div class="composer-row">
+            <p id="error-message" class="error-message" hidden></p>
+            <button id="send-button" class="send-button" type="submit">Send</button>
+          </div>
+        </form>
+      </main>
+    </div>
+
+    <template id="message-template">
+      <article class="message">
+        <div class="message-meta">
+          <span class="message-role"></span>
+        </div>
+        <div class="message-body"></div>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

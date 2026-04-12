@@ -5,12 +5,15 @@ export HOME=/data
 export HERMES_HOME=/data
 export HERMES_INSTALL_DIR=/opt/hermes
 export PATH="${HERMES_INSTALL_DIR}/.venv/bin:${PATH}"
+export HERMES_UI_PORT=8099
+export HERMES_UI_DIR=/opt/hermes-ha-ui
 
 mkdir -p /data /data/workspace
 
 python3 - <<'PY'
 import json
 import os
+import secrets
 from pathlib import Path
 
 import yaml
@@ -59,14 +62,16 @@ env_map["HASS_URL"] = "http://supervisor/core"
 env_map["SUPERVISOR_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["HASS_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["MESSAGING_CWD"] = messaging_cwd
-env_map["API_SERVER_ENABLED"] = "true" if options.get("api_server_enabled") else "false"
+env_map["API_SERVER_ENABLED"] = "true"
+env_map["API_SERVER_HOST"] = "127.0.0.1"
+env_map["API_SERVER_PORT"] = "8642"
+env_map["API_SERVER_KEY"] = str(options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24))
 
 for option_key, env_key in (
     ("llm_model", "LLM_MODEL"),
     ("openrouter_api_key", "OPENROUTER_API_KEY"),
     ("openai_base_url", "OPENAI_BASE_URL"),
     ("openai_api_key", "OPENAI_API_KEY"),
-    ("api_server_key", "API_SERVER_KEY"),
 ):
     value = options.get(option_key)
     if value not in (None, ""):
@@ -127,6 +132,12 @@ config_path.write_text(
     encoding="utf-8",
 )
 PY
+
+set -a
+. /data/.env
+set +a
+
+python3 "${HERMES_UI_DIR}/server.py" &
 
 echo "Starting Hermes Agent gateway via official entrypoint..."
 exec /opt/hermes/docker/entrypoint.sh gateway
