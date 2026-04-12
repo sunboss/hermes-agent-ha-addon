@@ -26,3 +26,4 @@ This folder contains the Home Assistant add-on definition for Hermes Agent.
 
 The browser-login bridge now handles session setup and lifecycle for `openai_web`, but it is not yet the active model execution path for Hermes chat completions.
 Use `auth_mode=api_key` for actual chatting today, and `auth_mode=web_login` when you want to validate the browser session flow.
+

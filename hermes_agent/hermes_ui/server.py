@@ -13,6 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from auth_bridge import clear_session, complete_login, get_status, refresh_session, start_login
+from provider_shim import chat_completions as shim_chat_completions
+from provider_shim import list_models as shim_list_models
 
 UI_DIR = Path(os.environ.get("HERMES_UI_DIR", "/opt/hermes-ha-ui"))
 PORT = int(os.environ.get("HERMES_UI_PORT", "8099"))
@@ -23,10 +25,14 @@ ALLOWED_NETWORKS = [
     ipaddress.ip_network("::1/128"),
     ipaddress.ip_network("172.30.0.0/16"),
 ]
+LOOPBACK_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),
+]
 
 
 class HermesUiHandler(BaseHTTPRequestHandler):
-    server_version = "HermesIngressUI/0.3"
+    server_version = "HermesIngressUI/0.4"
 
     def _remote_allowed(self) -> bool:
         try:
@@ -34,6 +40,13 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         except ValueError:
             return False
         return any(remote_ip in network for network in ALLOWED_NETWORKS)
+
+    def _loopback_only(self) -> bool:
+        try:
+            remote_ip = ipaddress.ip_address(self.client_address[0])
+        except ValueError:
+            return False
+        return any(remote_ip in network for network in LOOPBACK_NETWORKS)
 
     def _send_common_headers(self, status: int, content_type: str) -> None:
         self.send_response(status)
@@ -55,6 +68,12 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if self._remote_allowed():
             return False
         self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+        return True
+
+    def _reject_if_not_loopback(self) -> bool:
+        if self._loopback_only():
+            return False
+        self._send_json(HTTPStatus.FORBIDDEN, {"error": "loopback_only"})
         return True
 
     def _serve_file(self, target: Path) -> None:
@@ -162,17 +181,28 @@ class HermesUiHandler(BaseHTTPRequestHandler):
 </html>"""
 
     def do_OPTIONS(self) -> None:  # noqa: N802
-        if self._reject_if_needed():
+        if self.path.startswith("/shim/"):
+            if self._reject_if_not_loopback():
+                return
+        elif self._reject_if_needed():
             return
         self.send_response(HTTPStatus.NO_CONTENT)
         self.send_header("Allow", "GET,POST,DELETE,OPTIONS")
         self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
-        if self._reject_if_needed():
-            return
         parsed = urllib.parse.urlsplit(self.path)
         path = parsed.path
+        if path.startswith("/shim/"):
+            if self._reject_if_not_loopback():
+                return
+            if path == "/shim/v1/models":
+                self._send_json(HTTPStatus.OK, shim_list_models())
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+            return
+        if self._reject_if_needed():
+            return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
             if parsed.query:
@@ -217,10 +247,28 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self._serve_index()
 
     def do_POST(self) -> None:  # noqa: N802
-        if self._reject_if_needed():
-            return
         parsed = urllib.parse.urlsplit(self.path)
         path = parsed.path
+        if path.startswith("/shim/"):
+            if self._reject_if_not_loopback():
+                return
+            if path == "/shim/v1/chat/completions":
+                try:
+                    payload = self._read_json_body()
+                except json.JSONDecodeError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": {"message": "invalid_json", "type": "invalid_request_error"}})
+                    return
+                try:
+                    status, body = shim_chat_completions(payload)
+                except Exception as exc:  # noqa: BLE001
+                    self._send_json(HTTPStatus.BAD_GATEWAY, {"error": {"message": str(exc), "type": "shim_error"}})
+                    return
+                self._send_json(status, body)
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+            return
+        if self._reject_if_needed():
+            return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
             if parsed.query:
@@ -251,6 +299,11 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
     def do_DELETE(self) -> None:  # noqa: N802
+        if self.path.startswith("/shim/"):
+            if self._reject_if_not_loopback():
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+            return
         if self._reject_if_needed():
             return
         parsed = urllib.parse.urlsplit(self.path)
@@ -279,3 +332,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

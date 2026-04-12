@@ -1,6 +1,6 @@
 ﻿name: "Hermes Agent"
 description: "Wraps the official Hermes Agent image as a Home Assistant add-on with an ingress Web UI."
-version: "0.5.2"
+version: "0.6.0"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -52,5 +52,6 @@ schema:
   cooldown_seconds: "int(0,3600)"
   messaging_cwd: "str?"
   api_server_key: "password?"
+
 
 

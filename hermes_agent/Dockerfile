@@ -1,4 +1,4 @@
-﻿ARG BUILD_VERSION="0.5.2"
+﻿ARG BUILD_VERSION="0.6.0"
 ARG HERMES_IMAGE_TAG="dafe443beba74384871e2c79d5b17db8bc51880e"
 
 FROM nousresearch/hermes-agent:${HERMES_IMAGE_TAG}
@@ -21,5 +21,6 @@ COPY hermes_ui/ /opt/hermes-ha-ui/
 RUN chmod a+x /run.sh
 
 ENTRYPOINT ["/run.sh"]
+
 
 

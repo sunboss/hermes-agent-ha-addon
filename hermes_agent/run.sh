@@ -38,6 +38,7 @@ auth_storage_path = Path(options.get("auth_storage_path") or "/data/auth")
 openai_oauth_client_id = str(options.get("openai_oauth_client_id") or "")
 openai_oauth_redirect_uri = str(options.get("openai_oauth_redirect_uri") or "http://127.0.0.1:1455/auth/callback")
 openai_oauth_scopes = str(options.get("openai_oauth_scopes") or "openid profile email offline_access")
+llm_model = str(options.get("llm_model") or "")
 
 Path(messaging_cwd).mkdir(parents=True, exist_ok=True)
 auth_storage_path.mkdir(parents=True, exist_ok=True)
@@ -80,6 +81,7 @@ env_map["API_SERVER_ENABLED"] = "true"
 env_map["API_SERVER_HOST"] = "127.0.0.1"
 env_map["API_SERVER_PORT"] = "8642"
 env_map["API_SERVER_KEY"] = str(options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24))
+env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or "gpt-5.4"
 
 for option_key, env_key in (
     ("llm_model", "LLM_MODEL"),
@@ -90,6 +92,10 @@ for option_key, env_key in (
     value = options.get(option_key)
     if value not in (None, ""):
         env_map[env_key] = str(value)
+
+if auth_mode == "web_login" and auth_provider == "openai_web":
+    env_map["OPENAI_BASE_URL"] = "http://127.0.0.1:8099/shim/v1"
+    env_map["OPENAI_API_KEY"] = env_map.get("OPENAI_API_KEY") or "web-login-session"
 
 env_lines = ["# Managed by the Home Assistant add-on wrapper."]
 for key in sorted(env_map):
@@ -131,8 +137,8 @@ if config_path.exists():
     if isinstance(loaded, dict):
         config = loaded
 
-if options.get("llm_model"):
-    config["model"] = str(options["llm_model"])
+if llm_model:
+    config["model"] = llm_model
 
 terminal = config.get("terminal")
 if not isinstance(terminal, dict):

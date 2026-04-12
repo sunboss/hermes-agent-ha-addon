@@ -63,4 +63,5 @@ Current limitation:
 - The UI is focused on chat and control flow, not a full Lovelace-style control panel
 - No automatic upstream image tracking by design
 - The Web UI depends on the built-in Hermes OpenAI-compatible API server running inside the container
-- `auth_mode=web_login` stores and refreshes a browser session, but the provider shim for Hermes request execution is still pending
+- `auth_mode=web_login` now stores, refreshes, and routes through a browser-session-backed provider shim, but it is still the newer path and should be treated as more experimental
+

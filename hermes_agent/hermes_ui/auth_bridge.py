@@ -180,7 +180,7 @@ def _status_message(status: str, oauth_ready: bool) -> str:
     if not oauth_ready:
         return "OpenAI web login mode is enabled, but the OAuth client configuration is incomplete. Fill in the client ID, redirect URI, and scopes first."
     if status == "authenticated":
-        return "OpenAI Codex web login session is stored successfully. The provider shim is still pending before Hermes can use it for completions."
+        return "OpenAI Codex web login session is active and can now power the local provider shim."
     if status == "expired":
         return "The stored web login session has expired. Refresh it or start a new login flow."
     return "OpenAI Codex web login is ready. Start the PKCE flow, complete the browser sign-in, then paste the callback URL here."
@@ -201,8 +201,8 @@ def get_status() -> dict[str, Any]:
 
     oauth_ready = _oauth_configured() if AUTH_PROVIDER == "openai_web" else False
     session_ready = status == "authenticated"
-    provider_shim_ready = False
-    ready = AUTH_MODE == "api_key"
+    provider_shim_ready = AUTH_MODE == "web_login" and AUTH_PROVIDER == "openai_web"
+    ready = AUTH_MODE == "api_key" or (session_ready and provider_shim_ready)
     return {
         "mode": AUTH_MODE,
         "provider": AUTH_PROVIDER,
@@ -417,7 +417,7 @@ def complete_login(callback_url: str | None = None, code: str | None = None, sta
     bridge_state["status"] = "authenticated"
     save_state(bridge_state)
     return 200, {
-        "message": "OpenAI Codex web login completed successfully. The session is stored, but the provider shim still needs to be connected before Hermes can use it for chat completions.",
+        "message": "OpenAI Codex web login completed successfully.",
         "status": get_status(),
     }
 
@@ -511,8 +511,26 @@ def refresh_session() -> tuple[int, dict[str, Any]]:
     bridge_state["status"] = "authenticated"
     save_state(bridge_state)
     return 200, {
-        "message": "OpenAI Codex web login session refreshed successfully. The session is stored, but the provider shim still needs to be connected before Hermes can use it for chat completions.",
+        "message": "OpenAI Codex web login session refreshed successfully.",
         "status": get_status(),
     }
 
 
+def get_live_session() -> dict[str, Any]:
+    if AUTH_MODE != "web_login":
+        raise RuntimeError("web_login_not_enabled")
+    if AUTH_PROVIDER != "openai_web":
+        raise RuntimeError("provider_not_supported")
+    state = ensure_state()
+    session = state.get("session") if isinstance(state.get("session"), dict) else None
+    if not session:
+        raise RuntimeError("missing_session")
+    if _session_status(session) == "expired":
+        code, payload = refresh_session()
+        if code != 200:
+            raise RuntimeError(payload.get("message") or payload.get("error") or "token_refresh_failed")
+        state = ensure_state()
+        session = state.get("session") if isinstance(state.get("session"), dict) else None
+    if not session or not session.get("access_token"):
+        raise RuntimeError("missing_access_token")
+    return session

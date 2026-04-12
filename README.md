@@ -80,3 +80,4 @@ Start with these settings:
 - Add-on docs: [hermes_agent/DOCS.md](./hermes_agent/DOCS.md)
 - Install guide: [INSTALL.md](./INSTALL.md)
 - Official Hermes docs: [hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)
+

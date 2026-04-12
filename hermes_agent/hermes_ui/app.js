@@ -68,11 +68,11 @@
     noVisibleText: "Hermes 没有返回可见内容。",
     requestFailed: "请求在 Hermes 作答前失败了。请检查配置或稍后再试。",
     authMissing: "当前处于网页登录模式，请先完成 OpenAI Codex 登录。",
-    authSessionOnly: "网页登录会话已经保存，但 provider shim 还没接入 Hermes 请求链路，当前版本还不能直接在这里发起对话。",
+    authSessionOnly: "网页登录会话当前还不能用于对话，请检查 OAuth 配置、回调交换结果和 add-on 日志。",
     authStarted: "登录地址已打开。完成浏览器授权后，把回调链接粘贴回来。",
-    authCompleted: "网页登录已完成，会话已经保存。下一步还需要把 provider shim 接到 Hermes 请求链路。",
+    authCompleted: "网页登录已完成，会话已经保存，现在可以开始测试对话。",
     authCleared: "已清除当前网页登录会话。",
-    authRefreshed: "网页登录会话已刷新，但 provider shim 仍需接入请求链路。",
+    authRefreshed: "网页登录会话已刷新，现在可以继续测试对话。",
   },
 };
 
@@ -457,7 +457,7 @@ chatForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (authStatus?.mode === "web_login") {
+  if (authStatus?.mode === "web_login" && !authStatus?.can_chat) {
     if (!authStatus?.has_session) {
       setError(uiText.messages.authMissing);
     } else {
@@ -514,3 +514,6 @@ async function init() {
 }
 
 init();
+
+
+

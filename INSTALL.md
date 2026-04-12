@@ -54,3 +54,4 @@ Check these first:
 - Too-broad Home Assistant watch settings creating noisy startup behavior
 - Hermes API server not responding on the internal loopback port for the UI proxy
 - Invalid auth bridge state under `/data/auth/session.json`
+
