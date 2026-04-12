@@ -1,4 +1,4 @@
-﻿# Install Guide
+# Install Guide
 
 ## Add the repository to Home Assistant
 
@@ -33,18 +33,12 @@ After starting the add-on, check the logs for these milestones:
 1. The wrapper script starts without shell errors.
 2. Hermes writes `/data/.env`, `/data/config.yaml`, and `/data/auth/session.json`.
 3. Hermes starts the gateway successfully.
-4. The ingress UI becomes available through `OPEN WEB UI`.
+4. The ingress UI becomes available through `OPEN WEB UI`.`r`n5. The dedicated ttyd terminal page loads through **进入命令行面板** and keeps working on narrow mobile screens.
 5. `GET /auth/status` returns a valid JSON auth bridge state.
 6. In `auth_mode=api_key`, a test message returns a Hermes response inside the Web UI.
 7. In `auth_mode=web_login`, the bridge can generate a login URL and store session state after callback exchange.
 
-## Important current limitation
-
-`auth_mode=web_login` now covers login URL generation, callback exchange, refresh, logout, and session persistence.
-It does not yet include the OpenAI-compatible provider shim that would let Hermes use that stored browser session for chat completions.
-For actual chatting today, keep using `auth_mode=api_key`.
-
-## If startup fails
+## Browser login status`r`n`r`n`auth_mode=web_login` now covers login URL generation, callback exchange, refresh, logout, session persistence, and the local OpenAI-compatible shim route consumed by Hermes.`r`nThe main thing still left to validate in a live environment is your real OAuth client configuration.`r`n`r`n## If startup fails
 
 Check these first:
 

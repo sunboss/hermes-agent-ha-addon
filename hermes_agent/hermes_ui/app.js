@@ -1,4 +1,4 @@
-﻿const uiText = {
+const uiText = {
   sidebarCopy: "一个更专注的控制台，用来在 Home Assistant 里调度 Hermes、查看状态和完成对话。",
   labels: {
     gateway: "网关状态",
@@ -30,6 +30,10 @@
     authRefresh: "刷新登录",
     authLogout: "清除会话",
     authExchange: "提交回调",
+    terminalLabel: "原生命令行",
+    terminalTitle: "用完整 ttyd 终端直接配置",
+    terminalCopy: "需要更接近官方 Hermes 的终端体验时，切到独立命令行面板。手机端会自动压缩布局，方便直接在 HA App 里操作。",
+    terminalLaunch: "进入命令行面板",
   },
   prompts: [
     {
@@ -123,8 +127,12 @@ function applyStaticText() {
   document.getElementById("send-button").textContent = uiText.labels.send;
   document.getElementById("reset-chat").textContent = uiText.labels.reset;
   document.getElementById("label-auth").textContent = uiText.labels.auth;
-  authTitle.textContent = uiText.labels.authTitle;
   document.getElementById("auth-input-label").textContent = uiText.labels.authInputLabel;
+  document.getElementById("terminal-label").textContent = uiText.labels.terminalLabel;
+  document.getElementById("terminal-title").textContent = uiText.labels.terminalTitle;
+  document.getElementById("terminal-copy").textContent = uiText.labels.terminalCopy;
+  document.getElementById("terminal-launch").textContent = uiText.labels.terminalLaunch;
+  authTitle.textContent = uiText.labels.authTitle;
   authInput.placeholder = uiText.labels.authInputPlaceholder;
   authStartButton.textContent = uiText.labels.authStart;
   authRefreshButton.textContent = uiText.labels.authRefresh;
@@ -514,6 +522,3 @@ async function init() {
 }
 
 init();
-
-
-

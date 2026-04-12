@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <title>Hermes Terminal</title>
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./terminal.css">
+  </head>
+  <body class="terminal-page">
+    <div class="backdrop" aria-hidden="true">
+      <div class="backdrop-orb orb-a"></div>
+      <div class="backdrop-orb orb-b"></div>
+      <div class="backdrop-grid"></div>
+    </div>
+
+    <div class="terminal-shell-page">
+      <header class="terminal-topbar">
+        <div class="terminal-brand">
+          <p id="terminal-eyebrow" class="eyebrow"></p>
+          <h1 id="terminal-page-title"></h1>
+          <p id="terminal-page-copy" class="terminal-copy"></p>
+        </div>
+        <div class="terminal-actions-row">
+          <a id="terminal-back" class="ghost-button" href="./"></a>
+          <a id="terminal-open" class="ghost-button" href="./ttyd/" target="_blank" rel="noopener noreferrer"></a>
+          <button id="reload-terminal" class="send-button terminal-reload" type="button"></button>
+        </div>
+      </header>
+
+      <section class="terminal-card">
+        <div class="terminal-card-head">
+          <div>
+            <p id="terminal-stack-label" class="micro-label"></p>
+            <h2 id="terminal-card-title"></h2>
+          </div>
+          <p id="terminal-hint" class="terminal-hint"></p>
+        </div>
+        <iframe id="terminal-frame" class="terminal-frame" src="./ttyd/" title="Hermes ttyd terminal"></iframe>
+      </section>
+    </div>
+
+    <script src="./terminal.js" defer></script>
+  </body>
+</html>

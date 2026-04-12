@@ -1,10 +1,12 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import ipaddress
 import json
 import mimetypes
 import os
+import select
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -20,6 +22,8 @@ UI_DIR = Path(os.environ.get("HERMES_UI_DIR", "/opt/hermes-ha-ui"))
 PORT = int(os.environ.get("HERMES_UI_PORT", "8099"))
 API_BASE = os.environ.get("HERMES_API_UPSTREAM", "http://127.0.0.1:8642")
 API_KEY = os.environ.get("API_SERVER_KEY", "")
+TTYD_HOST = os.environ.get("HERMES_TTYD_HOST", "127.0.0.1")
+TTYD_PORT = int(os.environ.get("HERMES_TTYD_PORT", "7681"))
 ALLOWED_NETWORKS = [
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("::1/128"),
@@ -29,10 +33,20 @@ LOOPBACK_NETWORKS = [
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("::1/128"),
 ]
+HOP_BY_HOP_HEADERS = {
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailers",
+    "transfer-encoding",
+    "upgrade",
+}
 
 
 class HermesUiHandler(BaseHTTPRequestHandler):
-    server_version = "HermesIngressUI/0.4"
+    server_version = "HermesIngressUI/0.6"
 
     def _remote_allowed(self) -> bool:
         try:
@@ -100,7 +114,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         payload = json.loads(body.decode("utf-8"))
         return payload if isinstance(payload, dict) else {}
 
-    def _proxy(self, upstream_path: str) -> None:
+    def _proxy_api(self, upstream_path: str) -> None:
         upstream_url = f"{API_BASE}{upstream_path}"
         body = None
         length = self.headers.get("Content-Length")
@@ -133,8 +147,108 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
 
+    def _proxy_ttyd_http(self) -> None:
+        upstream_url = f"http://{TTYD_HOST}:{TTYD_PORT}{self.path}"
+        body = None
+        length = self.headers.get("Content-Length")
+        if length:
+            body = self.rfile.read(int(length))
+
+        headers = {}
+        for key, value in self.headers.items():
+            lower = key.lower()
+            if lower in HOP_BY_HOP_HEADERS or lower == "host":
+                continue
+            headers[key] = value
+        headers["Host"] = f"{TTYD_HOST}:{TTYD_PORT}"
+
+        request = urllib.request.Request(
+            upstream_url,
+            data=body,
+            headers=headers,
+            method=self.command,
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=180) as response:
+                payload = response.read()
+                self.send_response(response.getcode())
+                for key, value in response.headers.items():
+                    lower = key.lower()
+                    if lower in HOP_BY_HOP_HEADERS:
+                        continue
+                    if lower == "cache-control":
+                        continue
+                    self.send_header(key, value)
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(payload)
+        except urllib.error.HTTPError as exc:
+            payload = exc.read()
+            self.send_response(exc.code)
+            for key, value in exc.headers.items():
+                lower = key.lower()
+                if lower in HOP_BY_HOP_HEADERS:
+                    continue
+                if lower == "cache-control":
+                    continue
+                self.send_header(key, value)
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(payload)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+
+    def _proxy_ttyd_websocket(self) -> None:
+        upstream = socket.create_connection((TTYD_HOST, TTYD_PORT), timeout=10)
+        upstream.settimeout(None)
+        self.connection.settimeout(None)
+
+        request_lines = [f"{self.command} {self.path} HTTP/1.1"]
+        has_host = False
+        for key, value in self.headers.items():
+            if key.lower() == "host":
+                request_lines.append(f"Host: {TTYD_HOST}:{TTYD_PORT}")
+                has_host = True
+            else:
+                request_lines.append(f"{key}: {value}")
+        if not has_host:
+            request_lines.append(f"Host: {TTYD_HOST}:{TTYD_PORT}")
+        request_lines.append("")
+        request_lines.append("")
+        upstream.sendall("\r\n".join(request_lines).encode("utf-8"))
+
+        response = bytearray()
+        while b"\r\n\r\n" not in response:
+            chunk = upstream.recv(4096)
+            if not chunk:
+                raise ConnectionError("ttyd closed websocket handshake")
+            response.extend(chunk)
+        self.connection.sendall(response)
+
+        sockets = [self.connection, upstream]
+        self.close_connection = True
+        while True:
+            readable, _, _ = select.select(sockets, [], [], 30)
+            if not readable:
+                continue
+            for sock in readable:
+                try:
+                    chunk = sock.recv(65536)
+                except OSError:
+                    chunk = b""
+                if not chunk:
+                    upstream.close()
+                    return
+                target = upstream if sock is self.connection else self.connection
+                target.sendall(chunk)
+
+    def _is_websocket_upgrade(self) -> bool:
+        connection = self.headers.get("Connection", "")
+        upgrade = self.headers.get("Upgrade", "")
+        return "upgrade" in connection.lower() and upgrade.lower() == "websocket"
+
     def _callback_page(self, ok: bool, message: str) -> str:
-        title = "登录成功" if ok else "登录失败"
+        title = "\u767b\u5f55\u6210\u529f" if ok else "\u767b\u5f55\u5931\u8d25"
         tone = "#74f2d4" if ok else "#ff7a7a"
         return f"""<!doctype html>
 <html lang=\"zh-CN\">
@@ -203,11 +317,20 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             return
         if self._reject_if_needed():
             return
+        if path.startswith("/ttyd"):
+            try:
+                if self._is_websocket_upgrade():
+                    self._proxy_ttyd_websocket()
+                else:
+                    self._proxy_ttyd_http()
+            except Exception as exc:  # noqa: BLE001
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+            return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
             if parsed.query:
                 upstream_path = f"{upstream_path}?{parsed.query}"
-            self._proxy(upstream_path)
+            self._proxy_api(upstream_path)
             return
         if path == "/auth/status":
             self._send_json(HTTPStatus.OK, get_status())
@@ -223,12 +346,12 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 state_value=query.get("state", [None])[0],
             )
             if status == HTTPStatus.OK:
-                self._send_html(status, self._callback_page(True, "OpenAI 登录已完成。可以回到 Home Assistant 页面继续使用 Hermes。"))
+                self._send_html(status, self._callback_page(True, "OpenAI \u767b\u5f55\u5df2\u5b8c\u6210\u3002\u53ef\u4ee5\u56de\u5230 Home Assistant \u9875\u9762\u7ee7\u7eed\u4f7f\u7528 Hermes\u3002"))
             else:
-                self._send_html(status, self._callback_page(False, payload.get("message") or "登录回调处理失败。"))
+                self._send_html(status, self._callback_page(False, payload.get("message") or "\u767b\u5f55\u56de\u8c03\u5904\u7406\u5931\u8d25\u3002"))
             return
         if path == "/health":
-            self._send_json(HTTPStatus.OK, {"status": "ok"})
+            self._send_json(HTTPStatus.OK, {"status": "ok", "ttyd_port": TTYD_PORT})
             return
 
         candidate = path.lstrip("/") or "index.html"
@@ -269,11 +392,14 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             return
         if self._reject_if_needed():
             return
+        if path.startswith("/ttyd"):
+            self._proxy_ttyd_http()
+            return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
             if parsed.query:
                 upstream_path = f"{upstream_path}?{parsed.query}"
-            self._proxy(upstream_path)
+            self._proxy_api(upstream_path)
             return
         if path == "/auth/exchange":
             try:
@@ -312,7 +438,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             upstream_path = path[len("/api") :] or "/"
             if parsed.query:
                 upstream_path = f"{upstream_path}?{parsed.query}"
-            self._proxy(upstream_path)
+            self._proxy_api(upstream_path)
             return
         if path == "/auth/logout":
             clear_session()
@@ -332,4 +458,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

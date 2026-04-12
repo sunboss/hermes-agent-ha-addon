@@ -704,3 +704,39 @@ textarea {
     max-width: 100%;
   }
 }
+
+a.ghost-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.utility-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.utility-title {
+  font-size: 1.15rem;
+}
+
+.utility-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.terminal-launch {
+  justify-self: start;
+}
+
+@media (max-width: 720px) {
+  .terminal-launch {
+    width: 100%;
+  }
+}

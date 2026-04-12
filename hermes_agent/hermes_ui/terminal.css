@@ -1,0 +1,155 @@
+.terminal-page {
+  overflow: hidden;
+}
+
+.terminal-shell-page {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 18px;
+  padding: 24px;
+}
+
+.terminal-topbar,
+.terminal-card {
+  border: 1px solid rgba(168, 188, 221, 0.14);
+  background: linear-gradient(180deg, rgba(9, 14, 28, 0.9), rgba(5, 9, 18, 0.78));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(24px);
+}
+
+.terminal-topbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px 30px;
+  border-radius: 32px;
+}
+
+.terminal-brand {
+  max-width: 62ch;
+}
+
+.terminal-copy,
+.terminal-hint {
+  margin: 14px 0 0;
+  color: #9cabbe;
+  line-height: 1.75;
+}
+
+.terminal-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: end;
+}
+
+.terminal-reload {
+  padding-inline: 18px;
+}
+
+.terminal-card {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border-radius: 32px;
+  overflow: hidden;
+}
+
+.terminal-card-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 26px;
+  border-bottom: 1px solid rgba(168, 188, 221, 0.14);
+}
+
+.terminal-card-head h2 {
+  margin-top: 6px;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.terminal-hint {
+  max-width: 34ch;
+  text-align: right;
+}
+
+.terminal-frame {
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  border: 0;
+  background: #040711;
+}
+
+@media (max-width: 900px) {
+  .terminal-page {
+    overflow: auto;
+  }
+
+  .terminal-shell-page {
+    min-height: auto;
+    padding: 14px;
+  }
+
+  .terminal-topbar,
+  .terminal-card {
+    border-radius: 24px;
+  }
+
+  .terminal-topbar,
+  .terminal-card-head {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .terminal-hint {
+    max-width: none;
+    text-align: left;
+  }
+
+  .terminal-frame {
+    min-height: 70vh;
+  }
+}
+
+@media (max-width: 640px) {
+  .terminal-shell-page {
+    gap: 12px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .terminal-topbar {
+    padding: 18px;
+  }
+
+  .terminal-card-head {
+    padding: 18px;
+  }
+
+  .terminal-copy,
+  .terminal-hint {
+    margin-top: 10px;
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
+
+  .terminal-actions-row {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .terminal-actions-row .ghost-button,
+  .terminal-actions-row .send-button {
+    flex: 1 1 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .terminal-frame {
+    min-height: calc(100vh - 280px);
+  }
+}

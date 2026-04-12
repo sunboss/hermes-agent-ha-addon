@@ -1,4 +1,4 @@
-﻿# Hermes Agent Home Assistant Add-on Repository
+# Hermes Agent Home Assistant Add-on Repository
 
 ![Hermes Agent Home Assistant Add-on](./hermes_agent/logo.png)
 
@@ -32,7 +32,7 @@ If you prefer to add it manually:
 5. Keep `terminal_backend` on `local` for the first run.
 6. Start with a narrow `watch_domains` list.
 7. Start the add-on and check the logs.
-8. Open **OPEN WEB UI** from the add-on page.
+8. Open **OPEN WEB UI** from the add-on page.`r`n9. Use **进入命令行面板** when you want the full ttyd shell experience.
 
 ## Add-ons
 
@@ -58,20 +58,19 @@ Start with these settings:
 - Uses Home Assistant Ingress, so no extra port mapping is needed
 - Talks to Hermes through the add-on's internal OpenAI-compatible API server
 - Keeps the Hermes API bound to `127.0.0.1` and proxies requests through the ingress-only UI server
-- Ships with a chat-first control surface instead of a full Lovelace dashboard
+- Ships with a polished chat-first control surface plus a dedicated ttyd terminal workspace
 - Exposes `/auth/status`, `/auth/start`, `/auth/exchange`, `/auth/refresh`, and `/auth/logout`
 
 ## Browser Login Bridge
 
 - `auth_mode=web_login` now supports a real PKCE login flow for `openai_web`
 - The bridge can generate a browser login URL, accept the callback URL, exchange the code, refresh the stored session, and persist state in `/data/auth`
-- The current bridge stores and manages the OpenAI Codex browser session honestly, but the OpenAI-compatible provider shim is still not connected to Hermes request execution yet
-- That means `auth_mode=web_login` is currently for session bootstrapping and validation, while direct chat still uses the `api_key` path
+- The bridge now persists the OpenAI Codex browser session and exposes it to Hermes through a local OpenAI-compatible shim`r`n- The `api_key` path remains available, but `auth_mode=web_login` is now wired for the in-container shim as well
 
 ## Notes
 
 - The add-on stores Hermes runtime data in `/data`.
-- The wrapper patches `/data/config.yaml` and `/data/.env` instead of replacing the whole runtime layout.
+- The wrapper patches `/data/config.yaml` and `/data/.env` instead of replacing the whole runtime layout.`r`n- The Web UI now includes a mobile-friendly ttyd terminal page for direct shell configuration.
 - The internal Hermes API server is enabled automatically for the ingress UI.
 - Upstream Hermes image updates are pinned intentionally rather than following `latest`.
 

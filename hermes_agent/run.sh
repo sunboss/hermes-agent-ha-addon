@@ -7,6 +7,7 @@ export HERMES_INSTALL_DIR=/opt/hermes
 export PATH="${HERMES_INSTALL_DIR}/.venv/bin:${PATH}"
 export HERMES_UI_PORT=8099
 export HERMES_UI_DIR=/opt/hermes-ha-ui
+export HERMES_TTYD_PORT="${HERMES_TTYD_PORT:-7681}"
 
 mkdir -p /data /data/workspace /data/auth
 
@@ -82,6 +83,7 @@ env_map["API_SERVER_HOST"] = "127.0.0.1"
 env_map["API_SERVER_PORT"] = "8642"
 env_map["API_SERVER_KEY"] = str(options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24))
 env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or "gpt-5.4"
+env_map["HERMES_TTYD_PORT"] = os.environ.get("HERMES_TTYD_PORT", "7681")
 
 for option_key, env_key in (
     ("llm_model", "LLM_MODEL"),
@@ -177,6 +179,22 @@ PY
 set -a
 . /data/.env
 set +a
+
+/usr/local/bin/ttyd \
+  --port "${HERMES_TTYD_PORT}" \
+  --interface lo \
+  --base-path /ttyd \
+  --cwd "${MESSAGING_CWD}" \
+  --writable \
+  --max-clients 4 \
+  --ping-interval 30 \
+  -t rendererType=webgl \
+  -t fontSize=15 \
+  -t cursorStyle=bar \
+  -t cursorBlink=true \
+  -t enableZmodem=true \
+  -t enableSixel=true \
+  /bin/bash --noprofile --norc -i &
 
 python3 "${HERMES_UI_DIR}/server.py" &
 
