@@ -11,6 +11,8 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from auth_bridge import clear_session, get_status, start_login
+
 UI_DIR = Path(os.environ.get("HERMES_UI_DIR", "/opt/hermes-ha-ui"))
 PORT = int(os.environ.get("HERMES_UI_PORT", "8099"))
 API_BASE = os.environ.get("HERMES_API_UPSTREAM", "http://127.0.0.1:8642")
@@ -23,7 +25,7 @@ ALLOWED_NETWORKS = [
 
 
 class HermesUiHandler(BaseHTTPRequestHandler):
-    server_version = "HermesIngressUI/0.1"
+    server_version = "HermesIngressUI/0.2"
 
     def _remote_allowed(self) -> bool:
         try:
@@ -40,11 +42,14 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
 
+    def _send_json(self, status: int, payload: dict) -> None:
+        self._send_common_headers(status, "application/json")
+        self.wfile.write(json.dumps(payload).encode("utf-8"))
+
     def _reject_if_needed(self) -> bool:
         if self._remote_allowed():
             return False
-        self._send_common_headers(HTTPStatus.FORBIDDEN, "application/json")
-        self.wfile.write(json.dumps({"error": "forbidden"}).encode("utf-8"))
+        self._send_json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
         return True
 
     def _serve_file(self, target: Path) -> None:
@@ -86,8 +91,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             self._send_common_headers(exc.code, response_type)
             self.wfile.write(payload)
         except Exception as exc:  # noqa: BLE001
-            self._send_common_headers(HTTPStatus.BAD_GATEWAY, "application/json")
-            self.wfile.write(json.dumps({"error": str(exc)}).encode("utf-8"))
+            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         if self._reject_if_needed():
@@ -102,9 +106,15 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/"):
             self._proxy()
             return
+        if self.path == "/auth/status":
+            self._send_json(HTTPStatus.OK, get_status())
+            return
+        if self.path == "/auth/start":
+            status, payload = start_login()
+            self._send_json(status, payload)
+            return
         if self.path == "/health":
-            self._send_common_headers(HTTPStatus.OK, "application/json")
-            self.wfile.write(json.dumps({"status": "ok"}).encode("utf-8"))
+            self._send_json(HTTPStatus.OK, {"status": "ok"})
             return
 
         candidate = self.path.lstrip("/") or "index.html"
@@ -128,8 +138,11 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/"):
             self._proxy()
             return
-        self._send_common_headers(HTTPStatus.NOT_FOUND, "application/json")
-        self.wfile.write(json.dumps({"error": "not_found"}).encode("utf-8"))
+        if self.path == "/auth/logout":
+            clear_session()
+            self._send_json(HTTPStatus.OK, get_status())
+            return
+        self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
     def do_DELETE(self) -> None:  # noqa: N802
         if self._reject_if_needed():
@@ -137,8 +150,11 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/"):
             self._proxy()
             return
-        self._send_common_headers(HTTPStatus.NOT_FOUND, "application/json")
-        self.wfile.write(json.dumps({"error": "not_found"}).encode("utf-8"))
+        if self.path == "/auth/logout":
+            clear_session()
+            self._send_json(HTTPStatus.OK, get_status())
+            return
+        self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
     def log_message(self, fmt: str, *args) -> None:  # noqa: A003
         print(f"[Hermes UI] {self.address_string()} - {fmt % args}")

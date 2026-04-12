@@ -8,7 +8,7 @@ export PATH="${HERMES_INSTALL_DIR}/.venv/bin:${PATH}"
 export HERMES_UI_PORT=8099
 export HERMES_UI_DIR=/opt/hermes-ha-ui
 
-mkdir -p /data /data/workspace
+mkdir -p /data /data/workspace /data/auth
 
 python3 - <<'PY'
 import json
@@ -32,7 +32,12 @@ install_dir = Path(os.environ["HERMES_INSTALL_DIR"])
 hermes_home.mkdir(parents=True, exist_ok=True)
 
 messaging_cwd = options.get("messaging_cwd") or "/data/workspace"
+auth_mode = str(options.get("auth_mode") or "api_key")
+auth_provider = str(options.get("auth_provider") or "openai_web")
+auth_storage_path = Path(options.get("auth_storage_path") or "/data/auth")
+
 Path(messaging_cwd).mkdir(parents=True, exist_ok=True)
+auth_storage_path.mkdir(parents=True, exist_ok=True)
 
 for dirname in ("cron", "sessions", "logs", "hooks", "memories", "skills", "skins", "plans", "workspace", "home"):
     (hermes_home / dirname).mkdir(parents=True, exist_ok=True)
@@ -62,6 +67,9 @@ env_map["HASS_URL"] = "http://supervisor/core"
 env_map["SUPERVISOR_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["HASS_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["MESSAGING_CWD"] = messaging_cwd
+env_map["AUTH_MODE"] = auth_mode
+env_map["AUTH_PROVIDER"] = auth_provider
+env_map["AUTH_STORAGE_PATH"] = str(auth_storage_path)
 env_map["API_SERVER_ENABLED"] = "true"
 env_map["API_SERVER_HOST"] = "127.0.0.1"
 env_map["API_SERVER_PORT"] = "8642"
@@ -81,6 +89,26 @@ env_lines = ["# Managed by the Home Assistant add-on wrapper."]
 for key in sorted(env_map):
     env_lines.append(f"{key}={env_quote(env_map[key])}")
 env_path.write_text("\n".join(env_lines) + "\n", encoding="utf-8")
+
+session_path = auth_storage_path / "session.json"
+auth_state = {}
+if session_path.exists():
+    try:
+        loaded = json.loads(session_path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            auth_state = loaded
+    except json.JSONDecodeError:
+        auth_state = {}
+
+auth_state["mode"] = auth_mode
+auth_state["provider"] = auth_provider
+auth_state.setdefault("updated_at", None)
+auth_state.setdefault("session", None)
+if auth_mode == "api_key":
+    auth_state["status"] = "not_required"
+else:
+    auth_state["status"] = "authenticated" if auth_state.get("session") else "needs_login"
+session_path.write_text(json.dumps(auth_state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 terminal_backend = str(options.get("terminal_backend") or "local")
 watch_domains = options.get("watch_domains") or []

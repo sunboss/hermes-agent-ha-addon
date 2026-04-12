@@ -11,6 +11,15 @@ configuration:
   openai_api_key:
     name: OpenAI-Compatible API Key
     description: Optional. API key for the OpenAI-compatible endpoint.
+  auth_mode:
+    name: Authentication Mode
+    description: Choose between direct API keys and a future web-login bridge workflow.
+  auth_provider:
+    name: Web Login Provider
+    description: Provider profile used when auth_mode is set to web_login.
+  auth_storage_path:
+    name: Auth Storage Path
+    description: Directory used to persist auth sessions, bridge state, and future login tokens.
   terminal_backend:
     name: Terminal Backend
     description: Where Hermes should execute shell commands: local, docker, ssh, modal, daytona, or singularity.

@@ -27,11 +27,12 @@ If you prefer to add it manually:
 
 1. Install the add-on from this repository.
 2. Set `llm_model`.
-3. Set either `openrouter_api_key` or `openai_base_url` + `openai_api_key`.
-4. Keep `terminal_backend` on `local` for the first run.
-5. Start with a narrow `watch_domains` list.
-6. Start the add-on and check the logs.
-7. Open **OPEN WEB UI** from the add-on page.
+3. Choose `auth_mode`.
+4. If `auth_mode=api_key`, set either `openrouter_api_key` or `openai_base_url` + `openai_api_key`.
+5. Keep `terminal_backend` on `local` for the first run.
+6. Start with a narrow `watch_domains` list.
+7. Start the add-on and check the logs.
+8. Open **OPEN WEB UI** from the add-on page.
 
 ## Add-ons
 
@@ -47,6 +48,7 @@ Wraps the official [`nousresearch/hermes-agent`](https://hub.docker.com/r/nousre
 Start with these settings:
 
 - `llm_model`
+- `auth_mode: api_key` for the current stable path
 - `openrouter_api_key` or `openai_base_url` + `openai_api_key`
 - `terminal_backend: local`
 - a narrow `watch_domains` list such as `climate`, `binary_sensor`, or `light`
@@ -57,6 +59,13 @@ Start with these settings:
 - Talks to Hermes through the add-on's internal OpenAI-compatible API server
 - Keeps the Hermes API bound to `127.0.0.1` and proxies requests through the ingress-only UI server
 - Ships with a minimal chat-first interface instead of a full Lovelace dashboard
+- Exposes `/auth/status`, `/auth/start`, and `/auth/logout` for the future browser-login bridge
+
+## Browser Login Bridge
+
+- `auth_mode=web_login` now creates persistent auth storage in `/data/auth`
+- The add-on now persists bridge state and exposes auth status APIs
+- The provider-specific OpenClaw-style browser login flow is still the next step
 
 ## Notes
 
