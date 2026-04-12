@@ -7,48 +7,98 @@
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <div class="shell">
-      <aside class="rail">
-        <div class="brand">
+    <div class="backdrop" aria-hidden="true">
+      <div class="backdrop-orb orb-a"></div>
+      <div class="backdrop-orb orb-b"></div>
+      <div class="backdrop-grid"></div>
+    </div>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
           <div class="brand-mark">H</div>
           <div>
             <p class="eyebrow">Home Assistant Ingress</p>
             <h1>Hermes Agent</h1>
           </div>
         </div>
-        <p class="lede">A quiet control surface for talking to Hermes inside Home Assistant.</p>
-        <div class="status-block">
-          <div>
-            <span class="label">Gateway</span>
-            <strong id="health-status">Checking...</strong>
-          </div>
-          <div>
-            <span class="label">Conversation</span>
-            <strong id="conversation-id">pending</strong>
-          </div>
+
+        <p class="sidebar-copy">
+          A focused command room for steering Hermes with Home Assistant context, local tooling, and one clean conversation surface.
+        </p>
+
+        <div class="status-grid">
+          <article class="status-panel">
+            <span class="micro-label">Gateway</span>
+            <strong id="health-status" class="status-value">Checking...</strong>
+          </article>
+          <article class="status-panel">
+            <span class="micro-label">Conversation</span>
+            <strong id="conversation-id" class="status-value">pending</strong>
+          </article>
+          <article class="status-panel status-panel-wide">
+            <span class="micro-label">Model</span>
+            <strong id="model-name" class="status-value">Detecting...</strong>
+          </article>
         </div>
-        <button id="reset-chat" class="ghost-button" type="button">New conversation</button>
+
+        <section class="prompt-bank" aria-label="Quick prompts">
+          <p class="micro-label">Quick prompts</p>
+          <div class="prompt-list">
+            <button class="prompt-chip" type="button" data-prompt="Summarize the current Home Assistant situation and highlight anything unusual.">Situation scan</button>
+            <button class="prompt-chip" type="button" data-prompt="Inspect recent climate and light activity and tell me what matters most.">Climate and lighting</button>
+            <button class="prompt-chip" type="button" data-prompt="List the Home Assistant services that would help me automate the current room state.">Automation ideas</button>
+          </div>
+        </section>
+
+        <button id="reset-chat" class="reset-button" type="button">Start a fresh conversation</button>
       </aside>
 
-      <main class="workspace">
+      <main class="main-stage">
         <header class="hero">
-          <div>
-            <p class="eyebrow">Native-ish web UI</p>
-            <h2>Chat, inspect, and steer your Hermes gateway.</h2>
+          <div class="hero-copy-block">
+            <p class="eyebrow">Native-ish control surface</p>
+            <h2>Operate Hermes through a calmer, more cinematic workspace.</h2>
+            <p class="hero-copy">
+              The UI stays inside Home Assistant, keeps the Hermes API private on loopback, and turns the add-on into something you can actually sit with.
+            </p>
           </div>
-          <p class="hero-copy">
-            This UI talks to the add-on's internal Hermes API server through a same-origin ingress proxy.
-          </p>
+          <div class="hero-meta">
+            <div>
+              <span class="micro-label">Session feed</span>
+              <strong id="message-count" class="hero-stat">0 turns</strong>
+            </div>
+            <p class="hero-note">Use the quick prompts or drop straight into free-form instructions.</p>
+          </div>
         </header>
 
-        <section id="chat-log" class="chat-log" aria-live="polite"></section>
+        <section class="transcript-shell" aria-label="Conversation transcript">
+          <div class="transcript-head">
+            <div>
+              <p class="micro-label">Transcript</p>
+              <h3>Live exchange</h3>
+            </div>
+            <p id="transcript-hint" class="transcript-hint">Hermes answers appear here as soon as the gateway is ready.</p>
+          </div>
+
+          <section id="chat-log" class="chat-log" aria-live="polite">
+            <div id="empty-state" class="empty-state">
+              <p class="empty-kicker">Ready when you are</p>
+              <p class="empty-title">Ask for state, tools, or action.</p>
+              <p class="empty-copy">Try a system overview, a device check, or a Home Assistant service plan to start the session with something concrete.</p>
+            </div>
+          </section>
+        </section>
 
         <form id="chat-form" class="composer">
-          <label class="label" for="chat-input">Message</label>
+          <label class="micro-label" for="chat-input">Message</label>
           <textarea id="chat-input" name="chat-input" rows="4" placeholder="Ask Hermes to inspect Home Assistant, your workspace, or a device state." required></textarea>
-          <div class="composer-row">
+          <div class="composer-footer">
             <p id="error-message" class="error-message" hidden></p>
-            <button id="send-button" class="send-button" type="submit">Send</button>
+            <div class="composer-actions">
+              <span class="composer-note">Enter sends. Shift+Enter keeps a new line.</span>
+              <button id="send-button" class="send-button" type="submit">Send to Hermes</button>
+            </div>
           </div>
         </form>
       </main>
