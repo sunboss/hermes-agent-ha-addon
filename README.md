@@ -22,6 +22,15 @@ If you prefer to add it manually:
 3. Add `https://github.com/sunboss/hermes-agent-ha-addon`.
 4. Find **Hermes Agent** in the store and open it.
 
+## Quick Start
+
+1. Install the add-on from this repository.
+2. Set `llm_model`.
+3. Set either `openrouter_api_key` or `openai_base_url` + `openai_api_key`.
+4. Keep `terminal_backend` on `local` for the first run.
+5. Start with a narrow `watch_domains` list.
+6. Start the add-on and check the logs.
+
 ## Add-ons
 
 ### [Hermes Agent](./hermes_agent)

@@ -1,14 +1,5 @@
 # Install Guide
 
-## Before you add the repository
-
-Replace the placeholder repository URL in `repository.yaml` and in the add-on metadata files with your real GitHub repository URL.
-
-Files to update:
-
-- `repository.yaml`
-- `hermes_agent/config.yaml`
-
 ## Add the repository to Home Assistant
 
 1. Push this repository to GitHub.
