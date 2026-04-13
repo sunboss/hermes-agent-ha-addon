@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.4
+
+### Bug fixes
+
+- **`/ttyd/` 502 Bad Gateway**: 根本原因是 `_proxy_ttyd_http` 把上游的
+  `Transfer-Encoding: chunked` 头剥掉后，没有设 `Content-Length`，HTTP/1.1 响应
+  体长度不明，HA nginx 无法确定响应结束时机，超时后返回 502。现在读完全部数据后
+  显式写入 `Content-Length: N`。
+- **所有响应均缺少 `Content-Length`**: `_serve_file`、`_send_json`、`_send_html`
+  均已修复，所有响应都带正确的 `Content-Length` 头，避免 HA nginx 代理时超时。
+
 ## 0.9.3
 
 ### Bug fixes

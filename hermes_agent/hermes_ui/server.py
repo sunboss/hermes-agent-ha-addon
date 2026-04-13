@@ -112,12 +112,26 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _send_json(self, status: int, payload: dict) -> None:
-        self._send_common_headers(status, "application/json")
-        self.wfile.write(json.dumps(payload).encode("utf-8"))
+        data = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _send_html(self, status: int, html: str) -> None:
-        self._send_common_headers(status, "text/html; charset=utf-8")
-        self.wfile.write(html.encode("utf-8"))
+        data = html.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _reject_if_needed(self) -> bool:
         if self._remote_allowed():
@@ -139,8 +153,15 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             content_type = "text/css; charset=utf-8"
         elif target.suffix == ".html":
             content_type = "text/html; charset=utf-8"
-        self._send_common_headers(HTTPStatus.OK, content_type)
-        self.wfile.write(target.read_bytes())
+        data = target.read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _serve_index(self) -> None:
         self._serve_file(UI_DIR / "index.html")
@@ -259,29 +280,38 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             method=self.command,
         )
         try:
-            with urllib.request.urlopen(request, timeout=180) as response:
+            with urllib.request.urlopen(request, timeout=30) as response:
                 payload = response.read()
                 self.send_response(response.getcode())
+                seen: set[str] = set()
                 for key, value in response.headers.items():
                     lower = key.lower()
-                    if lower in HOP_BY_HOP_HEADERS:
+                    if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
                         continue
-                    if lower == "cache-control":
+                    # Skip content-length — we'll set the correct value below
+                    if lower == "content-length":
                         continue
-                    self.send_header(key, value)
+                    if lower not in seen:
+                        self.send_header(key, value)
+                        seen.add(lower)
+                self.send_header("Content-Length", str(len(payload)))
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
                 self.wfile.write(payload)
         except urllib.error.HTTPError as exc:
             payload = exc.read()
             self.send_response(exc.code)
+            seen2: set[str] = set()
             for key, value in exc.headers.items():
                 lower = key.lower()
-                if lower in HOP_BY_HOP_HEADERS:
+                if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
                     continue
-                if lower == "cache-control":
+                if lower == "content-length":
                     continue
-                self.send_header(key, value)
+                if lower not in seen2:
+                    self.send_header(key, value)
+                    seen2.add(lower)
+            self.send_header("Content-Length", str(len(payload)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(payload)
