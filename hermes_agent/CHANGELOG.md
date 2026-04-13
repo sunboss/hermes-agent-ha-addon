@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.5
+
+### Bug fixes
+
+- **WebSocket 502**: `_proxy_ttyd_websocket` 完全重写。
+  - 连接 ttyd 失败时，正确返回 HTTP 502（Phase 1），而非在已升级的 WebSocket 连接上写 HTTP 响应
+  - ttyd 返回非 101 时记录日志并返回 502
+  - 转发时保留 WebSocket 专属 hop-by-hop 头（`Sec-WebSocket-*`、`Upgrade`、`Connection`）
+  - `do_GET` 中 WebSocket 路径不再捕获异常后重复发 HTTP 响应（会污染流）
+  - 增加 `[ttyd-ws]` 前缀日志方便排查
+
 ## 0.9.4
 
 ### Bug fixes

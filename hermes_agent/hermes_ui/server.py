@@ -321,48 +321,102 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
 
     def _proxy_ttyd_websocket(self) -> None:
-        upstream = socket.create_connection((TTYD_HOST, TTYD_PORT), timeout=10)
+        """Proxy a WebSocket upgrade request to ttyd.
+
+        Phase 1 (before 101): connect to ttyd and forward the upgrade handshake.
+                               Any failure here sends a plain HTTP 502 response.
+        Phase 2 (after  101): bidirectional raw-byte relay until either side closes.
+                               Errors here just close the connection silently.
+        """
+        # ---- Phase 1: connect to ttyd ----------------------------------------
+        try:
+            upstream = socket.create_connection((TTYD_HOST, TTYD_PORT), timeout=10)
+        except OSError as exc:
+            self.log_error("[ttyd-ws] cannot connect to ttyd:%s — %s", TTYD_PORT, exc)
+            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": f"ttyd unavailable: {exc}"})
+            return
+
+        try:
+            # Build upgrade request for ttyd — replace Host, keep all WS headers
+            request_lines = [f"{self.command} {self.path} HTTP/1.1"]
+            has_host = False
+            for key, value in self.headers.items():
+                lower = key.lower()
+                if lower == "host":
+                    request_lines.append(f"Host: {TTYD_HOST}:{TTYD_PORT}")
+                    has_host = True
+                elif lower in HOP_BY_HOP_HEADERS and lower not in {
+                    "connection", "upgrade", "sec-websocket-key",
+                    "sec-websocket-version", "sec-websocket-extensions",
+                    "sec-websocket-protocol",
+                }:
+                    # Strip generic hop-by-hop but KEEP WebSocket-specific ones
+                    continue
+                else:
+                    request_lines.append(f"{key}: {value}")
+            if not has_host:
+                request_lines.append(f"Host: {TTYD_HOST}:{TTYD_PORT}")
+            request_lines += ["", ""]
+            upstream.sendall("\r\n".join(request_lines).encode())
+
+            # Read ttyd's 101 response
+            response = bytearray()
+            while b"\r\n\r\n" not in response:
+                chunk = upstream.recv(4096)
+                if not chunk:
+                    raise ConnectionError("ttyd closed during WebSocket handshake")
+                response.extend(chunk)
+
+            # Check ttyd accepted the upgrade
+            first_line = response.split(b"\r\n", 1)[0]
+            if b"101" not in first_line:
+                self.log_error("[ttyd-ws] ttyd rejected upgrade: %s", first_line)
+                self._send_json(HTTPStatus.BAD_GATEWAY,
+                                {"error": f"ttyd rejected upgrade: {first_line.decode(errors='replace')}"})
+                upstream.close()
+                return
+
+            self.log_message("[ttyd-ws] WebSocket tunnel open — %s", self.path)
+
+        except Exception as exc:  # noqa: BLE001
+            self.log_error("[ttyd-ws] handshake failed: %s", exc)
+            try:
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+            except Exception:
+                pass
+            upstream.close()
+            return
+
+        # ---- Phase 2: relay bytes until either side closes -------------------
+        # Forward ttyd's 101 response to the client, then relay raw bytes.
+        self.close_connection = True
         upstream.settimeout(None)
         self.connection.settimeout(None)
-
-        request_lines = [f"{self.command} {self.path} HTTP/1.1"]
-        has_host = False
-        for key, value in self.headers.items():
-            if key.lower() == "host":
-                request_lines.append(f"Host: {TTYD_HOST}:{TTYD_PORT}")
-                has_host = True
-            else:
-                request_lines.append(f"{key}: {value}")
-        if not has_host:
-            request_lines.append(f"Host: {TTYD_HOST}:{TTYD_PORT}")
-        request_lines.append("")
-        request_lines.append("")
-        upstream.sendall("\r\n".join(request_lines).encode("utf-8"))
-
-        response = bytearray()
-        while b"\r\n\r\n" not in response:
-            chunk = upstream.recv(4096)
-            if not chunk:
-                raise ConnectionError("ttyd closed websocket handshake")
-            response.extend(chunk)
-        self.connection.sendall(response)
-
-        sockets = [self.connection, upstream]
-        self.close_connection = True
-        while True:
-            readable, _, _ = select.select(sockets, [], [], 30)
-            if not readable:
-                continue
-            for sock in readable:
-                try:
-                    chunk = sock.recv(65536)
-                except OSError:
-                    chunk = b""
-                if not chunk:
-                    upstream.close()
-                    return
-                target = upstream if sock is self.connection else self.connection
-                target.sendall(chunk)
+        try:
+            self.connection.sendall(bytes(response))
+            sockets = [self.connection, upstream]
+            while True:
+                readable, _, _ = select.select(sockets, [], [], 60)
+                if not readable:
+                    # keepalive ping — nothing to do; loop
+                    continue
+                for sock in readable:
+                    try:
+                        chunk = sock.recv(65536)
+                    except OSError:
+                        chunk = b""
+                    if not chunk:
+                        return  # one side closed → stop relay
+                    target = upstream if sock is self.connection else self.connection
+                    try:
+                        target.sendall(chunk)
+                    except OSError:
+                        return
+        finally:
+            try:
+                upstream.close()
+            except OSError:
+                pass
 
     def _is_websocket_upgrade(self) -> bool:
         connection = self.headers.get("Connection", "")
@@ -484,15 +538,16 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if self._reject_if_needed():
             return
         if self._is_ttyd_request(path):
-            try:
-                if self._is_websocket_upgrade():
-                    self._proxy_ttyd_websocket()
-                else:
+            if self._is_websocket_upgrade():
+                # _proxy_ttyd_websocket handles all its own errors internally
+                self._proxy_ttyd_websocket()
+            else:
+                try:
                     self._proxy_ttyd_http()
-            except (BrokenPipeError, ConnectionResetError):
-                return
-            except Exception as exc:  # noqa: BLE001
-                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                except Exception as exc:  # noqa: BLE001
+                    self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
             return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
