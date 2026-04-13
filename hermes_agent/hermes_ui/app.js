@@ -12,6 +12,21 @@ window.onunhandledrejection = function (e) {
   console.error("[Hermes UI] unhandled promise rejection:", e.reason);
 };
 
+// generateUUID() is only available in secure contexts (HTTPS / localhost).
+// HA LAN access over plain HTTP lacks it — use getRandomValues() as fallback.
+function generateUUID() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return generateUUID();
+  }
+  // RFC 4122 v4 UUID via getRandomValues (works in HTTP non-secure contexts)
+  var buf = new Uint8Array(16);
+  (crypto && crypto.getRandomValues ? crypto : window.msCrypto).getRandomValues(buf);
+  buf[6] = (buf[6] & 0x0f) | 0x40; // version 4
+  buf[8] = (buf[8] & 0x3f) | 0x80; // variant bits
+  var hex = Array.from(buf).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+  return hex.slice(0,8)+"-"+hex.slice(8,12)+"-"+hex.slice(12,16)+"-"+hex.slice(16,20)+"-"+hex.slice(20);
+}
+
 /**
  * app.js  —  Hermes Agent HA Add-on: Ingress UI Client
  * =====================================================
@@ -154,7 +169,7 @@ const authExchangeButton = document.getElementById("auth-exchange");
 const authHelper = document.getElementById("auth-helper");
 
 const conversationStorageKey = "hermes-ingress-conversation";
-let currentConversation = localStorage.getItem(conversationStorageKey) || crypto.randomUUID();
+let currentConversation = localStorage.getItem(conversationStorageKey) || generateUUID();
 let messages = [];
 let activeModel = "hermes-agent";
 let authStatus = null;
@@ -281,7 +296,7 @@ function appendMessage(role, content) {
 }
 
 function resetConversation() {
-  currentConversation = crypto.randomUUID();
+  currentConversation = generateUUID();
   localStorage.setItem(conversationStorageKey, currentConversation);
   conversationId.textContent = currentConversation.slice(0, 8);
   messages = [];

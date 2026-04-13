@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.3
+
+### Bug fixes
+
+- **`crypto.randomUUID is not a function`**: `crypto.randomUUID()` 只在 HTTPS / localhost 安全上下文中可用。
+  通过局域网 HTTP 访问 HA 时不可用，导致 JS 崩溃并显示红色错误横幅。
+  新增 `generateUUID()` polyfill：优先使用 `crypto.randomUUID()`，
+  否则退回到 `crypto.getRandomValues()`（HTTP 下可用），两处调用点均已替换。
+
 ## 0.9.2
 
 ### Bug fixes
