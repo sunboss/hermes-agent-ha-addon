@@ -43,6 +43,10 @@ HOP_BY_HOP_HEADERS = {
     "transfer-encoding",
     "upgrade",
 }
+TTYD_ROOT_PATHS = {
+    "/token",
+    "/ws",
+}
 
 
 class HermesUiHandler(BaseHTTPRequestHandler):
@@ -247,6 +251,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         upgrade = self.headers.get("Upgrade", "")
         return "upgrade" in connection.lower() and upgrade.lower() == "websocket"
 
+    def _is_ttyd_request(self, path: str) -> bool:
+        return path.startswith("/ttyd") or path in TTYD_ROOT_PATHS
+
     def _callback_page(self, ok: bool, message: str) -> str:
         title = "\u767b\u5f55\u6210\u529f" if ok else "\u767b\u5f55\u5931\u8d25"
         tone = "#74f2d4" if ok else "#ff7a7a"
@@ -317,7 +324,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             return
         if self._reject_if_needed():
             return
-        if path.startswith("/ttyd"):
+        if self._is_ttyd_request(path):
             try:
                 if self._is_websocket_upgrade():
                     self._proxy_ttyd_websocket()
@@ -392,7 +399,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             return
         if self._reject_if_needed():
             return
-        if path.startswith("/ttyd"):
+        if self._is_ttyd_request(path):
             self._proxy_ttyd_http()
             return
         if path.startswith("/api/"):
