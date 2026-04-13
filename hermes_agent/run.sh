@@ -240,11 +240,29 @@ set +a
 # ── 4. Start ttyd terminal server (background) ───────────────────────────────
 # --base-path /ttyd  must match the proxy prefix used in server.py (_is_ttyd_request)
 # /bin/bash -lc loads .profile / .bash_profile so the Hermes venv PATH is active
-/usr/local/bin/ttyd \
-  --port "${HERMES_TTYD_PORT}" \
-  --base-path /ttyd \
-  --writable \
-  /bin/bash -lc 'cd "${MESSAGING_CWD:-/data/workspace}" && exec /bin/bash -i' &
+#
+# NOTE: ttyd is installed by apt to /usr/bin/ttyd, NOT /usr/local/bin/ttyd.
+# Use `command -v ttyd` to resolve the actual path at runtime so this works
+# regardless of where the package installs the binary.
+TTYD_BIN="$(command -v ttyd 2>/dev/null || true)"
+if [ -z "${TTYD_BIN}" ]; then
+  echo "[run.sh] WARNING: ttyd not found in PATH — terminal will be unavailable" >&2
+else
+  echo "[run.sh] Starting ttyd (${TTYD_BIN}) on port ${HERMES_TTYD_PORT}..."
+  "${TTYD_BIN}" \
+    --port "${HERMES_TTYD_PORT}" \
+    --base-path /ttyd \
+    --writable \
+    /bin/bash -lc 'cd "${MESSAGING_CWD:-/data/workspace}" && exec /bin/bash -i' &
+  TTYD_PID=$!
+  # Give ttyd a moment to bind the port and check it didn't exit immediately
+  sleep 0.5
+  if ! kill -0 "${TTYD_PID}" 2>/dev/null; then
+    echo "[run.sh] WARNING: ttyd exited immediately — terminal will be unavailable" >&2
+  else
+    echo "[run.sh] ttyd started (PID ${TTYD_PID})"
+  fi
+fi
 
 # ── 5. Start ingress UI server (background) ──────────────────────────────────
 # server.py listens on HERMES_UI_PORT (8099) and proxies /api/** to the gateway.

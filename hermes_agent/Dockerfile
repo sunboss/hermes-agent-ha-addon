@@ -22,6 +22,8 @@ RUN set -eux; \
     printf "Package: *\nPin: release a=unstable\nPin-Priority: 100\n\nPackage: ttyd\nPin: release a=unstable\nPin-Priority: 990\n" >/etc/apt/preferences.d/ttyd-sid; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates ttyd; \
+    # Verify ttyd is installed and show its real path so run.sh can find it via PATH
+    command -v ttyd; \
     ttyd --version; \
     rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/ttyd-sid.list /etc/apt/preferences.d/ttyd-sid
 
