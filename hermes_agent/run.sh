@@ -128,6 +128,9 @@ env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or 
 # Set it to the configured llm_model so the UI model picker shows the real model name.
 env_map["API_SERVER_MODEL_NAME"] = llm_model or env_map.get("API_SERVER_MODEL_NAME") or "NousResearch/Hermes-4-14B"
 env_map["HERMES_TTYD_PORT"] = os.environ.get("HERMES_TTYD_PORT", "7681")
+# Allow all users — the HA add-on is a trusted internal component; HA Ingress
+# handles external auth, so we don't need the gateway to enforce its own allowlist.
+env_map["GATEWAY_ALLOW_ALL_USERS"] = "true"
 
 huggingface_api_key = str(options.get("huggingface_api_key") or "")
 hf_base_url = str(options.get("hf_base_url") or "https://api-inference.huggingface.co/v1")

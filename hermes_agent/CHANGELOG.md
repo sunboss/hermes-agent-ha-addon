@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.2
+
+### Bug fixes
+
+- **Gateway user allowlist warning**: Added `GATEWAY_ALLOW_ALL_USERS=true` to the
+  environment written by `run.sh`. The HA add-on is a trusted internal component —
+  Home Assistant Ingress handles external authentication, so the gateway's own
+  allowlist check is unnecessary and was printing a warning on every startup:
+  `WARNING gateway.run: No user allowlists configured. All unauthorized users will
+  be denied. Set GATEWAY_ALLOW_ALL_USERS=true to allow open access`.
+
 ## 0.9.1
 
 ### Root-cause fixes (from official Hermes docs)
