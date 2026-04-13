@@ -148,6 +148,8 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             response_type = exc.headers.get("Content-Type", "application/json")
             self._send_common_headers(exc.code, response_type)
             self.wfile.write(payload)
+        except (BrokenPipeError, ConnectionResetError):
+            return
         except Exception as exc:  # noqa: BLE001
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
 
@@ -199,6 +201,8 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(payload)
+        except (BrokenPipeError, ConnectionResetError):
+            return
         except Exception as exc:  # noqa: BLE001
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
 
@@ -311,6 +315,47 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self.send_header("Allow", "GET,POST,DELETE,OPTIONS")
         self.end_headers()
 
+    def do_HEAD(self) -> None:  # noqa: N802
+        parsed = urllib.parse.urlsplit(self.path)
+        path = parsed.path
+        if path.startswith("/shim/"):
+            if self._reject_if_not_loopback():
+                return
+            self._send_common_headers(HTTPStatus.OK, "application/json")
+            return
+        if self._reject_if_needed():
+            return
+        if self._is_ttyd_request(path):
+            self._send_common_headers(HTTPStatus.OK, "text/html; charset=utf-8")
+            return
+        if path.startswith("/api/"):
+            self._send_common_headers(HTTPStatus.OK, "application/json")
+            return
+        if path in {"/auth/status", "/auth/start", "/auth/callback", "/health"}:
+            self._send_common_headers(HTTPStatus.OK, "application/json")
+            return
+
+        candidate = path.lstrip("/") or "index.html"
+        target = (UI_DIR / candidate).resolve()
+        try:
+            target.relative_to(UI_DIR.resolve())
+        except ValueError:
+            self._send_common_headers(HTTPStatus.NOT_FOUND, "text/plain; charset=utf-8")
+            return
+
+        if target.is_file():
+            content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+            if target.suffix == ".js":
+                content_type = "application/javascript; charset=utf-8"
+            elif target.suffix == ".css":
+                content_type = "text/css; charset=utf-8"
+            elif target.suffix == ".html":
+                content_type = "text/html; charset=utf-8"
+            self._send_common_headers(HTTPStatus.OK, content_type)
+            return
+
+        self._send_common_headers(HTTPStatus.OK, "text/html; charset=utf-8")
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urllib.parse.urlsplit(self.path)
         path = parsed.path
@@ -330,6 +375,8 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                     self._proxy_ttyd_websocket()
                 else:
                     self._proxy_ttyd_http()
+            except (BrokenPipeError, ConnectionResetError):
+                return
             except Exception as exc:  # noqa: BLE001
                 self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
             return
@@ -400,7 +447,12 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if self._reject_if_needed():
             return
         if self._is_ttyd_request(path):
-            self._proxy_ttyd_http()
+            try:
+                self._proxy_ttyd_http()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
             return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
