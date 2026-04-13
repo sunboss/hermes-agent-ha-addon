@@ -1,4 +1,4 @@
-﻿configuration:
+configuration:
   llm_model:
     name: Model Name
     description: Main Hermes model name, such as anthropic/claude-sonnet-4 or openai/gpt-4o.
@@ -31,7 +31,7 @@
     description: Space-separated scopes requested during OpenAI Codex web login.
   terminal_backend:
     name: Terminal Backend
-    description: Where Hermes should execute shell commands: local, docker, ssh, modal, daytona, or singularity.
+    description: "Where Hermes should execute shell commands: local, docker, ssh, modal, daytona, or singularity."
   watch_domains:
     name: Watch Domains
     description: Home Assistant domains Hermes should watch for state changes.
