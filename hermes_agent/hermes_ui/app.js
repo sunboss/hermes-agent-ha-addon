@@ -1,3 +1,17 @@
+// Global error handler — catches runtime errors and uncaught promise rejections.
+// Shows the red banner so users know JS is broken even when the file loaded fine.
+window.onerror = function (msg, src, line, col, err) {
+  var banner = document.getElementById("js-error-banner");
+  if (banner) {
+    banner.textContent = "Hermes UI 运行出错（" + (err && err.message ? err.message : msg) + "）。请强制刷新（Ctrl+Shift+R）或查看浏览器控制台（F12）。";
+    banner.hidden = false;
+  }
+  return false; // don't suppress default console logging
+};
+window.onunhandledrejection = function (e) {
+  console.error("[Hermes UI] unhandled promise rejection:", e.reason);
+};
+
 /**
  * app.js  —  Hermes Agent HA Add-on: Ingress UI Client
  * =====================================================
@@ -102,6 +116,8 @@ const uiText = {
   },
   messages: {
     apiUnreachable: "Hermes API 暂时无法访问。请先检查模型配置和 add-on 日志。",
+    gatewayNotReady: "Hermes 网关还在启动中，请稍候片刻再发送。",
+    gatewayUnavailable: "Hermes 网关无法连接，请检查 add-on 日志后重试。",
     noVisibleText: "Hermes 没有返回可见内容。",
     requestFailed: "请求在 Hermes 作答前失败了。请检查配置或稍后再试。",
     authMissing: "当前处于网页登录模式，请先完成 OpenAI Codex 登录。",
@@ -142,53 +158,68 @@ let currentConversation = localStorage.getItem(conversationStorageKey) || crypto
 let messages = [];
 let activeModel = "hermes-agent";
 let authStatus = null;
+let currentHealthState = "checking"; // "ready" | "warning" | "error" | "checking"
+
+/**
+ * Null-safe text setter. If getElementById returns null (element missing or
+ * not yet in DOM), it logs a warning instead of throwing TypeError and
+ * stopping the rest of applyStaticText from running.
+ * @param {string} id - Element ID
+ * @param {string} text - Text content to set
+ */
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.textContent = text;
+  } else {
+    console.warn("[Hermes UI] element not found:", id);
+  }
+}
 
 function applyStaticText() {
-  document.getElementById("sidebar-copy").textContent = uiText.sidebarCopy;
-  document.getElementById("label-gateway").textContent = uiText.labels.gateway;
-  document.getElementById("label-conversation").textContent = uiText.labels.conversation;
-  document.getElementById("label-model").textContent = uiText.labels.model;
-  document.getElementById("quick-prompts-label").textContent = uiText.labels.quickPrompts;
-  document.getElementById("hero-eyebrow").textContent = uiText.labels.heroEyebrow;
-  document.getElementById("hero-title").textContent = uiText.labels.heroTitle;
-  document.getElementById("hero-copy").textContent = uiText.labels.heroCopy;
-  document.getElementById("session-feed-label").textContent = uiText.labels.sessionFeed;
-  document.getElementById("hero-note").textContent = uiText.labels.heroNote;
-  document.getElementById("transcript-label").textContent = uiText.labels.transcriptLabel;
-  document.getElementById("transcript-title").textContent = uiText.labels.transcriptTitle;
-  document.getElementById("input-label").textContent = uiText.labels.inputLabel;
-  document.getElementById("composer-note").textContent = uiText.labels.composerNote;
-  document.getElementById("send-button").textContent = uiText.labels.send;
-  document.getElementById("reset-chat").textContent = uiText.labels.reset;
-  document.getElementById("label-auth").textContent = uiText.labels.auth;
-  document.getElementById("auth-input-label").textContent = uiText.labels.authInputLabel;
-  document.getElementById("terminal-label").textContent = uiText.labels.terminalLabel;
-  document.getElementById("terminal-title").textContent = uiText.labels.terminalTitle;
-  document.getElementById("terminal-copy").textContent = uiText.labels.terminalCopy;
-  document.getElementById("terminal-launch").textContent = uiText.labels.terminalLaunch;
-  document.getElementById("hero-terminal-launch").textContent = uiText.labels.heroTerminalLaunch;
-  document.getElementById("hero-terminal-inline").textContent = uiText.labels.heroTerminalInline;
-  document.getElementById("mobile-terminal-launch").textContent = uiText.labels.mobileTerminalLaunch;
-  authTitle.textContent = uiText.labels.authTitle;
-  authInput.placeholder = uiText.labels.authInputPlaceholder;
-  authStartButton.textContent = uiText.labels.authStart;
-  authRefreshButton.textContent = uiText.labels.authRefresh;
-  authLogoutButton.textContent = uiText.labels.authLogout;
-  authExchangeButton.textContent = uiText.labels.authExchange;
-  chatInput.placeholder = uiText.labels.inputPlaceholder;
-  healthStatus.textContent = uiText.statuses.checking;
-  conversationId.textContent = uiText.statuses.pending;
-  modelName.textContent = uiText.statuses.detecting;
-  transcriptHint.textContent = uiText.labels.transcriptHintReady;
-  authPill.textContent = uiText.statuses.checking;
-  authCopy.textContent = "正在读取认证状态...";
+  setText("sidebar-copy", uiText.sidebarCopy);
+  setText("label-gateway", uiText.labels.gateway);
+  setText("label-conversation", uiText.labels.conversation);
+  setText("label-model", uiText.labels.model);
+  setText("quick-prompts-label", uiText.labels.quickPrompts);
+  setText("hero-eyebrow", uiText.labels.heroEyebrow);
+  setText("hero-title", uiText.labels.heroTitle);
+  setText("hero-copy", uiText.labels.heroCopy);
+  setText("session-feed-label", uiText.labels.sessionFeed);
+  setText("hero-note", uiText.labels.heroNote);
+  setText("transcript-label", uiText.labels.transcriptLabel);
+  setText("transcript-title", uiText.labels.transcriptTitle);
+  setText("input-label", uiText.labels.inputLabel);
+  setText("composer-note", uiText.labels.composerNote);
+  setText("send-button", uiText.labels.send);
+  setText("reset-chat", uiText.labels.reset);
+  setText("label-auth", uiText.labels.auth);
+  setText("auth-input-label", uiText.labels.authInputLabel);
+  setText("terminal-label", uiText.labels.terminalLabel);
+  setText("terminal-title", uiText.labels.terminalTitle);
+  setText("terminal-copy", uiText.labels.terminalCopy);
+  setText("terminal-launch", uiText.labels.terminalLaunch);
+  setText("hero-terminal-launch", uiText.labels.heroTerminalLaunch);
+  setText("hero-terminal-inline", uiText.labels.heroTerminalInline);
+  setText("mobile-terminal-launch", uiText.labels.mobileTerminalLaunch);
+  if (authTitle) authTitle.textContent = uiText.labels.authTitle;
+  if (authInput) authInput.placeholder = uiText.labels.authInputPlaceholder;
+  if (authStartButton) authStartButton.textContent = uiText.labels.authStart;
+  if (authRefreshButton) authRefreshButton.textContent = uiText.labels.authRefresh;
+  if (authLogoutButton) authLogoutButton.textContent = uiText.labels.authLogout;
+  if (authExchangeButton) authExchangeButton.textContent = uiText.labels.authExchange;
+  if (chatInput) chatInput.placeholder = uiText.labels.inputPlaceholder;
+  if (healthStatus) healthStatus.textContent = uiText.statuses.checking;
+  if (conversationId) conversationId.textContent = uiText.statuses.pending;
+  if (modelName) modelName.textContent = uiText.statuses.detecting;
+  if (transcriptHint) transcriptHint.textContent = uiText.labels.transcriptHintReady;
+  if (authPill) authPill.textContent = uiText.statuses.checking;
+  if (authCopy) authCopy.textContent = "\u6b63\u5728\u8bfb\u53d6\u8ba4\u8bc1\u72b6\u6001...";
   renderEmptyState();
 
   promptButtons.forEach((button, index) => {
     const prompt = uiText.prompts[index];
-    if (!prompt) {
-      return;
-    }
+    if (!prompt) return;
     button.textContent = prompt.title;
     button.dataset.prompt = prompt.prompt;
   });
@@ -221,6 +252,7 @@ function setAuthHelper(message = "") {
 function setHealthState(label, state) {
   healthStatus.textContent = label;
   healthStatus.dataset.state = state;
+  currentHealthState = state;
 }
 
 function updateMessageCount() {
@@ -561,6 +593,16 @@ chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = chatInput.value.trim();
   if (!text) {
+    return;
+  }
+
+  // Block sending if the Hermes gateway is not yet ready
+  if (currentHealthState === "warning") {
+    setError(uiText.messages.gatewayNotReady);
+    return;
+  }
+  if (currentHealthState === "error") {
+    setError(uiText.messages.gatewayUnavailable);
     return;
   }
 

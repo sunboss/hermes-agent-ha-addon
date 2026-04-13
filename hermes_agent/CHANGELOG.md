@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.9.1
+
+### Root-cause fixes (from official Hermes docs)
+
+- **Critical — Connection Refused**: `entrypoint.sh gateway` changed to
+  `entrypoint.sh gateway run`. Per the official docs, `hermes gateway` without
+  the `run` subcommand attempts to register a systemd/launchd background service,
+  which does not exist inside a Docker container. The gateway exited immediately,
+  leaving port 8642 unbound and causing every chat request to return
+  `Connection Refused`. Using `gateway run` forces true foreground execution
+  (the officially recommended mode for Docker/WSL).
+
+- **`/v1/models` returns wrong name**: Added `API_SERVER_MODEL_NAME` env var in
+  `run.sh` so the Hermes gateway advertises the configured `llm_model` value
+  instead of the default profile name. The UI model picker now shows the real
+  model ID (e.g. `NousResearch/Hermes-4-14B`).
+
+### JS execution fixes
+
+- **Page showed English default text** (JS not running): All dynamic text is now
+  pre-filled as static Chinese content directly in `index.html`. The page is fully
+  readable and usable even if JavaScript is completely blocked (e.g. by a strict
+  Content Security Policy from Home Assistant Ingress).
+
+- Added `id="js-error-banner"` red banner that appears when `app.js` fails to
+  load (file not found, CSP block, network error). The `<script onerror>` handler
+  reveals it automatically.
+
+- Added `window.onerror` and `window.onunhandledrejection` handlers at the top of
+  `app.js` to catch runtime JS errors and display them in the banner.
+
+- Replaced all bare `document.getElementById(...).textContent = ...` calls in
+  `applyStaticText()` with a null-safe `setText(id, text)` helper. A missing
+  element now logs a console warning instead of throwing `TypeError` and stopping
+  the rest of the function.
+
+- `authTitle`, `authInput`, auth buttons, and other module-level DOM bindings now
+  guarded with `if (el)` before assignment to prevent null-ref crashes.
+
 ## 0.9.0
 
 ### Bug fixes

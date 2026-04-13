@@ -13,6 +13,13 @@
       <div class="backdrop-grid"></div>
     </div>
 
+    <!-- Shown only if app.js fails to load (CSP block, network error, syntax error, etc.)
+         The onerror on the <script> tag below flips hidden=false when the file 404s or
+         the browser refuses to execute it. -->
+    <div id="js-error-banner" hidden style="position:fixed;top:0;left:0;right:0;z-index:999;padding:14px 20px;background:#ff7a7a;color:#031018;font-weight:700;text-align:center">
+      Hermes UI 脚本加载失败。请检查浏览器控制台（F12），或强制刷新页面（Ctrl+Shift+R / Cmd+Shift+R）。
+    </div>
+
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand-block">
@@ -23,117 +30,117 @@
           </div>
         </div>
 
-        <p id="sidebar-copy" class="sidebar-copy"></p>
+        <p id="sidebar-copy" class="sidebar-copy">一个更专注的控制台，用来在 Home Assistant 里调度 Hermes、查看状态和完成对话。</p>
 
         <div class="status-grid">
           <article class="status-panel">
-            <span id="label-gateway" class="micro-label"></span>
-            <strong id="health-status" class="status-value">Checking...</strong>
+            <span id="label-gateway" class="micro-label">网关状态</span>
+            <strong id="health-status" class="status-value">检查中...</strong>
           </article>
           <article class="status-panel">
-            <span id="label-conversation" class="micro-label"></span>
-            <strong id="conversation-id" class="status-value">pending</strong>
+            <span id="label-conversation" class="micro-label">会话编号</span>
+            <strong id="conversation-id" class="status-value">等待中</strong>
           </article>
           <article class="status-panel status-panel-wide">
-            <span id="label-model" class="micro-label"></span>
-            <strong id="model-name" class="status-value">Detecting...</strong>
+            <span id="label-model" class="micro-label">当前模型</span>
+            <strong id="model-name" class="status-value">识别中...</strong>
           </article>
         </div>
 
         <section class="auth-panel" aria-label="Authentication status">
           <div class="auth-head">
             <div>
-              <p id="label-auth" class="micro-label"></p>
-              <h3 id="auth-title" class="auth-title"></h3>
+              <p id="label-auth" class="micro-label">网页登录桥</p>
+              <h3 id="auth-title" class="auth-title">身份验证</h3>
             </div>
-            <span id="auth-pill" class="auth-pill" data-state="checking"></span>
+            <span id="auth-pill" class="auth-pill" data-state="checking">检查中...</span>
           </div>
-          <p id="auth-copy" class="auth-copy"></p>
+          <p id="auth-copy" class="auth-copy">正在读取认证状态...</p>
           <div class="auth-actions">
-            <button id="auth-start" class="ghost-button" type="button"></button>
-            <button id="auth-refresh" class="ghost-button" type="button"></button>
-            <button id="auth-logout" class="ghost-button" type="button"></button>
+            <button id="auth-start" class="ghost-button" type="button">打开登录页</button>
+            <button id="auth-refresh" class="ghost-button" type="button">刷新登录</button>
+            <button id="auth-logout" class="ghost-button" type="button">清除会话</button>
           </div>
-          <label id="auth-input-label" class="micro-label" for="auth-callback-input"></label>
-          <textarea id="auth-callback-input" class="auth-textarea" name="auth-callback-input" rows="4"></textarea>
+          <label id="auth-input-label" class="micro-label" for="auth-callback-input">回调链接</label>
+          <textarea id="auth-callback-input" class="auth-textarea" name="auth-callback-input" rows="4" placeholder="把浏览器最终跳转到的完整回调 URL 粘贴到这里，也可以只填 code。"></textarea>
           <div class="auth-footer">
-            <button id="auth-exchange" class="send-button auth-submit" type="button"></button>
+            <button id="auth-exchange" class="send-button auth-submit" type="button">提交回调</button>
             <p id="auth-helper" class="auth-helper"></p>
           </div>
         </section>
 
         <section class="prompt-bank" aria-label="Quick prompts">
-          <p id="quick-prompts-label" class="micro-label"></p>
+          <p id="quick-prompts-label" class="micro-label">快捷提示</p>
           <div class="prompt-list">
-            <button id="prompt-0" class="prompt-chip" type="button"></button>
-            <button id="prompt-1" class="prompt-chip" type="button"></button>
-            <button id="prompt-2" class="prompt-chip" type="button"></button>
+            <button id="prompt-0" class="prompt-chip" type="button" data-prompt="请总结当前 Home Assistant 的整体情况，并指出任何异常。">全局巡检</button>
+            <button id="prompt-1" class="prompt-chip" type="button" data-prompt="请检查最近的空调和灯光活动，并告诉我最值得关注的变化。">空调与灯光</button>
+            <button id="prompt-2" class="prompt-chip" type="button" data-prompt="请列出当前适合自动化的 Home Assistant 服务，并给出建议。">自动化建议</button>
           </div>
         </section>
 
         <section class="utility-panel" aria-label="Terminal access">
-          <p id="terminal-label" class="micro-label"></p>
-          <h3 id="terminal-title" class="utility-title"></h3>
-          <p id="terminal-copy" class="utility-copy"></p>
-          <a id="terminal-launch" class="ghost-button terminal-launch" href="./ttyd/" target="_blank" rel="noopener noreferrer">Open Terminal</a>
+          <p id="terminal-label" class="micro-label">原生命令行</p>
+          <h3 id="terminal-title" class="utility-title">用完整 ttyd 终端直接配置</h3>
+          <p id="terminal-copy" class="utility-copy">需要更接近官方 Hermes 的终端体验时，切到独立命令行面板。手机端会自动压缩布局，方便直接在 HA App 里操作。</p>
+          <a id="terminal-launch" class="ghost-button terminal-launch" href="./ttyd/" target="_blank" rel="noopener noreferrer">进入命令行面板</a>
         </section>
 
-        <button id="reset-chat" class="reset-button" type="button"></button>
+        <button id="reset-chat" class="reset-button" type="button">开始新的会话</button>
       </aside>
 
       <main class="main-stage">
         <header class="hero">
           <div class="hero-copy-block">
-            <p id="hero-eyebrow" class="eyebrow"></p>
-            <h2 id="hero-title"></h2>
-            <p id="hero-copy" class="hero-copy"></p>
+            <p id="hero-eyebrow" class="eyebrow">原生风格控制台</p>
+            <h2 id="hero-title">用更沉稳的大屏工作台来操作 Hermes。</h2>
+            <p id="hero-copy" class="hero-copy">界面运行在 Home Assistant 内部，Hermes API 仅保留在本地回环地址，同时提供更适合长期使用的控制体验。</p>
             <div class="hero-actions">
-              <a id="hero-terminal-launch" class="hero-terminal-button" href="./ttyd/" target="_blank" rel="noopener noreferrer">Open Terminal</a>
-              <a id="hero-terminal-inline" class="hero-inline-link" href="./ttyd/" target="_blank" rel="noopener noreferrer">Configure Hermes in Terminal</a>
+              <a id="hero-terminal-launch" class="hero-terminal-button" href="./ttyd/" target="_blank" rel="noopener noreferrer">立即打开命令行</a>
+              <a id="hero-terminal-inline" class="hero-inline-link" href="./ttyd/" target="_blank" rel="noopener noreferrer">在终端里配置 Hermes</a>
             </div>
           </div>
           <div class="hero-meta">
             <div>
-              <span id="session-feed-label" class="micro-label"></span>
-              <strong id="message-count" class="hero-stat">0 turns</strong>
+              <span id="session-feed-label" class="micro-label">会话统计</span>
+              <strong id="message-count" class="hero-stat">0 轮</strong>
             </div>
-            <p id="hero-note" class="hero-note"></p>
+            <p id="hero-note" class="hero-note">可以先点快捷提示，也可以直接输入指令。</p>
           </div>
         </header>
 
         <section class="transcript-shell" aria-label="Conversation transcript">
           <div class="transcript-head">
             <div>
-              <p id="transcript-label" class="micro-label"></p>
-              <h3 id="transcript-title"></h3>
+              <p id="transcript-label" class="micro-label">对话记录</p>
+              <h3 id="transcript-title">实时交互</h3>
             </div>
-            <p id="transcript-hint" class="transcript-hint"></p>
+            <p id="transcript-hint" class="transcript-hint">Hermes 准备就绪后，回复会显示在这里。</p>
           </div>
 
           <section id="chat-log" class="chat-log" aria-live="polite">
             <div id="empty-state" class="empty-state">
-              <p id="empty-kicker" class="empty-kicker"></p>
-              <p id="empty-title" class="empty-title"></p>
-              <p id="empty-copy" class="empty-copy"></p>
+              <p id="empty-kicker" class="empty-kicker">随时开始</p>
+              <p id="empty-title" class="empty-title">你可以直接让它查看状态、调用工具或执行动作。</p>
+              <p id="empty-copy" class="empty-copy">建议先从系统总览、设备检查，或者让它给出一份 Home Assistant 服务方案开始。</p>
             </div>
           </section>
         </section>
 
         <form id="chat-form" class="composer">
-          <label id="input-label" class="micro-label" for="chat-input"></label>
-          <textarea id="chat-input" name="chat-input" rows="4" required></textarea>
+          <label id="input-label" class="micro-label" for="chat-input">输入消息</label>
+          <textarea id="chat-input" name="chat-input" rows="4" required placeholder="比如：帮我检查当前 Home Assistant 状态，看看有没有异常。"></textarea>
           <div class="composer-footer">
             <p id="error-message" class="error-message" hidden></p>
             <div class="composer-actions">
-              <span id="composer-note" class="composer-note"></span>
-              <button id="send-button" class="send-button" type="submit"></button>
+              <span id="composer-note" class="composer-note">按 Enter 发送，Shift+Enter 换行。</span>
+              <button id="send-button" class="send-button" type="submit">发送给 Hermes</button>
             </div>
           </div>
         </form>
       </main>
     </div>
 
-    <a id="mobile-terminal-launch" class="mobile-terminal-fab" href="./ttyd/" target="_blank" rel="noopener noreferrer">Terminal</a>
+    <a id="mobile-terminal-launch" class="mobile-terminal-fab" href="./ttyd/" target="_blank" rel="noopener noreferrer">打开终端</a>
 
     <template id="message-template">
       <article class="message">
@@ -144,6 +151,12 @@
       </article>
     </template>
 
-    <script src="./app.js" defer></script>
+    <!--
+      app.js is deferred so it runs after the DOM is fully parsed.
+      onerror fires if the file cannot be fetched (404, CSP block, network error).
+      Syntax errors inside the script will NOT trigger onerror — they are caught
+      by the window.onerror handler defined at the top of app.js instead.
+    -->
+    <script src="./app.js" defer onerror="document.getElementById('js-error-banner').hidden=false"></script>
   </body>
 </html>

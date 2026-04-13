@@ -156,6 +156,15 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         return payload if isinstance(payload, dict) else {}
 
     def _proxy_api(self, upstream_path: str) -> None:
+        """Proxy a request to the Hermes gateway at API_BASE.
+
+        Retries up to _PROXY_RETRIES times on ConnectionRefusedError / OSError so that
+        transient startup race-conditions (UI is up but gateway is still initialising)
+        are handled gracefully instead of surfacing a raw Python exception string.
+        """
+        import errno as _errno
+        import time as _time
+
         upstream_url = f"{API_BASE}{upstream_path}"
         body = None
         length = self.headers.get("Content-Length")
@@ -175,22 +184,58 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             headers=headers,
             method=self.command,
         )
-        try:
-            with urllib.request.urlopen(request, timeout=180) as response:
-                payload = response.read()
-                status = response.getcode()
-                response_type = response.headers.get("Content-Type", "application/json")
-                self._send_common_headers(status, response_type)
+
+        _PROXY_RETRIES = 3
+        _RETRY_DELAY = 1.5  # seconds between retries
+
+        for attempt in range(_PROXY_RETRIES):
+            try:
+                with urllib.request.urlopen(request, timeout=180) as response:
+                    payload = response.read()
+                    status = response.getcode()
+                    response_type = response.headers.get("Content-Type", "application/json")
+                    self._send_common_headers(status, response_type)
+                    self.wfile.write(payload)
+                return  # success — done
+            except urllib.error.HTTPError as exc:
+                payload = exc.read()
+                response_type = exc.headers.get("Content-Type", "application/json")
+                self._send_common_headers(exc.code, response_type)
                 self.wfile.write(payload)
-        except urllib.error.HTTPError as exc:
-            payload = exc.read()
-            response_type = exc.headers.get("Content-Type", "application/json")
-            self._send_common_headers(exc.code, response_type)
-            self.wfile.write(payload)
-        except (BrokenPipeError, ConnectionResetError):
-            return
-        except Exception as exc:  # noqa: BLE001
-            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+                return
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except OSError as exc:
+                # ConnectionRefusedError is a subclass of OSError (errno 111).
+                # Retry if the gateway is not yet accepting connections.
+                is_refused = getattr(exc, "errno", None) in (
+                    _errno.ECONNREFUSED,
+                    _errno.ENOENT,  # Unix socket not yet created
+                )
+                if is_refused and attempt < _PROXY_RETRIES - 1:
+                    _time.sleep(_RETRY_DELAY)
+                    continue
+                # Final attempt failed or non-retryable OSError — return friendly 503
+                self._send_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {
+                        "error": "gateway_unavailable",
+                        "message": (
+                            "Hermes 网关暂时无法连接。它可能仍在启动中，"
+                            "请稍候片刻后重试。"
+                        ),
+                    },
+                )
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._send_json(
+                    HTTPStatus.BAD_GATEWAY,
+                    {
+                        "error": "proxy_error",
+                        "message": f"代理请求失败：{type(exc).__name__}",
+                    },
+                )
+                return
 
     def _proxy_ttyd_http(self) -> None:
         upstream_url = f"http://{TTYD_HOST}:{TTYD_PORT}{self.path}"

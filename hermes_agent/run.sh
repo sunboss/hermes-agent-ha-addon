@@ -124,6 +124,9 @@ env_map["API_SERVER_HOST"] = "127.0.0.1"
 env_map["API_SERVER_PORT"] = "8642"
 env_map["API_SERVER_KEY"] = str(options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24))
 env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or "NousResearch/Hermes-4-14B"
+# API_SERVER_MODEL_NAME controls what the Hermes gateway returns from GET /v1/models.
+# Set it to the configured llm_model so the UI model picker shows the real model name.
+env_map["API_SERVER_MODEL_NAME"] = llm_model or env_map.get("API_SERVER_MODEL_NAME") or "NousResearch/Hermes-4-14B"
 env_map["HERMES_TTYD_PORT"] = os.environ.get("HERMES_TTYD_PORT", "7681")
 
 huggingface_api_key = str(options.get("huggingface_api_key") or "")
@@ -249,5 +252,10 @@ set +a
 python3 "${HERMES_UI_DIR}/server.py" &
 
 # ── 6. Launch Hermes gateway (foreground — becomes the main process) ──────────
+# IMPORTANT: use "gateway run" not just "gateway".
+# "hermes gateway" without the "run" subcommand attempts to register a systemd/launchd
+# background service, which does not exist inside a Docker container and causes the
+# gateway to exit immediately — leaving port 8642 unbound → Connection Refused errors.
+# "hermes gateway run" forces true foreground execution (official Docker recommendation).
 echo "Starting Hermes Agent gateway via official entrypoint..."
-exec /opt/hermes/docker/entrypoint.sh gateway
+exec /opt/hermes/docker/entrypoint.sh gateway run
