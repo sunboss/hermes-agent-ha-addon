@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>Hermes Terminal</title>
+    <meta http-equiv="refresh" content="0; url=./ttyd/">
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="./terminal.css">
   </head>
@@ -14,32 +15,22 @@
       <div class="backdrop-grid"></div>
     </div>
 
-    <div class="terminal-shell-page">
+    <div class="terminal-shell-page terminal-redirect-page">
       <header class="terminal-topbar">
         <div class="terminal-brand">
-          <p id="terminal-eyebrow" class="eyebrow"></p>
-          <h1 id="terminal-page-title"></h1>
-          <p id="terminal-page-copy" class="terminal-copy"></p>
+          <p class="eyebrow">Hermes Native Shell</p>
+          <h1>正在进入命令行</h1>
+          <p class="terminal-copy">页面会直接切换到原生 ttyd 终端。如果没有自动跳转，请使用下面的按钮手动打开。</p>
         </div>
         <div class="terminal-actions-row">
-          <a id="terminal-back" class="ghost-button" href="./"></a>
-          <a id="terminal-open" class="ghost-button" href="./ttyd/" target="_blank" rel="noopener noreferrer"></a>
-          <button id="reload-terminal" class="send-button terminal-reload" type="button"></button>
+          <a class="ghost-button" href="./">返回控制台</a>
+          <a class="send-button terminal-direct-link" href="./ttyd/">打开原生终端</a>
         </div>
       </header>
-
-      <section class="terminal-card">
-        <div class="terminal-card-head">
-          <div>
-            <p id="terminal-stack-label" class="micro-label"></p>
-            <h2 id="terminal-card-title"></h2>
-          </div>
-          <p id="terminal-hint" class="terminal-hint"></p>
-        </div>
-        <iframe id="terminal-frame" class="terminal-frame" src="./ttyd/" title="Hermes ttyd terminal"></iframe>
-      </section>
     </div>
 
-    <script src="./terminal.js" defer></script>
+    <script>
+      window.location.replace('./ttyd/');
+    </script>
   </body>
 </html>
