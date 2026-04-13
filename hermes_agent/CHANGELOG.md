@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.6
+
+### Bug fixes
+
+- **终端 502 根本原因修复**: ttyd 的 JavaScript 用 `window.location.host + "/ttyd/ws"`
+  构建 WebSocket URL，不含 HA Ingress token 路径，导致 HA nginx 找不到路由返回 502。
+  现在在代理 ttyd HTML 响应时注入 WebSocket URL 拦截补丁，把 `/ttyd/ws` 重写为
+  相对当前页面路径（含 ingress token），WebSocket 请求因此能正确到达我们的代理服务器。
+
 ## 0.9.5
 
 ### Bug fixes

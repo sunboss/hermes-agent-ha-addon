@@ -258,6 +258,37 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 )
                 return
 
+    # JavaScript injected into ttyd's HTML page.
+    # Problem: ttyd builds its WebSocket URL as:
+    #   ws://<host>:<port>/ttyd/ws
+    # When served through HA Ingress the real URL is:
+    #   ws://<host>:<port>/api/hassio_ingress/<TOKEN>/ttyd/ws
+    # ttyd's JS doesn't know the ingress token, so its WS connection bypasses
+    # ingress and hits a non-existent path → nginx returns 502.
+    # Fix: intercept WebSocket constructor in the browser and rewrite the URL
+    # to be relative to window.location (which DOES contain the ingress token).
+    _TTYD_WS_PATCH = (
+        "<script>"
+        "(function(){"
+        "var _WS=window.WebSocket;"
+        "window.WebSocket=function(url,p){"
+        # Extract the ingress prefix from the current page path:
+        # e.g. /api/hassio_ingress/TOKEN/ttyd/ → /api/hassio_ingress/TOKEN/ttyd/
+        "var base=window.location.pathname.replace(/\\/+$/,'')+'/ws';"
+        "if(typeof url==='string'&&(url.startsWith('ws://')||url.startsWith('wss://'))){"
+        "try{var u=new URL(url);"
+        # Only patch if the path ends with /ws (ttyd's websocket endpoint)
+        "if(u.pathname.endsWith('/ws')){"
+        "url=(window.location.protocol==='https:'?'wss://':'ws://')"
+        "+window.location.host+base;}"
+        "}catch(e){}}"
+        "return p?new _WS(url,p):new _WS(url);};"
+        "window.WebSocket.prototype=_WS.prototype;"
+        "['CONNECTING','OPEN','CLOSING','CLOSED'].forEach(function(k){window.WebSocket[k]=_WS[k];});"
+        "})();"
+        "</script>"
+    )
+
     def _proxy_ttyd_http(self) -> None:
         upstream_url = f"http://{TTYD_HOST}:{TTYD_PORT}{self.path}"
         body = None
@@ -282,6 +313,14 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 payload = response.read()
+                content_type = response.headers.get("Content-Type", "")
+                # Inject WebSocket URL patch into ttyd's HTML so the browser
+                # uses the full HA Ingress path instead of the bare /ttyd/ws path.
+                if "text/html" in content_type:
+                    patch = self._TTYD_WS_PATCH.encode()
+                    payload = payload.replace(b"</head>", patch + b"</head>", 1)
+                    if patch not in payload:  # no </head> tag — prepend
+                        payload = patch + payload
                 self.send_response(response.getcode())
                 seen: set[str] = set()
                 for key, value in response.headers.items():
