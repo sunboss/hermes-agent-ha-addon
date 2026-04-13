@@ -213,6 +213,10 @@ h1 {
   color: var(--accent);
 }
 
+#health-status[data-state="warning"] {
+  color: var(--accent-warm);
+}
+
 #health-status[data-state="error"] {
   color: var(--danger);
 }

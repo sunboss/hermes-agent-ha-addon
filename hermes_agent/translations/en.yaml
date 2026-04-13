@@ -1,7 +1,13 @@
 configuration:
   llm_model:
     name: Model Name
-    description: Main Hermes model name, such as anthropic/claude-sonnet-4 or openai/gpt-4o.
+    description: "Main Hermes model. Defaults to NousResearch/Hermes-4-14B. Also available: NousResearch/Hermes-4-70B, NousResearch/Hermes-4-405B, NousResearch/Hermes-4.3-36B."
+  huggingface_api_key:
+    name: HuggingFace API Key
+    description: "API key for the HuggingFace Inference API. Used to access NousResearch Hermes 4 series models directly from HuggingFace. Get yours at https://huggingface.co/settings/tokens."
+  hf_base_url:
+    name: HuggingFace Inference Base URL
+    description: "OpenAI-compatible base URL for the HuggingFace Inference API. Default: https://api-inference.huggingface.co/v1. Change only for custom or self-hosted HuggingFace endpoints."
   openrouter_api_key:
     name: OpenRouter API Key
     description: Optional. Set this when using OpenRouter as the model provider.

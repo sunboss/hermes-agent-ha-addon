@@ -1,6 +1,46 @@
 #!/usr/bin/env bash
+# run.sh  —  Hermes Agent HA Add-on: Container Entrypoint
+# =========================================================
+# Version: 0.9.0
+#
+# Startup sequence
+# ----------------
+# 1. Export environment constants so child processes inherit them.
+# 2. Run the Python bootstrap block (inline heredoc):
+#      a. Read /data/options.json (written by the Home Assistant supervisor).
+#      b. Create required directory tree under /data.
+#      c. Copy .env.example and config.yaml.example on first boot.
+#      d. Patch /data/.env with HA-specific overrides (HASS_URL, SUPERVISOR_TOKEN,
+#         API_SERVER_KEY, model, auth settings, HuggingFace credentials, etc.).
+#      e. Write /data/auth/session.json with the current auth mode/state.
+#      f. Patch /data/config.yaml with terminal backend, platform settings,
+#         and entity watch configuration.
+# 3. Source /data/.env so the gateway process inherits all variables.
+# 4. Start ttyd terminal server in background.
+# 5. Start the Python ingress UI server (server.py) in background.
+# 6. exec the official Hermes gateway entrypoint in the foreground.
+#
+# Options read from /data/options.json (set via HA add-on UI)
+# ------------------------------------------------------------
+#   llm_model            Model ID (default: NousResearch/Hermes-4-14B)
+#   openrouter_api_key   OpenRouter API key
+#   openai_base_url      OpenAI-compatible base URL
+#   openai_api_key       OpenAI-compatible API key
+#   huggingface_api_key  HuggingFace Inference API key
+#   hf_base_url          HF Inference base URL (default: https://api-inference.huggingface.co/v1)
+#   auth_mode            "api_key" (default) or "web_login"
+#   auth_provider        "openai_web" (default) or "custom"
+#   terminal_backend     local | docker | ssh | modal | daytona | singularity
+#   watch_domains        List of HA domains to watch for state changes
+#   watch_entities       List of specific HA entity IDs to watch
+#   ignore_entities      List of HA entity IDs to always ignore
+#   watch_all            Boolean — forward ALL HA state changes (use with care)
+#   cooldown_seconds     Minimum seconds between repeated events (0-3600)
+#   messaging_cwd        Working directory for Hermes sessions
+#   api_server_key       Bearer token for Hermes gateway API (auto-generated if blank)
 set -euo pipefail
 
+# ── 1. Environment constants ──────────────────────────────────────────────────
 export HOME=/data
 export HERMES_HOME=/data
 export HERMES_INSTALL_DIR=/opt/hermes
@@ -11,6 +51,7 @@ export HERMES_TTYD_PORT="${HERMES_TTYD_PORT:-7681}"
 
 mkdir -p /data /data/workspace /data/auth
 
+# ── 2. Python bootstrap: read options, patch .env and config.yaml ─────────────
 python3 - <<'PY'
 import json
 import os
@@ -82,18 +123,30 @@ env_map["API_SERVER_ENABLED"] = "true"
 env_map["API_SERVER_HOST"] = "127.0.0.1"
 env_map["API_SERVER_PORT"] = "8642"
 env_map["API_SERVER_KEY"] = str(options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24))
-env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or "gpt-5.4"
+env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or "NousResearch/Hermes-4-14B"
 env_map["HERMES_TTYD_PORT"] = os.environ.get("HERMES_TTYD_PORT", "7681")
+
+huggingface_api_key = str(options.get("huggingface_api_key") or "")
+hf_base_url = str(options.get("hf_base_url") or "https://api-inference.huggingface.co/v1")
 
 for option_key, env_key in (
     ("llm_model", "LLM_MODEL"),
     ("openrouter_api_key", "OPENROUTER_API_KEY"),
     ("openai_base_url", "OPENAI_BASE_URL"),
     ("openai_api_key", "OPENAI_API_KEY"),
+    ("huggingface_api_key", "HUGGINGFACE_API_KEY"),
+    ("hf_base_url", "HF_BASE_URL"),
 ):
     value = options.get(option_key)
     if value not in (None, ""):
         env_map[env_key] = str(value)
+
+# When a HuggingFace API key is provided and no explicit OpenAI base URL is set,
+# wire up the HuggingFace Inference API as the OpenAI-compatible endpoint so that
+# Hermes can reach NousResearch models (Hermes-4-14B, Hermes-4-70B, etc.) directly.
+if huggingface_api_key and not options.get("openai_base_url") and not options.get("openrouter_api_key"):
+    env_map.setdefault("OPENAI_BASE_URL", hf_base_url)
+    env_map.setdefault("OPENAI_API_KEY", huggingface_api_key)
 
 if auth_mode == "web_login" and auth_provider == "openai_web":
     env_map["OPENAI_BASE_URL"] = "http://127.0.0.1:8099/shim/v1"
@@ -171,22 +224,30 @@ extra["watch_entities"] = [str(item) for item in watch_entities]
 extra["ignore_entities"] = [str(item) for item in ignore_entities]
 
 config_path.write_text(
-    yaml.safe_dump(config, sort_keys=False, allow_unicode=False),
+    yaml.safe_dump(config, sort_keys=False, allow_unicode=True),
     encoding="utf-8",
 )
 PY
 
+# ── 3. Source .env so the gateway inherits all variables ─────────────────────
 set -a
 . /data/.env
 set +a
 
+# ── 4. Start ttyd terminal server (background) ───────────────────────────────
+# --base-path /ttyd  must match the proxy prefix used in server.py (_is_ttyd_request)
+# /bin/bash -lc loads .profile / .bash_profile so the Hermes venv PATH is active
 /usr/local/bin/ttyd \
   --port "${HERMES_TTYD_PORT}" \
   --base-path /ttyd \
   --writable \
-  /bin/sh -lc 'cd "${MESSAGING_CWD}" && exec /bin/bash --noprofile --norc -i' &
+  /bin/bash -lc 'cd "${MESSAGING_CWD:-/data/workspace}" && exec /bin/bash -i' &
 
+# ── 5. Start ingress UI server (background) ──────────────────────────────────
+# server.py listens on HERMES_UI_PORT (8099) and proxies /api/** to the gateway.
+# It also serves the static UI files from HERMES_UI_DIR and handles /auth/** locally.
 python3 "${HERMES_UI_DIR}/server.py" &
 
+# ── 6. Launch Hermes gateway (foreground — becomes the main process) ──────────
 echo "Starting Hermes Agent gateway via official entrypoint..."
 exec /opt/hermes/docker/entrypoint.sh gateway

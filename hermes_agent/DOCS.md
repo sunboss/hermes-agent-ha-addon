@@ -27,13 +27,35 @@ The add-on uses the Supervisor proxy instead of requiring a manually created lon
 
 ## Recommended first setup
 
-1. Set `llm_model`
+1. Set `llm_model` (default: `NousResearch/Hermes-4-14B`; also available: `NousResearch/Hermes-4-70B`, `NousResearch/Hermes-4-405B`, `NousResearch/Hermes-4.3-36B`)
 2. Set `auth_mode=api_key` for the working chat path, or `auth_mode=web_login` if you want to validate the OpenAI Codex browser-login bridge
-3. If using the working chat path, set either `openrouter_api_key` or `openai_base_url` + `openai_api_key`
+3. If using the working chat path, set credentials via one of:
+   - `huggingface_api_key` for NousResearch models via HuggingFace Inference API (https://huggingface.co/NousResearch)
+   - `openrouter_api_key` for OpenRouter
+   - `openai_base_url` + `openai_api_key` for any OpenAI-compatible endpoint
 4. Start with a narrow `watch_domains` list such as `climate`, `binary_sensor`, or `light`
 5. Choose `terminal_backend` based on where Hermes should run shell commands
 6. Leave `watch_all` disabled unless you really need every state change
 7. Open the built-in Web UI from the add-on page after startup
+
+## NousResearch Hermes 4 Models
+
+The add-on is configured to use NousResearch Hermes 4 series models by default. These models use ChatML format with `<|im_start|>` tokens and the following recommended sampling parameters:
+
+- `temperature`: 0.6
+- `top_p`: 0.95
+- `top_k`: 20
+
+Models available on HuggingFace (https://huggingface.co/NousResearch):
+
+| Model | HuggingFace ID |
+|-------|----------------|
+| Hermes 4 14B (default) | `NousResearch/Hermes-4-14B` |
+| Hermes 4 70B | `NousResearch/Hermes-4-70B` |
+| Hermes 4 405B | `NousResearch/Hermes-4-405B` |
+| Hermes 4.3 36B | `NousResearch/Hermes-4.3-36B` |
+
+To use these models, set `huggingface_api_key` to your HuggingFace token and leave `hf_base_url` at the default `https://api-inference.huggingface.co/v1`. The add-on will automatically wire up the HuggingFace Inference API as the OpenAI-compatible endpoint.
 
 ## Browser login bridge
 

@@ -1,4 +1,55 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
+"""
+hermes_ui/auth_bridge.py  —  Hermes Agent HA Add-on: Auth State Bridge
+=======================================================================
+Version: 0.9.0
+
+Manages the OpenAI PKCE OAuth 2.0 flow and persists the resulting token session so
+the provider shim (provider_shim.py) can make authenticated upstream requests.
+
+In ``api_key`` mode this module is effectively a no-op — ``get_status()`` returns
+``status="not_required"`` and all login helpers return 400 immediately.
+
+Auth state machine
+------------------
+::
+
+    needs_login
+        │  start_login()  →  auth URL generated
+        ▼
+    awaiting_callback
+        │  complete_login()  →  PKCE code exchange
+        ▼
+    authenticated  ←──────────────────────────────┐
+        │  (token expires)                          │
+        ▼                                          │
+    expired  →  refresh_session()  ────────────────┘
+        │  (refresh fails)
+        ▼
+    needs_login
+
+    Any state  →  clear_session()  →  needs_login
+
+State file: ``AUTH_STORAGE_PATH/session.json`` (survives container restarts).
+
+Environment variables
+---------------------
+  AUTH_MODE                 ``api_key`` (default) or ``web_login``
+  AUTH_PROVIDER             ``openai_web`` (default) or ``custom``
+  AUTH_STORAGE_PATH         Directory for session.json  (default: /data/auth)
+  OPENAI_OAUTH_CLIENT_ID    Client ID for the PKCE flow
+  OPENAI_OAUTH_REDIRECT_URI Callback URI  (default: http://127.0.0.1:1455/auth/callback)
+  OPENAI_OAUTH_SCOPES       Space-separated OAuth scopes
+
+Public API (consumed by server.py)
+-----------------------------------
+  get_status()       → dict          Full auth status dict for the UI
+  start_login()      → (int, dict)   Generate PKCE auth URL
+  complete_login()   → (int, dict)   Exchange auth code for tokens
+  refresh_session()  → (int, dict)   Refresh an expired access token
+  clear_session()    → dict          Clear stored session
+  get_live_session() → dict          Return active session or raise RuntimeError
+"""
 from __future__ import annotations
 
 import base64

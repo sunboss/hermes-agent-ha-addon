@@ -1,4 +1,44 @@
 #!/usr/bin/env python3
+"""
+hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
+==================================================================
+Version: 0.9.0
+
+Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
+Home Assistant Ingress proxy.  It handles six distinct traffic classes:
+
+  1. Static UI files       — index.html, app.js, styles.css, … (HERMES_UI_DIR)
+  2. Hermes API proxy      — /api/**   →  proxied to Hermes gateway (API_BASE :8642)
+  3. Auth bridge           — /auth/**  →  local PKCE OAuth helpers (auth_bridge.py)
+  4. ttyd proxy            — /ttyd/**  →  HTTP + WebSocket to ttyd (TTYD_PORT :7681)
+  5. Provider shim         — /shim/**  →  loopback-only; LLM bridge for web_login mode
+  6. Metadata endpoints    — /models, /health  →  local; never proxied
+
+Security model
+--------------
+  - Remote access is restricted to ALLOWED_NETWORKS (127.x, ::1, 172.30.0.0/16).
+    172.30.0.0/16 is the Home Assistant Supervisor/Ingress internal subnet.
+  - /shim/** is further restricted to LOOPBACK_NETWORKS (127.x, ::1) only, because
+    the shim can proxy requests with stored OAuth tokens to upstream LLM providers.
+  - API_KEY (from API_SERVER_KEY env var) is forwarded to the Hermes gateway for
+    per-request authentication; omitted entirely when the key is blank.
+
+Environment variables
+---------------------
+  HERMES_UI_DIR        Path to the bundled UI files   (default: /opt/hermes-ha-ui)
+  HERMES_UI_PORT       Port this server listens on     (default: 8099)
+  HERMES_API_UPSTREAM  Hermes gateway base URL         (default: http://127.0.0.1:8642)
+  API_SERVER_KEY       Bearer token for Hermes gateway (default: "")
+  HERMES_TTYD_HOST     ttyd bind host                  (default: 127.0.0.1)
+  HERMES_TTYD_PORT     ttyd port                       (default: 7681)
+
+Adding a new route
+------------------
+  1. Add handling in do_GET / do_POST (and do_DELETE if needed).
+  2. Add the path to the do_HEAD set literal so HEAD pre-flight works.
+  3. Add the path to the do_OPTIONS Allow header string if the browser will
+     send CORS pre-flight requests to it.
+"""
 from __future__ import annotations
 
 import ipaddress
@@ -43,14 +83,11 @@ HOP_BY_HOP_HEADERS = {
     "transfer-encoding",
     "upgrade",
 }
-TTYD_ROOT_PATHS = {
-    "/token",
-    "/ws",
-}
+TTYD_ROOT_PATHS: set[str] = set()
 
 
 class HermesUiHandler(BaseHTTPRequestHandler):
-    server_version = "HermesIngressUI/0.6"
+    server_version = "HermesIngressUI/0.9"
 
     def _remote_allowed(self) -> bool:
         try:
@@ -125,7 +162,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if length:
             body = self.rfile.read(int(length))
 
-        headers = {"Authorization": f"Bearer {API_KEY}"}
+        headers = {}
+        if API_KEY:
+            headers["Authorization"] = f"Bearer {API_KEY}"
         content_type = self.headers.get("Content-Type")
         if content_type:
             headers["Content-Type"] = content_type
@@ -331,7 +370,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             self._send_common_headers(HTTPStatus.OK, "application/json")
             return
-        if path in {"/auth/status", "/auth/start", "/auth/callback", "/health"}:
+        if path in {"/auth/status", "/auth/start", "/auth/callback", "/health", "/models"}:
             self._send_common_headers(HTTPStatus.OK, "application/json")
             return
 
@@ -386,6 +425,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 upstream_path = f"{upstream_path}?{parsed.query}"
             self._proxy_api(upstream_path)
             return
+        if path == "/models":
+            self._send_json(HTTPStatus.OK, shim_list_models())
+            return
         if path == "/auth/status":
             self._send_json(HTTPStatus.OK, get_status())
             return
@@ -405,7 +447,25 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 self._send_html(status, self._callback_page(False, payload.get("message") or "\u767b\u5f55\u56de\u8c03\u5904\u7406\u5931\u8d25\u3002"))
             return
         if path == "/health":
-            self._send_json(HTTPStatus.OK, {"status": "ok", "ttyd_port": TTYD_PORT})
+            # Fast local liveness probe — also pings the Hermes gateway so the UI
+            # can distinguish "UI is up" from "gateway is ready".
+            gateway_status = "starting"
+            try:
+                req = urllib.request.Request(
+                    f"{API_BASE}/health",
+                    headers={"Authorization": f"Bearer {API_KEY}"} if API_KEY else {},
+                    method="GET",
+                )
+                with urllib.request.urlopen(req, timeout=2) as r:
+                    if r.getcode() == 200:
+                        gateway_status = "ready"
+            except Exception:  # noqa: BLE001
+                pass
+            self._send_json(HTTPStatus.OK, {
+                "status": "ok",
+                "gateway": gateway_status,
+                "ttyd_port": TTYD_PORT,
+            })
             return
 
         candidate = path.lstrip("/") or "index.html"

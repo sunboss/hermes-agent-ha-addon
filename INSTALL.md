@@ -11,10 +11,12 @@
 
 Use a narrow first-run setup:
 
-- `llm_model`: your chosen model id
+- `llm_model`: defaults to `NousResearch/Hermes-4-14B`; for larger models use `NousResearch/Hermes-4-70B`, `NousResearch/Hermes-4-405B`, or `NousResearch/Hermes-4.3-36B`
 - `auth_mode`: start with `api_key` unless you are intentionally validating the OpenAI Codex browser-login bridge
+- `huggingface_api_key`: if using NousResearch models via HuggingFace Inference API (recommended for Hermes 4 series)
+- `hf_base_url`: leave as `https://api-inference.huggingface.co/v1` unless using a custom HuggingFace endpoint
 - `openrouter_api_key`: if using OpenRouter
-- or `openai_base_url` + `openai_api_key`: if using OpenAI-compatible endpoints
+- or `openai_base_url` + `openai_api_key`: if using any other OpenAI-compatible endpoint
 - `auth_provider`: leave `openai_web` for the browser-login path
 - `auth_storage_path`: leave `/data/auth` unless you need a custom persistent location
 - `openai_oauth_client_id`: required only for `auth_mode=web_login`
@@ -33,12 +35,18 @@ After starting the add-on, check the logs for these milestones:
 1. The wrapper script starts without shell errors.
 2. Hermes writes `/data/.env`, `/data/config.yaml`, and `/data/auth/session.json`.
 3. Hermes starts the gateway successfully.
-4. The ingress UI becomes available through `OPEN WEB UI`.`r`n5. The dedicated ttyd terminal page loads through **进入命令行面板** and keeps working on narrow mobile screens.
-5. `GET /auth/status` returns a valid JSON auth bridge state.
-6. In `auth_mode=api_key`, a test message returns a Hermes response inside the Web UI.
-7. In `auth_mode=web_login`, the bridge can generate a login URL and store session state after callback exchange.
+4. The ingress UI becomes available through `OPEN WEB UI`.
+5. The dedicated ttyd terminal page loads through **进入命令行面板** and keeps working on narrow mobile screens.
+6. `GET /auth/status` returns a valid JSON auth bridge state.
+7. In `auth_mode=api_key`, a test message returns a Hermes response inside the Web UI.
+8. In `auth_mode=web_login`, the bridge can generate a login URL and store session state after callback exchange.
 
-## Browser login status`r`n`r`n`auth_mode=web_login` now covers login URL generation, callback exchange, refresh, logout, session persistence, and the local OpenAI-compatible shim route consumed by Hermes.`r`nThe main thing still left to validate in a live environment is your real OAuth client configuration.`r`n`r`n## If startup fails
+## Browser login status
+
+`auth_mode=web_login` now covers login URL generation, callback exchange, refresh, logout, session persistence, and the local OpenAI-compatible shim route consumed by Hermes.
+The main thing still left to validate in a live environment is your real OAuth client configuration.
+
+## If startup fails
 
 Check these first:
 

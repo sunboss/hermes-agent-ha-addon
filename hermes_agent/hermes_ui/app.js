@@ -1,3 +1,32 @@
+/**
+ * app.js  —  Hermes Agent HA Add-on: Ingress UI Client
+ * =====================================================
+ * Version: 0.9.0
+ *
+ * Single-page chat interface served by server.py through Home Assistant Ingress.
+ * All fetch() calls use relative paths so they work regardless of the Ingress
+ * base-path prefix assigned by Home Assistant.
+ *
+ * URL routing handled by server.py (NOT direct browser-to-gateway):
+ *   ./health              → local liveness + gateway ping (never proxied blindly)
+ *   ./models              → NousResearch Hermes 4 model list from provider shim
+ *   ./api/**              → proxied to Hermes gateway at 127.0.0.1:8642
+ *   ./auth/**             → local PKCE OAuth state machine (auth_bridge.py)
+ *   ./ttyd/               → ttyd terminal WebSocket proxy
+ *
+ * Client-side state:
+ *   messages[]            — full conversation history; sent with every request
+ *   currentConversation   — UUID persisted in localStorage for session continuity
+ *   activeModel           — currently selected model ID (from /models on init)
+ *   authStatus            — last known auth state dict from /auth/status
+ *
+ * Adding a new UI feature:
+ *   1. Add any new text to the uiText constant at the top (keeps strings localizable).
+ *   2. Add a DOM binding in the relevant section below the uiText block.
+ *   3. Call applyStaticText() additions inside applyStaticText().
+ *   4. Use fetchJson() for JSON endpoints; raw fetch() for streaming or binary.
+ */
+
 const uiText = {
   sidebarCopy: "一个更专注的控制台，用来在 Home Assistant 里调度 Hermes、查看状态和完成对话。",
   labels: {
@@ -57,6 +86,7 @@ const uiText = {
     pending: "等待中",
     detecting: "识别中...",
     ready: "已就绪",
+    gatewayStarting: "UI 就绪，网关启动中…",
     unhealthy: "异常",
     unavailable: "不可用",
     authNotRequired: "使用 API Key",
@@ -80,6 +110,7 @@ const uiText = {
     authCompleted: "网页登录已完成，会话已经保存，现在可以开始测试对话。",
     authCleared: "已清除当前网页登录会话。",
     authRefreshed: "网页登录会话已刷新，现在可以继续测试对话。",
+    thinking: "Hermes 正在思考…",
   },
 };
 
@@ -298,7 +329,7 @@ function applyAuthStatus(status) {
 
 async function loadModels() {
   try {
-    const response = await fetch("./api/v1/models");
+    const response = await fetch("./models");
     if (!response.ok) {
       modelName.textContent = uiText.statuses.unavailable;
       return;
@@ -319,14 +350,22 @@ async function loadModels() {
 
 async function checkHealth() {
   try {
-    const response = await fetch("./api/health");
+    const response = await fetch("./health");
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
 
     const data = await response.json();
     if (data.status === "ok") {
-      setHealthState(uiText.statuses.ready, "ready");
+      // Distinguish between UI-only ready and full gateway-ready states
+      if (data.gateway === "ready") {
+        setHealthState(uiText.statuses.ready, "ready");
+      } else {
+        // UI server is up but Hermes gateway is still starting — show a softer state
+        setHealthState(uiText.statuses.gatewayStarting, "warning");
+        // Retry in 5s so the status auto-updates once the gateway is up
+        setTimeout(checkHealth, 5000);
+      }
       return;
     }
 
@@ -461,7 +500,61 @@ async function sendMessage(text) {
 }
 
 function extractAssistantText(payload) {
-  return payload?.choices?.[0]?.message?.content?.trim() || uiText.messages.noVisibleText;
+  // Standard OpenAI choices format
+  const choiceContent = payload?.choices?.[0]?.message?.content;
+  if (typeof choiceContent === "string" && choiceContent.trim()) {
+    return choiceContent.trim();
+  }
+  // Hermes agent output_text
+  if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
+    return payload.output_text.trim();
+  }
+  // Hermes agent output array
+  if (Array.isArray(payload?.output)) {
+    const parts = [];
+    for (const item of payload.output) {
+      if (typeof item?.content === "string" && item.content.trim()) {
+        parts.push(item.content.trim());
+      } else if (Array.isArray(item?.content)) {
+        for (const c of item.content) {
+          const t = c?.text || c?.value || c?.content;
+          if (typeof t === "string" && t.trim()) parts.push(t.trim());
+        }
+      }
+    }
+    if (parts.length > 0) return parts.join("\n\n");
+  }
+  // Plain message/content
+  if (typeof payload?.message === "string" && payload.message.trim()) {
+    return payload.message.trim();
+  }
+  if (typeof payload?.content === "string" && payload.content.trim()) {
+    return payload.content.trim();
+  }
+  return uiText.messages.noVisibleText;
+}
+
+/**
+ * Inserts a temporary "thinking" bubble into the chat log.
+ * The caller is responsible for calling .remove() on the returned element
+ * once the real response (or error message) has been appended.
+ * @returns {HTMLElement} The placeholder article element.
+ */
+function appendThinkingMessage() {
+  ensureTranscriptIsLive();
+  const fragment = messageTemplate.content.cloneNode(true);
+  const article = fragment.querySelector(".message");
+  article.dataset.role = "assistant";
+  article.dataset.thinking = "true";
+  fragment.querySelector(".message-role").textContent = uiText.roles.assistant;
+  const bodyEl = fragment.querySelector(".message-body");
+  bodyEl.textContent = uiText.messages.thinking;
+  bodyEl.style.opacity = "0.5";
+  bodyEl.style.fontStyle = "italic";
+  chatLog.appendChild(fragment);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  // Return the actual DOM node (fragment is consumed after appendChild)
+  return chatLog.querySelector(".message[data-thinking='true']");
 }
 
 chatForm.addEventListener("submit", async (event) => {
@@ -485,13 +578,18 @@ chatForm.addEventListener("submit", async (event) => {
   appendMessage("user", text);
   chatInput.value = "";
 
+  // Show a temporary "thinking" placeholder while waiting for the response
+  const thinkingEl = appendThinkingMessage();
+
   try {
     const payload = await sendMessage(text);
     const assistantText = extractAssistantText(payload);
     messages.push({ role: "user", content: text }, { role: "assistant", content: assistantText });
     updateMessageCount();
+    thinkingEl.remove();
     appendMessage("assistant", assistantText);
   } catch (error) {
+    thinkingEl.remove();
     const message = error instanceof Error ? error.message : String(error);
     appendMessage("assistant", uiText.messages.requestFailed);
     setError(message);
