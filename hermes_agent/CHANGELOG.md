@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.7
+
+### Bug fixes
+
+- **终端 502 真正根本原因**: ttyd JS 除了 WebSocket 外，还先通过
+  `fetch('http://HOST:8123/ttyd/token')` 获取一次性认证 token，该请求绕过了
+  HA Ingress，HA 返回 404，导致后续 WebSocket 因无有效 token 被立即断开。
+  另外之前的 WebSocket URL 补丁没有保留 `?token=XXX` 查询参数。
+  
+  修复：在注入到 ttyd HTML 的补丁脚本中同时拦截：
+  1. `window.fetch()` — 把 `/ttyd/token` 重定向到相对路径 `./token`（经 HA Ingress）
+  2. `XMLHttpRequest.open()` — 同上
+  3. `window.WebSocket()` — 修正 URL 并保留 `?token=XXX` 查询参数
+
 ## 0.9.6
 
 ### Bug fixes

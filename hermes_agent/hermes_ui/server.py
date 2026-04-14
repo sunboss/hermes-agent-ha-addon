@@ -259,28 +259,52 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 return
 
     # JavaScript injected into ttyd's HTML page.
-    # Problem: ttyd builds its WebSocket URL as:
-    #   ws://<host>:<port>/ttyd/ws
-    # When served through HA Ingress the real URL is:
-    #   ws://<host>:<port>/api/hassio_ingress/<TOKEN>/ttyd/ws
-    # ttyd's JS doesn't know the ingress token, so its WS connection bypasses
-    # ingress and hits a non-existent path → nginx returns 502.
-    # Fix: intercept WebSocket constructor in the browser and rewrite the URL
-    # to be relative to window.location (which DOES contain the ingress token).
+    #
+    # Root cause of 502:
+    #   ttyd JS makes TWO requests that both use absolute URLs based on
+    #   window.location.HOST (bypassing HA Ingress token path):
+    #
+    #   1. fetch('http://HOST:8123/ttyd/token')   ← GET one-time auth token
+    #   2. new WebSocket('ws://HOST:8123/ttyd/ws?token=XXX')  ← connect terminal
+    #
+    #   Both bypass HA Ingress → HA returns 502 or 404.
+    #   Without a valid token from step 1, step 2 also fails even if URL is fixed.
+    #
+    # Fix: intercept both fetch() and WebSocket() in the browser:
+    #   1. Redirect /ttyd/token fetches to a relative path (./token) so they
+    #      travel through HA Ingress → our server → ttyd.
+    #   2. Rewrite WebSocket URL to include the full HA Ingress path AND preserve
+    #      the ?token= query parameter.
     _TTYD_WS_PATCH = (
         "<script>"
         "(function(){"
+        # --- patch fetch() for token endpoint ---
+        "var _f=window.fetch;"
+        "window.fetch=function(url,opts){"
+        "if(typeof url==='string'&&(url.indexOf('/ttyd/token')!==-1)){"
+        # rewrite absolute /ttyd/token to relative ./token
+        "url='./token';}"
+        "return _f.call(this,url,opts);};"
+        # --- patch XMLHttpRequest for token endpoint ---
+        "var _XHR=window.XMLHttpRequest;"
+        "if(_XHR){"
+        "var _open=_XHR.prototype.open;"
+        "_XHR.prototype.open=function(m,url){"
+        "if(typeof url==='string'&&url.indexOf('/ttyd/token')!==-1)url='./token';"
+        "return _open.apply(this,arguments);};"
+        "}"
+        # --- patch WebSocket() to fix URL + preserve query string ---
         "var _WS=window.WebSocket;"
         "window.WebSocket=function(url,p){"
-        # Extract the ingress prefix from the current page path:
-        # e.g. /api/hassio_ingress/TOKEN/ttyd/ → /api/hassio_ingress/TOKEN/ttyd/
-        "var base=window.location.pathname.replace(/\\/+$/,'')+'/ws';"
         "if(typeof url==='string'&&(url.startsWith('ws://')||url.startsWith('wss://'))){"
-        "try{var u=new URL(url);"
-        # Only patch if the path ends with /ws (ttyd's websocket endpoint)
+        "try{"
+        "var u=new URL(url);"
         "if(u.pathname.endsWith('/ws')){"
+        # build new URL: current page path (contains ingress token) + /ws + original ?token=
+        "var base=window.location.pathname.replace(/\\/+$/,'')+'/ws';"
         "url=(window.location.protocol==='https:'?'wss://':'ws://')"
-        "+window.location.host+base;}"
+        "+window.location.host+base+u.search;"  # u.search = '?token=XXX'
+        "}"
         "}catch(e){}}"
         "return p?new _WS(url,p):new _WS(url);};"
         "window.WebSocket.prototype=_WS.prototype;"
