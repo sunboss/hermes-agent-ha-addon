@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run.sh  —  Hermes Agent HA Add-on: Container Entrypoint
 # =========================================================
-# Version: 0.9.9  (Hermes upstream v2026.4.13 / v0.9.0)
+# Version: 0.9.10 (Hermes upstream v2026.4.13 / v0.9.0)
 #
 # Startup sequence
 # ----------------
@@ -18,7 +18,8 @@
 # 3. Source /data/.env so the gateway process inherits all variables.
 # 4. Start ttyd terminal server in background.
 # 5. Start the Python ingress UI server (server.py) in background.
-# 6. Bypass upstream entrypoint.sh (which hardcodes HERMES_HOME=/opt/data
+# 6. Start the upstream Hermes web dashboard (`hermes dashboard`) on loopback.
+# 7. Bypass upstream entrypoint.sh (which hardcodes HERMES_HOME=/opt/data
 #    and would break our auth.json/config.yaml lookup) and run hermes directly.
 #
 # Options read from /data/options.json (set via HA add-on UI)
@@ -49,6 +50,11 @@ export PATH="${HERMES_INSTALL_DIR}/.venv/bin:${PATH}"
 export HERMES_UI_PORT=8099
 export HERMES_UI_DIR=/opt/hermes-ha-ui
 export HERMES_TTYD_PORT="${HERMES_TTYD_PORT:-7681}"
+# Upstream `hermes dashboard` loopback binding.  server.py reverse-proxies
+# /panel/** to this host:port.  Keep in sync with HERMES_PANEL_HOST /
+# HERMES_PANEL_PORT in Dockerfile and server.py.
+export HERMES_PANEL_HOST="${HERMES_PANEL_HOST:-127.0.0.1}"
+export HERMES_PANEL_PORT="${HERMES_PANEL_PORT:-9119}"
 
 mkdir -p /data /data/workspace /data/auth
 
@@ -261,7 +267,16 @@ set +a
 
 # ── 4. Start ttyd terminal server (background) ───────────────────────────────
 # --base-path /ttyd  must match the proxy prefix used in server.py (_is_ttyd_request)
-# /bin/bash -lc loads .profile / .bash_profile so the Hermes venv PATH is active
+#
+# PATH note: we previously used `/bin/bash -lc ...`, but the `-l` flag makes
+# bash run /etc/profile, which on Debian resets PATH to the system default
+# and drops /opt/hermes/.venv/bin — resulting in "hermes: command not found"
+# inside the terminal.  Two fixes combine:
+#   (a) /etc/profile.d/hermes.sh (baked into the image by Dockerfile) re-adds
+#       the venv to PATH AFTER /etc/profile has clobbered it.
+#   (b) We still drop `-l` here for belt-and-suspenders, so even if profile.d
+#       handling is stripped by some future base image, the venv PATH survives
+#       via direct inheritance from this run.sh process.
 #
 # NOTE: ttyd is installed by apt to /usr/bin/ttyd, NOT /usr/local/bin/ttyd.
 # Use `command -v ttyd` to resolve the actual path at runtime so this works
@@ -275,7 +290,7 @@ else
     --port "${HERMES_TTYD_PORT}" \
     --base-path /ttyd \
     --writable \
-    /bin/bash -lc 'cd "${MESSAGING_CWD:-/data/workspace}" && exec /bin/bash -i' &
+    /bin/bash -c 'cd "${MESSAGING_CWD:-/data/workspace}" && exec /bin/bash -i' &
   TTYD_PID=$!
   # Give ttyd a moment to bind the port and check it didn't exit immediately
   sleep 0.5
@@ -288,8 +303,44 @@ fi
 
 # ── 5. Start ingress UI server (background) ──────────────────────────────────
 # server.py listens on HERMES_UI_PORT (8099) and proxies /api/** to the gateway.
-# It also serves the static UI files from HERMES_UI_DIR and handles /auth/** locally.
+# It also serves the static UI files from HERMES_UI_DIR, handles /auth/**
+# locally, proxies /ttyd/** to ttyd, and (since v0.9.10) proxies /panel/** to
+# the upstream `hermes dashboard` web UI.
 python3 "${HERMES_UI_DIR}/server.py" &
+
+# ── 5b. Start the upstream Hermes web dashboard (background) ─────────────────
+# Hermes v2026.4.13 introduced `hermes dashboard`, a FastAPI-based local web
+# panel for managing config, sessions, skills, and the gateway.  It listens
+# on 127.0.0.1:9119 by default and is NOT exposed through Home Assistant
+# Ingress directly — server.py reverse-proxies /panel/** to this loopback
+# port so HA's single-port Ingress model can still reach it.
+#
+# Flags:
+#   --host 127.0.0.1   stay on loopback; Ingress reverse-proxy only
+#   --port 9119        default; keep in sync with HERMES_PANEL_PORT
+#   --no-open          do NOT try to open a browser; the container has none
+#                      and the dashboard would otherwise spawn a doomed
+#                      webbrowser thread that prints errors to stderr
+#
+# Gracefully tolerate upstream images that don't have the `dashboard`
+# subcommand yet (e.g. a user who pins an older digest and rebuilds): log a
+# warning and keep going rather than exiting the add-on.
+if /opt/hermes/.venv/bin/hermes dashboard --help >/dev/null 2>&1; then
+  echo "[run.sh] Starting hermes dashboard on ${HERMES_PANEL_HOST}:${HERMES_PANEL_PORT}..."
+  /opt/hermes/.venv/bin/hermes dashboard \
+    --host "${HERMES_PANEL_HOST}" \
+    --port "${HERMES_PANEL_PORT}" \
+    --no-open &
+  DASH_PID=$!
+  sleep 0.5
+  if ! kill -0 "${DASH_PID}" 2>/dev/null; then
+    echo "[run.sh] WARNING: hermes dashboard exited immediately — /panel/ will be unavailable" >&2
+  else
+    echo "[run.sh] hermes dashboard started (PID ${DASH_PID})"
+  fi
+else
+  echo "[run.sh] NOTICE: this Hermes build has no \`hermes dashboard\` subcommand — /panel/ will return 502" >&2
+fi
 
 # ── 6. Launch Hermes gateway (foreground — becomes the main process) ──────────
 #

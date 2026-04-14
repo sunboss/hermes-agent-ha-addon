@@ -2,17 +2,19 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.9.9
+Version: 0.9.10
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
-Home Assistant Ingress proxy.  It handles six distinct traffic classes:
+Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
 
   1. Static UI files       — index.html, app.js, styles.css, … (HERMES_UI_DIR)
   2. Hermes API proxy      — /api/**   →  proxied to Hermes gateway (API_BASE :8642)
   3. Auth bridge           — /auth/**  →  local PKCE OAuth helpers (auth_bridge.py)
   4. ttyd proxy            — /ttyd/**  →  HTTP + WebSocket to ttyd (TTYD_PORT :7681)
-  5. Provider shim         — /shim/**  →  loopback-only; LLM bridge for web_login mode
-  6. Metadata endpoints    — /models, /health  →  local; never proxied
+  5. Panel proxy           — /panel/** →  HTTP + WebSocket to upstream `hermes dashboard`
+                                          (PANEL_HOST:PANEL_PORT, default 127.0.0.1:9119)
+  6. Provider shim         — /shim/**  →  loopback-only; LLM bridge for web_login mode
+  7. Metadata endpoints    — /models, /health, /config-model  →  local; never proxied
 
 Security model
 --------------
@@ -31,6 +33,8 @@ Environment variables
   API_SERVER_KEY       Bearer token for Hermes gateway (default: "")
   HERMES_TTYD_HOST     ttyd bind host                  (default: 127.0.0.1)
   HERMES_TTYD_PORT     ttyd port                       (default: 7681)
+  HERMES_PANEL_HOST    hermes dashboard bind host      (default: 127.0.0.1)
+  HERMES_PANEL_PORT    hermes dashboard port            (default: 9119)
 
 Adding a new route
 ------------------
@@ -45,6 +49,7 @@ import ipaddress
 import json
 import mimetypes
 import os
+import re
 import select
 import socket
 import urllib.error
@@ -64,6 +69,11 @@ API_BASE = os.environ.get("HERMES_API_UPSTREAM", "http://127.0.0.1:8642")
 API_KEY = os.environ.get("API_SERVER_KEY", "")
 TTYD_HOST = os.environ.get("HERMES_TTYD_HOST", "127.0.0.1")
 TTYD_PORT = int(os.environ.get("HERMES_TTYD_PORT", "7681"))
+# Upstream `hermes dashboard` web UI (introduced in Hermes v2026.4.13).
+# run.sh starts it on 127.0.0.1:9119; this server reverse-proxies /panel/**
+# to it so HA Ingress's single-port model can reach it.
+PANEL_HOST = os.environ.get("HERMES_PANEL_HOST", "127.0.0.1")
+PANEL_PORT = int(os.environ.get("HERMES_PANEL_PORT", "9119"))
 ALLOWED_NETWORKS = [
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("::1/128"),
@@ -496,6 +506,287 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             except OSError:
                 pass
 
+    # -----------------------------------------------------------------------
+    # /panel/** reverse proxy  →  upstream `hermes dashboard` FastAPI SPA
+    # -----------------------------------------------------------------------
+    # Upstream layout: `hermes dashboard` binds to 127.0.0.1:9119 and serves a
+    # Vite-built single-page app with absolute-path asset references (e.g.
+    # `<script src="/assets/index-xyz.js">`) plus runtime fetch() / WebSocket
+    # calls to absolute paths like `/api/session/list`.  None of those paths
+    # know about Home Assistant Ingress — they'd bypass the ingress token and
+    # 404 straight at HA's nginx.
+    #
+    # Fix (three parts):
+    #   1. HTTP path stripping: incoming "/panel/foo" → upstream "/foo".
+    #   2. HTML rewrite: for text/html responses, rewrite `href="/x"` /
+    #      `src="/x"` / `action="/x"` to `./x` so the browser resolves them
+    #      against the current page (which sits under /panel/).
+    #   3. JS patch: inject a <script> that wraps fetch / XMLHttpRequest /
+    #      WebSocket.  Any absolute-path URL that isn't already under the
+    #      panel base gets the panel base prepended.  This catches the
+    #      runtime API calls that HTML rewriting can't touch.
+    _PANEL_JS_PATCH = (
+        "<script>"
+        "(function(){"
+        "var p=window.location.pathname;"
+        "var i=p.indexOf('/panel');"
+        "var BASE=i>=0?p.slice(0,i+6):'/panel';"
+        "function rewrite(u){"
+        "if(typeof u!=='string')return u;"
+        "if(u.length===0)return u;"
+        "if(u.charAt(0)==='/'&&u.charAt(1)!=='/'){"
+        "if(u.indexOf(BASE+'/')===0||u===BASE)return u;"
+        "return BASE+u;"
+        "}"
+        "return u;"
+        "}"
+        "function rewriteWs(u){"
+        "if(typeof u!=='string')return u;"
+        "if(u.indexOf('ws://')!==0&&u.indexOf('wss://')!==0)return u;"
+        "try{"
+        "var parsed=new URL(u);"
+        "if(parsed.pathname.indexOf(BASE+'/')===0||parsed.pathname===BASE)return u;"
+        "var scheme=(window.location.protocol==='https:'?'wss://':'ws://');"
+        "return scheme+window.location.host+BASE+parsed.pathname+parsed.search;"
+        "}catch(e){return u;}"
+        "}"
+        "var _f=window.fetch;"
+        "if(_f){"
+        "window.fetch=function(input,opts){"
+        "if(typeof input==='string'){input=rewrite(input);}"
+        "else if(input&&typeof input.url==='string'&&input.url.charAt(0)==='/'){"
+        "try{input=new Request(rewrite(input.url),input);}catch(e){}"
+        "}"
+        "return _f.call(this,input,opts);"
+        "};"
+        "}"
+        "var _XHR=window.XMLHttpRequest;"
+        "if(_XHR&&_XHR.prototype&&_XHR.prototype.open){"
+        "var _open=_XHR.prototype.open;"
+        "_XHR.prototype.open=function(m,url){"
+        "arguments[1]=rewrite(url);"
+        "return _open.apply(this,arguments);"
+        "};"
+        "}"
+        "var _WS=window.WebSocket;"
+        "if(_WS){"
+        "var WSProxy=function(url,protocols){"
+        "url=rewriteWs(url);"
+        "return protocols?new _WS(url,protocols):new _WS(url);"
+        "};"
+        "WSProxy.prototype=_WS.prototype;"
+        "['CONNECTING','OPEN','CLOSING','CLOSED'].forEach(function(k){WSProxy[k]=_WS[k];});"
+        "window.WebSocket=WSProxy;"
+        "}"
+        "})();"
+        "</script>"
+    )
+
+    # Rewrites absolute-path attribute values in HTML so the browser resolves
+    # them against the current (HA-ingress-prefixed) page path, not the bare
+    # origin.  Only touches values that start with a single "/" — not "//host"
+    # (protocol-relative), not "http://", not "#anchor".
+    _PANEL_HTML_ATTR_RX = re.compile(
+        rb'(\s(?:href|src|action|data-src|data-href)\s*=\s*)(["\'])/(?!/)',
+        re.IGNORECASE,
+    )
+
+    def _rewrite_panel_html(self, body: bytes) -> bytes:
+        # Replace every /foo with ./foo so relative resolution walks up from
+        # the current /panel/... page to the right absolute path.
+        body = self._PANEL_HTML_ATTR_RX.sub(lambda m: m.group(1) + m.group(2) + b"./", body)
+        # Inject the runtime JS patch as early as possible in <head>.
+        patch = self._PANEL_JS_PATCH.encode()
+        if b"<head>" in body:
+            body = body.replace(b"<head>", b"<head>" + patch, 1)
+        elif b"</head>" in body:
+            body = body.replace(b"</head>", patch + b"</head>", 1)
+        else:
+            body = patch + body
+        return body
+
+    def _proxy_panel_http(self) -> None:
+        parsed = urllib.parse.urlsplit(self.path)
+        upstream_path = parsed.path[len("/panel"):] or "/"
+        if parsed.query:
+            upstream_path = f"{upstream_path}?{parsed.query}"
+        upstream_url = f"http://{PANEL_HOST}:{PANEL_PORT}{upstream_path}"
+
+        body = None
+        length = self.headers.get("Content-Length")
+        if length:
+            body = self.rfile.read(int(length))
+
+        headers: dict[str, str] = {}
+        for key, value in self.headers.items():
+            lower = key.lower()
+            if lower in HOP_BY_HOP_HEADERS or lower == "host":
+                continue
+            # Force identity encoding — we need plaintext HTML to inject the patch.
+            if lower == "accept-encoding":
+                continue
+            headers[key] = value
+        headers["Host"] = f"{PANEL_HOST}:{PANEL_PORT}"
+        headers["Accept-Encoding"] = "identity"
+
+        request = urllib.request.Request(
+            upstream_url,
+            data=body,
+            headers=headers,
+            method=self.command,
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                payload = response.read()
+                content_type = response.headers.get("Content-Type", "")
+                if "text/html" in content_type:
+                    payload = self._rewrite_panel_html(payload)
+                self.send_response(response.getcode())
+                seen: set[str] = set()
+                for key, value in response.headers.items():
+                    lower = key.lower()
+                    if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
+                        continue
+                    if lower == "content-length":
+                        continue
+                    if lower == "content-encoding":
+                        continue
+                    # Strip Location-rewriting for now — upstream should only
+                    # redirect with relative paths inside its own SPA.
+                    if lower not in seen:
+                        self.send_header(key, value)
+                        seen.add(lower)
+                self.send_header("Content-Length", str(len(payload)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(payload)
+        except urllib.error.HTTPError as exc:
+            payload = exc.read()
+            self.send_response(exc.code)
+            seen2: set[str] = set()
+            for key, value in exc.headers.items():
+                lower = key.lower()
+                if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
+                    continue
+                if lower == "content-length":
+                    continue
+                if lower not in seen2:
+                    self.send_header(key, value)
+                    seen2.add(lower)
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(payload)
+        except (BrokenPipeError, ConnectionResetError):
+            return
+        except OSError as exc:
+            self._send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {
+                    "error": "panel_unavailable",
+                    "message": (
+                        f"Hermes 面板暂时无法连接（{PANEL_HOST}:{PANEL_PORT}）。"
+                        "请确认 `hermes dashboard` 子命令在该 Hermes 版本中可用。"
+                    ),
+                    "detail": str(exc),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+
+    def _proxy_panel_websocket(self) -> None:
+        """Proxy a WebSocket upgrade from /panel/** to the upstream dashboard."""
+        try:
+            upstream = socket.create_connection((PANEL_HOST, PANEL_PORT), timeout=10)
+        except OSError as exc:
+            self.log_error("[panel-ws] cannot connect to panel:%s — %s", PANEL_PORT, exc)
+            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": f"panel unavailable: {exc}"})
+            return
+
+        try:
+            parsed = urllib.parse.urlsplit(self.path)
+            upstream_path = parsed.path[len("/panel"):] or "/"
+            if parsed.query:
+                upstream_path = f"{upstream_path}?{parsed.query}"
+            request_lines = [f"{self.command} {upstream_path} HTTP/1.1"]
+            has_host = False
+            for key, value in self.headers.items():
+                lower = key.lower()
+                if lower == "host":
+                    request_lines.append(f"Host: {PANEL_HOST}:{PANEL_PORT}")
+                    has_host = True
+                elif lower in HOP_BY_HOP_HEADERS and lower not in {
+                    "connection", "upgrade", "sec-websocket-key",
+                    "sec-websocket-version", "sec-websocket-extensions",
+                    "sec-websocket-protocol",
+                }:
+                    continue
+                else:
+                    request_lines.append(f"{key}: {value}")
+            if not has_host:
+                request_lines.append(f"Host: {PANEL_HOST}:{PANEL_PORT}")
+            request_lines += ["", ""]
+            upstream.sendall("\r\n".join(request_lines).encode())
+
+            response = bytearray()
+            while b"\r\n\r\n" not in response:
+                chunk = upstream.recv(4096)
+                if not chunk:
+                    raise ConnectionError("panel closed during WebSocket handshake")
+                response.extend(chunk)
+
+            first_line = response.split(b"\r\n", 1)[0]
+            if b"101" not in first_line:
+                self.log_error("[panel-ws] panel rejected upgrade: %s", first_line)
+                self._send_json(
+                    HTTPStatus.BAD_GATEWAY,
+                    {"error": f"panel rejected upgrade: {first_line.decode(errors='replace')}"},
+                )
+                upstream.close()
+                return
+
+            self.log_message("[panel-ws] WebSocket tunnel open — %s", self.path)
+
+        except Exception as exc:  # noqa: BLE001
+            self.log_error("[panel-ws] handshake failed: %s", exc)
+            try:
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+            except Exception:
+                pass
+            upstream.close()
+            return
+
+        self.close_connection = True
+        upstream.settimeout(None)
+        self.connection.settimeout(None)
+        try:
+            self.connection.sendall(bytes(response))
+            sockets = [self.connection, upstream]
+            while True:
+                readable, _, _ = select.select(sockets, [], [], 60)
+                if not readable:
+                    continue
+                for sock in readable:
+                    try:
+                        chunk = sock.recv(65536)
+                    except OSError:
+                        chunk = b""
+                    if not chunk:
+                        return
+                    target = upstream if sock is self.connection else self.connection
+                    try:
+                        target.sendall(chunk)
+                    except OSError:
+                        return
+        finally:
+            try:
+                upstream.close()
+            except OSError:
+                pass
+
+    def _is_panel_request(self, path: str) -> bool:
+        return path == "/panel" or path.startswith("/panel/")
+
     def _is_websocket_upgrade(self) -> bool:
         connection = self.headers.get("Connection", "")
         upgrade = self.headers.get("Upgrade", "")
@@ -558,7 +849,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         elif self._reject_if_needed():
             return
         self.send_response(HTTPStatus.NO_CONTENT)
-        self.send_header("Allow", "GET,POST,DELETE,OPTIONS")
+        self.send_header("Allow", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
         self.end_headers()
 
     def do_HEAD(self) -> None:  # noqa: N802
@@ -572,6 +863,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if self._reject_if_needed():
             return
         if self._is_ttyd_request(path):
+            self._send_common_headers(HTTPStatus.OK, "text/html; charset=utf-8")
+            return
+        if self._is_panel_request(path):
             self._send_common_headers(HTTPStatus.OK, "text/html; charset=utf-8")
             return
         if path.startswith("/api/"):
@@ -622,6 +916,17 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             else:
                 try:
                     self._proxy_ttyd_http()
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                except Exception as exc:  # noqa: BLE001
+                    self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+            return
+        if self._is_panel_request(path):
+            if self._is_websocket_upgrade():
+                self._proxy_panel_websocket()
+            else:
+                try:
+                    self._proxy_panel_http()
                 except (BrokenPipeError, ConnectionResetError):
                     pass
                 except Exception as exc:  # noqa: BLE001
@@ -754,6 +1059,14 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             except Exception as exc:  # noqa: BLE001
                 self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
             return
+        if self._is_panel_request(path):
+            try:
+                self._proxy_panel_http()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+            return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
             if parsed.query:
@@ -783,6 +1096,39 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             return
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
+    def do_PUT(self) -> None:  # noqa: N802
+        self._proxy_panel_or_api("PUT")
+
+    def do_PATCH(self) -> None:  # noqa: N802
+        self._proxy_panel_or_api("PATCH")
+
+    def _proxy_panel_or_api(self, method: str) -> None:
+        """Handle PUT / PATCH — currently only routed to /panel/** and /api/**.
+
+        FastAPI-based `hermes dashboard` uses REST-style verbs for some of its
+        endpoints (creating/updating config, sessions, skills).  We accept the
+        same verbs on /api/** too so callers have a uniform surface.
+        """
+        if self._reject_if_needed():
+            return
+        parsed = urllib.parse.urlsplit(self.path)
+        path = parsed.path
+        if self._is_panel_request(path):
+            try:
+                self._proxy_panel_http()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+            return
+        if path.startswith("/api/"):
+            upstream_path = path[len("/api") :] or "/"
+            if parsed.query:
+                upstream_path = f"{upstream_path}?{parsed.query}"
+            self._proxy_api(upstream_path)
+            return
+        self._send_json(HTTPStatus.METHOD_NOT_ALLOWED, {"error": "method_not_allowed", "method": method})
+
     def do_DELETE(self) -> None:  # noqa: N802
         if self.path.startswith("/shim/"):
             if self._reject_if_not_loopback():
@@ -793,6 +1139,14 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             return
         parsed = urllib.parse.urlsplit(self.path)
         path = parsed.path
+        if self._is_panel_request(path):
+            try:
+                self._proxy_panel_http()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+            return
         if path.startswith("/api/"):
             upstream_path = path[len("/api") :] or "/"
             if parsed.query:

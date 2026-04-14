@@ -43,6 +43,146 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v0.9.10 — Adopt upstream web dashboard + terminal PATH + launcher UI
+
+Shipped: 2026-04-15. Upstream still `v2026.4.13 / v0.9.0`
+(`sha256:0ee58988876f5bb3d6e8e664542bbad2eb9453b9f8ef9a669afc87316087b357`).
+
+This release bundles **three independent fixes** driven by the v2026.4.13
+upstream upgrade. Keep them separate mentally — each has its own root cause
+and its own regression surface.
+
+#### Fix 1 — `/panel/**` reverse proxy to `hermes dashboard`
+
+**Symptom**
+Nothing was broken per se. Hermes v2026.4.13 (v0.9.0) ships a brand-new
+`hermes dashboard` FastAPI-based local web UI, but the HA add-on had no way
+to surface it through Ingress (single-port, path-prefixed). Users asked
+"there's a web panel now, how do I open it?" and the answer was "you can't".
+
+**Root cause**
+Home Assistant Ingress only exposes one port per add-on (`ingress_port:
+8099`). `hermes dashboard` listens on `127.0.0.1:9119` by default. Without a
+proxy, port 9119 is reachable only from inside the container — the browser
+can never hit it.
+
+**Fix**
+Three-layer bridge:
+
+1. **`run.sh` step 5b** — start `hermes dashboard --host 127.0.0.1 --port
+   9119 --no-open &` in the background. Guarded with `--help` probe so older
+   Hermes builds without the subcommand skip this step rather than aborting.
+2. **`server.py` `/panel/**`** — new `_proxy_panel_http` and
+   `_proxy_panel_websocket` methods modelled on the existing ttyd proxy.
+   Strips the `/panel` prefix before forwarding. WebSocket upgrade
+   handshake is raw-byte relayed after a 101 response from upstream.
+3. **JS + HTML rewriting** — FastAPI SPAs use absolute asset paths
+   (`<script src="/assets/foo.js">`) and runtime absolute URLs
+   (`fetch("/api/bar")`). Neither resolves correctly under HA Ingress.
+   `_rewrite_panel_html` replaces `href="/x"` / `src="/x"` / `action="/x"`
+   with `href="./x"` etc. using a compiled regex, and injects a
+   `_PANEL_JS_PATCH` script into `<head>` that wraps `window.fetch`,
+   `XMLHttpRequest.prototype.open`, and `window.WebSocket`. The wrapper
+   computes `PANEL_BASE` from `window.location.pathname` (everything up to
+   and including `/panel`) and prepends it to any absolute-path URL that
+   isn't already under the panel base.
+
+**Invariants for future upgrades**
+- If upstream changes `hermes dashboard`'s default port away from 9119,
+  update `HERMES_PANEL_PORT` in `Dockerfile`, `run.sh`, and `server.py`
+  in the same commit.
+- If upstream drops `hermes dashboard` or renames the subcommand, the
+  `if /opt/hermes/.venv/bin/hermes dashboard --help` probe in `run.sh`
+  logs a warning and the proxy returns 502 cleanly — not a crash.
+- Do NOT remove the defensive `pip install fastapi uvicorn[standard]`
+  line in `Dockerfile`. It's a safety net for offline / partial-layer
+  builds where the upstream image ships without the `web` extra.
+- FastAPI uses PUT/PATCH verbs. `server.py` now has `do_PUT` and
+  `do_PATCH` dispatchers that route to `/panel/**` and `/api/**`. Don't
+  delete them when refactoring method handling.
+
+#### Fix 2 — `hermes` command not found inside ttyd terminal
+
+**Symptom**
+Opening the ttyd terminal (Hermes UI → 终端 button) and typing `hermes`
+returned `bash: hermes: command not found`, even though the Hermes gateway
+was clearly running and the venv existed at `/opt/hermes/.venv/`.
+
+**Root cause**
+`run.sh` started ttyd with `/bin/bash -lc ...`. The `-l` flag makes bash
+run `/etc/profile` on startup. On Debian, `/etc/profile` unconditionally
+resets `PATH` to the hard-coded default:
+
+```
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+This clobbered the `PATH=/opt/hermes/.venv/bin:$PATH` that `run.sh` step 1
+had exported, so `hermes` (which lives at `/opt/hermes/.venv/bin/hermes`)
+fell off the lookup path inside the terminal session. The gateway process
+was unaffected because it was launched directly by `run.sh` with the
+un-clobbered PATH — only shells spawned by ttyd lost it.
+
+**Fix (two layers)**
+1. **`/etc/profile.d/hermes.sh`** (baked into the image by `Dockerfile`) —
+   runs *after* `/etc/profile` inside login shells and re-adds
+   `/opt/hermes/.venv/bin` to `PATH` (plus re-exports `HERMES_HOME` and
+   `HERMES_INSTALL_DIR` as a belt-and-suspenders). Idempotent: uses a
+   `case ":$PATH:"` check so it doesn't keep appending on repeated sourcing.
+2. **`run.sh` ttyd launch** — changed `/bin/bash -lc` → `/bin/bash -c`
+   (drop the `-l` flag). This skips `/etc/profile` entirely so the venv
+   PATH inherited from `run.sh`'s own environment survives into the
+   interactive shell.
+
+**Invariants for future upgrades**
+- Do not re-add `-l` to the ttyd bash invocation in `run.sh`. If you need
+  login-shell behaviour for some reason, rely on the profile.d drop-in
+  instead.
+- If the upstream Hermes image starts shipping its own `/etc/profile.d`
+  entry that sets `PATH`, the ordering may conflict. Verify by running
+  `echo $PATH` in the ttyd terminal after upgrading and make sure
+  `/opt/hermes/.venv/bin` is still present.
+
+#### Fix 3 — Web UI slimmed to 2-button launcher
+
+**Symptom**
+The v0.9.9 UI had a sidebar with OpenAI Codex login bridge, a chat
+composer, prompt buttons, a transcript, and a terminal card — all
+competing for attention. Users just wanted to launch the official
+dashboard or open a terminal. The in-page chat duplicated functionality
+that the upstream dashboard now does better.
+
+**Root cause**
+Legacy UX from before v2026.4.13 had `hermes dashboard`. We built our own
+chat surface because upstream had none. Now that upstream ships a real
+dashboard, the in-page chat is redundant and dilutes the primary entry
+points.
+
+**Fix**
+Full `index.html` rewrite as a **launcher**. Only retains:
+- Brand block + tagline
+- Status strip (model, gateway health, ingress port, add-on version)
+- Two large cards: "Hermes Dashboard" → `./panel/`, "Hermes 终端" → `./ttyd/`
+- Footer note about ingress routing
+
+`app.js` dropped from 713 lines → ~140 lines. Only `loadModels()` and
+`checkHealth()` survive (plus the error banner handler). Everything else —
+auth bridge, chat composer, prompt history, conversation UUID, thinking
+placeholder — was removed. Legacy CSS is retained at the top of
+`styles.css` as dead code so an old cached `index.html` still renders.
+New launcher styles live in a clearly marked block at the bottom.
+
+**Invariants for future upgrades**
+- Do not add new features to the launcher page. If users ask for chat or
+  config management, direct them to the official `/panel/` dashboard.
+- The launcher must work with JavaScript disabled — all visible text is
+  pre-rendered in `index.html` Chinese literals. `app.js` only *updates*
+  the model name and health pill from `/config-model` and `/health`.
+- Keep `js-error-banner` and the `onerror` handler — they are the only
+  way to surface JS failures to end users who don't check devtools.
+
+---
+
 ### v0.9.9 — `HERMES_HOME` hardcoded in upstream `entrypoint.sh`
 
 **Symptom**

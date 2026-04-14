@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.9.10
+
+### New features
+
+- **接入上游 Hermes 官方 Web 控制面板**: Hermes v2026.4.13 (v0.9.0) 新增了
+  `hermes dashboard` 子命令，提供一个基于 FastAPI 的浏览器控制台。`run.sh`
+  现在会在后台启动 `hermes dashboard --host 127.0.0.1 --port 9119 --no-open`，
+  `server.py` 新增 `/panel/**` 反向代理把它转发到 HA Ingress 单端口模型下。
+  支持 HTTP、WebSocket、HTML 重写（`href="/x"` → `./x`）以及 fetch/XHR/WebSocket
+  运行时补丁，所有绝对路径会自动加上面板前缀。
+- **命令行面板现在可以运行 `hermes`**: 之前 ttyd 用 `bash -lc` 启动登录 shell，
+  Debian 的 `/etc/profile` 会把 PATH 重置成系统默认值，把 `/opt/hermes/.venv/bin`
+  挤掉，导致在终端里打 `hermes` 报 `command not found`。两层修复同时生效：
+  1. Dockerfile 写入 `/etc/profile.d/hermes.sh`，让 PATH 在 `/etc/profile` 之后
+     再把 venv 目录加回来（即使是 login shell 也能命中）。
+  2. `run.sh` 把 `bash -lc` 改成 `bash -c`，跳过 `/etc/profile` 流程作为兜底。
+
+### UI overhaul — slim launcher
+
+- **两按钮启动页**: 原先的聊天、快捷提示、OpenAI 登录桥、终端卡片都已撤下。
+  新版 `index.html` 只有两张大卡片：
+  * **Hermes Dashboard** → 跳转到 `./panel/`（官方 Web 控制面板）
+  * **Hermes 终端** → 跳转到 `./ttyd/`（原生命令行）
+  状态条仍然保留当前模型、网关状态、Ingress 端口和 add-on 版本号四张信息卡，
+  方便一眼看到运行状况。
+- **`app.js` 瘦身**: 713 行 → 约 140 行。只保留 `loadModels()` 和
+  `checkHealth()` 两条核心查询，以及全局错误横幅逻辑。聊天、自动化建议、
+  OpenAI PKCE 登录桥的代码全部删掉，由官方面板承担。
+- **`styles.css` 新增 launcher 层**: 状态卡 + launch-card hover 动效 + 响应式
+  布局（最小 320px 宽即可正常显示，移动端自动堆叠）。旧的 `.app-shell`、
+  `.sidebar`、`.chat-log` 等样式作为死代码保留，不会影响新版页面。
+
+### Internal
+
+- `Dockerfile` 新增 `HERMES_PANEL_HOST` / `HERMES_PANEL_PORT` 环境变量（默认
+  `127.0.0.1:9119`），并兜底 `pip install fastapi uvicorn[standard]`，防止某些
+  离线构建场景下 `hermes dashboard` 因缺依赖而 ImportError。
+- `server.py` 接入 `do_PUT` / `do_PATCH`，因为 FastAPI 面板用到了 REST 动词。
+
 ## 0.9.9
 
 ### Upstream upgrade

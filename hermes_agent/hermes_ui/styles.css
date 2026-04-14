@@ -866,3 +866,298 @@ a.ghost-button {
     width: 100%;
   }
 }
+
+/* =========================================================================
+ * v0.9.10 — Launcher layout
+ * -------------------------------------------------------------------------
+ * The main page is now a slim two-button launcher (official Hermes
+ * dashboard + ttyd terminal) plus a status strip.  Chat, auth, prompt
+ * history, and the conversation transcript were all moved into the
+ * upstream `hermes dashboard` web UI which we reverse-proxy at /panel/**.
+ * All legacy styles above are retained as dead code so an old cached
+ * index.html still renders intelligibly if a browser misses the bump.
+ * ========================================================================= */
+body.launcher-body {
+  overflow: auto;
+  padding: 0;
+}
+
+.launcher-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 72px) clamp(22px, 4vw, 64px) 64px;
+  display: grid;
+  gap: clamp(26px, 3vw, 40px);
+  animation: rise 700ms ease-out both;
+}
+
+.launcher-header {
+  display: grid;
+  gap: 18px;
+}
+
+.launcher-header .brand-block {
+  gap: 20px;
+}
+
+.launcher-header h1 {
+  margin: 4px 0 0;
+  font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+  letter-spacing: -0.01em;
+}
+
+.launcher-tagline {
+  margin: 0;
+  max-width: 62ch;
+  line-height: 1.75;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.status-card {
+  display: grid;
+  gap: 6px;
+  padding: 20px 22px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(11, 18, 34, 0.82), rgba(6, 10, 20, 0.74));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.status-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+}
+
+.status-card-primary {
+  border-color: rgba(116, 242, 212, 0.32);
+  background: linear-gradient(
+    180deg,
+    rgba(116, 242, 212, 0.12),
+    rgba(11, 18, 34, 0.78) 72%
+  );
+  box-shadow: 0 24px 70px rgba(116, 242, 212, 0.1);
+}
+
+.status-card .micro-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.status-card .status-value {
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.status-card .status-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.55;
+  min-height: 1.1em;
+}
+
+#health-status[data-state="ready"] {
+  color: var(--accent);
+}
+
+#health-status[data-state="warning"] {
+  color: var(--accent-warm);
+}
+
+#health-status[data-state="error"] {
+  color: var(--danger);
+}
+
+#health-status[data-state="checking"] {
+  color: var(--muted);
+}
+
+.launch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.launch-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 18px;
+  padding: 30px 30px 26px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(12, 20, 38, 0.9), rgba(5, 9, 18, 0.78));
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.launch-card::before {
+  content: "";
+  position: absolute;
+  inset: -40% 40% auto auto;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.55;
+  z-index: -1;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.launch-card-panel::before {
+  background: radial-gradient(circle, rgba(116, 242, 212, 0.4), transparent 70%);
+}
+
+.launch-card-terminal::before {
+  background: radial-gradient(circle, rgba(66, 196, 214, 0.35), transparent 70%);
+}
+
+.launch-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  box-shadow: 0 40px 110px rgba(0, 0, 0, 0.5);
+}
+
+.launch-card:hover::before {
+  opacity: 0.85;
+  transform: translate(6px, 6px);
+}
+
+.launch-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.launch-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: rgba(116, 242, 212, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(116, 242, 212, 0.28);
+}
+
+.launch-card-terminal .launch-icon {
+  background: rgba(66, 196, 214, 0.12);
+  color: var(--accent-deep);
+  border-color: rgba(66, 196, 214, 0.3);
+}
+
+.launch-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.launch-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.launch-card-terminal .launch-eyebrow {
+  color: var(--accent-deep);
+}
+
+.launch-copy h2 {
+  margin: 0;
+  font-size: 1.55rem;
+  letter-spacing: -0.01em;
+}
+
+.launch-description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.75;
+  font-size: 0.96rem;
+}
+
+.launch-description code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(168, 188, 221, 0.12);
+  color: var(--text);
+  font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+  font-size: 0.88em;
+}
+
+.launch-cta {
+  justify-self: start;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(116, 242, 212, 0.14);
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(116, 242, 212, 0.36);
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.launch-card-terminal .launch-cta {
+  background: rgba(66, 196, 214, 0.14);
+  color: var(--accent-deep);
+  border-color: rgba(66, 196, 214, 0.34);
+}
+
+.launch-card:hover .launch-cta {
+  transform: translateX(2px);
+  background: rgba(116, 242, 212, 0.22);
+}
+
+.launch-card-terminal:hover .launch-cta {
+  background: rgba(66, 196, 214, 0.22);
+}
+
+.launcher-footer {
+  margin-top: 8px;
+  padding: 18px 22px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--line);
+  color: var(--soft);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.launcher-footer p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .launcher-shell {
+    padding: 24px 18px 40px;
+    gap: 22px;
+  }
+
+  .launcher-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .launch-card {
+    padding: 24px 22px 22px;
+  }
+
+  .launch-copy h2 {
+    font-size: 1.35rem;
+  }
+}
