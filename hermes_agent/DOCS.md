@@ -75,10 +75,24 @@ Current limitation:
 
 ## Upgrade workflow
 
-1. Update `HERMES_IMAGE_TAG` in `Dockerfile`
+Since v0.9.9 the upgrade procedure is documented in full in
+[`../docs/UPGRADE_LOG.md`](../docs/UPGRADE_LOG.md). The short version:
+
+1. Update `HERMES_IMAGE_DIGEST` (sha256) and `BUILD_VERSION` in `Dockerfile`
 2. Bump `version` in `config.yaml`
-3. Rebuild and test the add-on
-4. Publish only after verifying Hermes can start, the ingress UI loads, the auth bridge endpoints respond correctly, and the Hermes API proxy works successfully
+3. Run through the pitfalls checklist in
+   [`../docs/ARCHITECTURE.md` §7](../docs/ARCHITECTURE.md#7-common-pitfalls-checklist-for-future-upgrades)
+4. Add a changelog entry **and** a root-cause entry in `UPGRADE_LOG.md`
+5. Rebuild, recreate the container (not just restart — state bugs only
+   surface when the writable layer is wiped), and test
+6. Publish only after verifying Hermes can start, `HERMES_HOME=/data` inside
+   the gateway process, the ingress UI loads, `/config-model` returns the
+   right model, ttyd works, and the Hermes API proxy handles chat requests
+
+**Critical landmine:** do not call `/opt/hermes/docker/entrypoint.sh` from
+`run.sh`. It hardcodes `HERMES_HOME=/opt/data` and will silently break auth
+persistence. See `docs/UPGRADE_LOG.md` → "v0.9.9 — `HERMES_HOME` hardcoded"
+for the full root-cause writeup.
 
 ## Known limitations
 
