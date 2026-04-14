@@ -1,7 +1,9 @@
-ARG BUILD_VERSION="0.9.5"
-ARG HERMES_IMAGE_TAG="dafe443beba74384871e2c79d5b17db8bc51880e"
+ARG BUILD_VERSION="0.9.9"
+# Pinned to the v2026.4.13 release (Hermes Agent v0.9.0) — pushed 2026-04-14.
+# Update this digest when bumping to a newer Hermes release.
+ARG HERMES_IMAGE_DIGEST="sha256:0ee58988876f5bb3d6e8e664542bbad2eb9453b9f8ef9a669afc87316087b357"
 
-FROM nousresearch/hermes-agent:${HERMES_IMAGE_TAG}
+FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
 
 ARG BUILD_VERSION
 

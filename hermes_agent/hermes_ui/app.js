@@ -12,11 +12,15 @@ window.onunhandledrejection = function (e) {
   console.error("[Hermes UI] unhandled promise rejection:", e.reason);
 };
 
-// generateUUID() is only available in secure contexts (HTTPS / localhost).
-// HA LAN access over plain HTTP lacks it — use getRandomValues() as fallback.
+// crypto.randomUUID() is only available in secure contexts (HTTPS / localhost).
+// HA LAN access over plain HTTP lacks it, so we polyfill with getRandomValues.
+// NOTE v0.9.9: the previous version called generateUUID() recursively in the
+// secure-context branch, which caused infinite recursion and a stack overflow
+// whenever the page was served over HTTPS or localhost. Call crypto.randomUUID
+// directly instead.
 function generateUUID() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return generateUUID();
+    return crypto.randomUUID();
   }
   // RFC 4122 v4 UUID via getRandomValues (works in HTTP non-secure contexts)
   var buf = new Uint8Array(16);
@@ -30,7 +34,7 @@ function generateUUID() {
 /**
  * app.js  —  Hermes Agent HA Add-on: Ingress UI Client
  * =====================================================
- * Version: 0.9.0
+ * Version: 0.9.9  (Hermes upstream v2026.4.13 / v0.9.0)
  *
  * Single-page chat interface served by server.py through Home Assistant Ingress.
  * All fetch() calls use relative paths so they work regardless of the Ingress
@@ -154,6 +158,7 @@ const messageTemplate = document.getElementById("message-template");
 const healthStatus = document.getElementById("health-status");
 const conversationId = document.getElementById("conversation-id");
 const modelName = document.getElementById("model-name");
+const modelProvider = document.getElementById("model-provider");
 const messageCount = document.getElementById("message-count");
 const transcriptHint = document.getElementById("transcript-hint");
 const resetButton = document.getElementById("reset-chat");
@@ -375,6 +380,29 @@ function applyAuthStatus(status) {
 }
 
 async function loadModels() {
+  // Prefer /config-model: it reads the Hermes config.yaml directly and returns
+  // both the default model name and the provider (openai-codex, huggingface,
+  // openrouter, etc.), so the sidebar can show "gpt-5.4 (openai-codex)" — the
+  // real thing the gateway is running, not whatever OpenAI-compatible list the
+  // provider happens to expose. Falls back to /models (gateway /v1/models) when
+  // /config-model is unavailable.
+  try {
+    const response = await fetch("./config-model");
+    if (response.ok) {
+      const data = await response.json();
+      const modelId = (data && data.model) ? String(data.model) : "";
+      const provider = (data && data.provider) ? String(data.provider) : "";
+      if (modelId) {
+        activeModel = modelId;
+        modelName.textContent = modelId;
+        if (modelProvider) modelProvider.textContent = provider ? provider : "";
+        return;
+      }
+    }
+  } catch (_) {
+    /* fall through to legacy /models lookup */
+  }
+
   try {
     const response = await fetch("./models");
     if (!response.ok) {
@@ -386,6 +414,7 @@ async function loadModels() {
     if (Array.isArray(data.data) && data.data.length > 0 && data.data[0].id) {
       activeModel = data.data[0].id;
       modelName.textContent = activeModel;
+      if (modelProvider) modelProvider.textContent = "";
       return;
     }
 

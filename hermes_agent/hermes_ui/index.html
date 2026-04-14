@@ -32,6 +32,12 @@
 
         <p id="sidebar-copy" class="sidebar-copy">一个更专注的控制台，用来在 Home Assistant 里调度 Hermes、查看状态和完成对话。</p>
 
+        <article class="status-panel status-panel-model" aria-label="Current model">
+          <span id="label-model" class="micro-label">当前模型</span>
+          <strong id="model-name" class="status-value status-model-name">识别中...</strong>
+          <span id="model-provider" class="status-model-provider"></span>
+        </article>
+
         <div class="status-grid">
           <article class="status-panel">
             <span id="label-gateway" class="micro-label">网关状态</span>
@@ -41,49 +47,21 @@
             <span id="label-conversation" class="micro-label">会话编号</span>
             <strong id="conversation-id" class="status-value">等待中</strong>
           </article>
-          <article class="status-panel status-panel-wide">
-            <span id="label-model" class="micro-label">当前模型</span>
-            <strong id="model-name" class="status-value">识别中...</strong>
-          </article>
         </div>
 
-        <section class="auth-panel" aria-label="Authentication status">
-          <div class="auth-head">
-            <div>
-              <p id="label-auth" class="micro-label">网页登录桥</p>
-              <h3 id="auth-title" class="auth-title">身份验证</h3>
-            </div>
-            <span id="auth-pill" class="auth-pill" data-state="checking">检查中...</span>
-          </div>
-          <p id="auth-copy" class="auth-copy">正在读取认证状态...</p>
-          <div class="auth-actions">
-            <button id="auth-start" class="ghost-button" type="button">打开登录页</button>
-            <button id="auth-refresh" class="ghost-button" type="button">刷新登录</button>
-            <button id="auth-logout" class="ghost-button" type="button">清除会话</button>
-          </div>
-          <label id="auth-input-label" class="micro-label" for="auth-callback-input">回调链接</label>
-          <textarea id="auth-callback-input" class="auth-textarea" name="auth-callback-input" rows="4" placeholder="把浏览器最终跳转到的完整回调 URL 粘贴到这里，也可以只填 code。"></textarea>
-          <div class="auth-footer">
-            <button id="auth-exchange" class="send-button auth-submit" type="button">提交回调</button>
-            <p id="auth-helper" class="auth-helper"></p>
-          </div>
-        </section>
-
-        <section class="prompt-bank" aria-label="Quick prompts">
-          <p id="quick-prompts-label" class="micro-label">快捷提示</p>
-          <div class="prompt-list">
-            <button id="prompt-0" class="prompt-chip" type="button" data-prompt="请总结当前 Home Assistant 的整体情况，并指出任何异常。">全局巡检</button>
-            <button id="prompt-1" class="prompt-chip" type="button" data-prompt="请检查最近的空调和灯光活动，并告诉我最值得关注的变化。">空调与灯光</button>
-            <button id="prompt-2" class="prompt-chip" type="button" data-prompt="请列出当前适合自动化的 Home Assistant 服务，并给出建议。">自动化建议</button>
-          </div>
-        </section>
-
-        <section class="utility-panel" aria-label="Terminal access">
-          <p id="terminal-label" class="micro-label">原生命令行</p>
-          <h3 id="terminal-title" class="utility-title">用完整 ttyd 终端直接配置</h3>
-          <p id="terminal-copy" class="utility-copy">需要更接近官方 Hermes 的终端体验时，切到独立命令行面板。手机端会自动压缩布局，方便直接在 HA App 里操作。</p>
-          <a id="terminal-launch" class="ghost-button terminal-launch" href="./ttyd/" target="_blank" rel="noopener noreferrer">进入命令行面板</a>
-        </section>
+        <!-- Hidden legacy auth elements kept so app.js's applyAuthStatus/
+             attachAuthHandlers can still bind without ReferenceError after
+             the auth panel was removed in v0.9.9. -->
+        <div hidden aria-hidden="true">
+          <span id="auth-pill" data-state="checking"></span>
+          <p id="auth-copy"></p>
+          <textarea id="auth-callback-input"></textarea>
+          <p id="auth-helper"></p>
+          <button id="auth-start" type="button"></button>
+          <button id="auth-refresh" type="button"></button>
+          <button id="auth-logout" type="button"></button>
+          <button id="auth-exchange" type="button"></button>
+        </div>
 
         <button id="reset-chat" class="reset-button" type="button">开始新的会话</button>
       </aside>

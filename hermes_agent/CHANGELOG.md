@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.9.9
+
+### Upstream upgrade
+
+- **升级到 Hermes Agent v2026.4.13 (upstream v0.9.0)**: Dockerfile 基础镜像通过
+  sha256 digest (`sha256:0ee58988876f5bb3d6e8e664542bbad2eb9453b9f8ef9a669afc87316087b357`)
+  固定到 `nousresearch/hermes-agent` 的 v2026.4.13 发布版本。升级镜像只需更新此 digest。
+
+### Breaking fixes
+
+- **`HERMES_HOME` 持久化根本修复**: 以前 `run.sh` 的最后一步调用
+  `/opt/hermes/docker/entrypoint.sh gateway run`，而上游 entrypoint 会在脚本顶部
+  硬编码 `export HERMES_HOME=/opt/data`，覆盖我们设置的 `/data`。结果 gateway 进程
+  会去 `/opt/data/auth.json` 和 `/opt/data/config.yaml` 查找状态，但这些文件只在
+  容器可写层里存在，每次容器重建都会丢失，并导致所有聊天请求返回 `Invalid API key`。
+  
+  修复：`run.sh` 现在直接 `exec hermes gateway run`，完全绕过上游 entrypoint。
+  同时保留一个 `/opt/data -> /data` 的符号链接兜底逻辑，兼容更旧的 Hermes 版本。
+  这样一来，OpenAI Codex 会话、config.yaml、.env、SOUL.md 都持久存放在 HA 数据卷
+  `/data` 上，容器重启或升级都能无缝恢复。
+
+- **`LLM_MODEL` 环境变量已移除 (v2026.4.13 breaking change)**: 上游不再读取
+  `LLM_MODEL`，模型名完全由 `config.yaml` 的 `model.default` 控制。`run.sh` 的
+  bootstrap 不再设置该变量，并主动 `pop()` 掉旧 .env 中残留的 `LLM_MODEL` 行。
+
+- **`config.yaml` 的 `model` 现在必须是 dict**: 上游 v2026.4.13 期望 `model:` 是
+  一个带 `default` / `provider` / `base_url` 字段的映射，而不是纯字符串。`run.sh`
+  bootstrap 现在会把 HA 选项 `llm_model` 写入 `model.default`，默认 provider 保留
+  为 `openai-codex`，以便 `hermes auth login openai-codex` 之后能直接用 ChatGPT 账号。
+
+### UI overhaul
+
+- **侧边栏精简**: 去掉侧边栏中的 OpenAI Codex 登录面板、快捷提示组 (prompt bank)
+  和终端面板。侧边栏现在只显示"当前模型 / 网关状态 / 会话编号"三张状态卡，顶部
+  增加一张展示 `gpt-5.4 (openai-codex)` 之类信息的大号模型卡。
+- **`/config-model` 端点**: `server.py` 新增 `GET /config-model`，直接读取
+  `/data/config.yaml` 返回 `{model, provider}`，这样 UI 侧栏能准确显示 Hermes 真正
+  运行的模型，而不是 provider 暴露的任意 OpenAI 兼容列表里的第一项。
+- **修复 `generateUUID` 无限递归**: 安全上下文 (HTTPS / localhost) 分支以前错误地
+  调用了自身，导致栈溢出。现在正确调用 `crypto.randomUUID()`，非安全上下文下
+  保留 `getRandomValues` 兜底。
+- **`/ttyd/` gzip 502 修复**: 代理 ttyd HTTP 响应时剥掉 `Accept-Encoding` 和
+  `Content-Encoding` 头，避免上游返回 gzip 而我们只转发未压缩数据造成的长度不匹配。
+
 ## 0.9.7
 
 ### Bug fixes

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run.sh  —  Hermes Agent HA Add-on: Container Entrypoint
 # =========================================================
-# Version: 0.9.0
+# Version: 0.9.9  (Hermes upstream v2026.4.13 / v0.9.0)
 #
 # Startup sequence
 # ----------------
@@ -18,7 +18,8 @@
 # 3. Source /data/.env so the gateway process inherits all variables.
 # 4. Start ttyd terminal server in background.
 # 5. Start the Python ingress UI server (server.py) in background.
-# 6. exec the official Hermes gateway entrypoint in the foreground.
+# 6. Bypass upstream entrypoint.sh (which hardcodes HERMES_HOME=/opt/data
+#    and would break our auth.json/config.yaml lookup) and run hermes directly.
 #
 # Options read from /data/options.json (set via HA add-on UI)
 # ------------------------------------------------------------
@@ -135,8 +136,11 @@ env_map["GATEWAY_ALLOW_ALL_USERS"] = "true"
 huggingface_api_key = str(options.get("huggingface_api_key") or "")
 hf_base_url = str(options.get("hf_base_url") or "https://api-inference.huggingface.co/v1")
 
+# NOTE: Hermes v2026.4.13 removes the LLM_MODEL env var.  The model is now
+# configured exclusively via config.yaml (model.default / model.provider).
+# We still honour the llm_model HA option — it is written to config.yaml
+# below, not to the env.
 for option_key, env_key in (
-    ("llm_model", "LLM_MODEL"),
     ("openrouter_api_key", "OPENROUTER_API_KEY"),
     ("openai_base_url", "OPENAI_BASE_URL"),
     ("openai_api_key", "OPENAI_API_KEY"),
@@ -146,6 +150,9 @@ for option_key, env_key in (
     value = options.get(option_key)
     if value not in (None, ""):
         env_map[env_key] = str(value)
+
+# Strip any stale LLM_MODEL carried over from older .env files.
+env_map.pop("LLM_MODEL", None)
 
 # When a HuggingFace API key is provided and no explicit OpenAI base URL is set,
 # wire up the HuggingFace Inference API as the OpenAI-compatible endpoint so that
@@ -198,8 +205,20 @@ if config_path.exists():
     if isinstance(loaded, dict):
         config = loaded
 
+# Hermes v2026.4.13 expects `model` as a mapping (default / provider / base_url),
+# not a plain string.  Preserve any existing provider block; only update the
+# default field when the HA option provides a model name.
+model_cfg = config.get("model")
+if not isinstance(model_cfg, dict):
+    model_cfg = {}
 if llm_model:
-    config["model"] = llm_model
+    model_cfg["default"] = llm_model
+# Preserve the OpenAI Codex defaults on first boot so the web-login flow
+# lights up immediately after an `hermes auth login openai-codex`.
+model_cfg.setdefault("default", llm_model or "gpt-5.4")
+model_cfg.setdefault("provider", "openai-codex")
+model_cfg.setdefault("base_url", "https://chatgpt.com/backend-api/codex")
+config["model"] = model_cfg
 
 terminal = config.get("terminal")
 if not isinstance(terminal, dict):
@@ -273,10 +292,31 @@ fi
 python3 "${HERMES_UI_DIR}/server.py" &
 
 # ── 6. Launch Hermes gateway (foreground — becomes the main process) ──────────
-# IMPORTANT: use "gateway run" not just "gateway".
-# "hermes gateway" without the "run" subcommand attempts to register a systemd/launchd
-# background service, which does not exist inside a Docker container and causes the
-# gateway to exit immediately — leaving port 8642 unbound → Connection Refused errors.
-# "hermes gateway run" forces true foreground execution (official Docker recommendation).
-echo "Starting Hermes Agent gateway via official entrypoint..."
-exec /opt/hermes/docker/entrypoint.sh gateway run
+#
+# IMPORTANT: We do NOT call /opt/hermes/docker/entrypoint.sh here.  That script
+# hardcodes `HERMES_HOME=/opt/data` at the top, which would override our
+# `HERMES_HOME=/data` export and cause the gateway to look for auth.json,
+# config.yaml and .env in the WRONG directory (the container writable layer,
+# which is wiped on every container recreation).
+#
+# We replicate the one-time bootstrap steps that the upstream entrypoint.sh
+# performs (skills_sync) and then exec hermes directly so HERMES_HOME=/data
+# is respected and all state persists in the HA add-on data volume.
+#
+# `hermes gateway run` forces true foreground execution — required inside a
+# Docker container.  `hermes gateway` alone tries to daemonise and exits.
+if [ -f "${HERMES_INSTALL_DIR}/tools/skills_sync.py" ]; then
+  python3 "${HERMES_INSTALL_DIR}/tools/skills_sync.py" || true
+fi
+
+# Safety fallback: if an older Hermes release still expects /opt/data to
+# exist, symlink the key state files so both paths resolve to /data.
+if [ -d /opt/data ]; then
+  for f in auth.json config.yaml .env SOUL.md; do
+    [ -e "/opt/data/$f" ] && [ ! -L "/opt/data/$f" ] && rm -f "/opt/data/$f"
+    [ -e "/data/$f" ] && ln -sf "/data/$f" "/opt/data/$f" 2>/dev/null || true
+  done
+fi
+
+echo "[run.sh] Starting Hermes Agent gateway (HERMES_HOME=${HERMES_HOME})..."
+exec hermes gateway run

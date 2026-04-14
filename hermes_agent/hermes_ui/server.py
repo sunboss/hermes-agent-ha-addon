@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.9.0
+Version: 0.9.9
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles six distinct traffic classes:
@@ -325,8 +325,18 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             lower = key.lower()
             if lower in HOP_BY_HOP_HEADERS or lower == "host":
                 continue
+            # CRITICAL: strip Accept-Encoding so ttyd never returns gzip.
+            # urllib does not auto-decompress, and we need to inject the
+            # JS patch into the HTML payload — impossible on a gzip stream.
+            # If we forwarded a gzip body and kept Content-Encoding: gzip,
+            # HA Supervisor's aiohttp proxy would later fail with
+            # ContentDecodingError → the browser would see a 502.  See
+            # v0.9.8 fix in CHANGELOG.md.
+            if lower == "accept-encoding":
+                continue
             headers[key] = value
         headers["Host"] = f"{TTYD_HOST}:{TTYD_PORT}"
+        headers["Accept-Encoding"] = "identity"
 
         request = urllib.request.Request(
             upstream_url,
@@ -353,6 +363,11 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                         continue
                     # Skip content-length — we'll set the correct value below
                     if lower == "content-length":
+                        continue
+                    # Strip any content-encoding header the upstream sent —
+                    # we forced Accept-Encoding: identity above so the body
+                    # is guaranteed to be uncompressed plain text/html.
+                    if lower == "content-encoding":
                         continue
                     if lower not in seen:
                         self.send_header(key, value)
@@ -562,7 +577,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             self._send_common_headers(HTTPStatus.OK, "application/json")
             return
-        if path in {"/auth/status", "/auth/start", "/auth/callback", "/health", "/models"}:
+        if path in {"/auth/status", "/auth/start", "/auth/callback", "/health", "/models", "/config-model"}:
             self._send_common_headers(HTTPStatus.OK, "application/json")
             return
 
@@ -619,7 +634,39 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             self._proxy_api(upstream_path)
             return
         if path == "/models":
-            self._send_json(HTTPStatus.OK, shim_list_models())
+            # Proxy to the real Hermes gateway so the UI shows the actual
+            # model served by `config.yaml`, not the static shim list.
+            # Falls back to the shim list if the gateway is unreachable.
+            try:
+                _mreq = urllib.request.Request(
+                    f"{API_BASE}/v1/models",
+                    headers={"Authorization": f"Bearer {API_KEY}"} if API_KEY else {},
+                )
+                with urllib.request.urlopen(_mreq, timeout=5) as _mresp:
+                    self._send_json(HTTPStatus.OK, json.loads(_mresp.read().decode("utf-8")))
+            except Exception:  # noqa: BLE001
+                self._send_json(HTTPStatus.OK, shim_list_models())
+            return
+        if path == "/config-model":
+            # Return the model/provider declared in /data/config.yaml so the
+            # sidebar can display the actually-configured model (e.g. gpt-5.4
+            # / openai-codex) rather than the gateway's generic model id.
+            try:
+                import yaml as _yaml  # local import — yaml is already a dep
+                with open("/data/config.yaml", "r", encoding="utf-8") as _cf:
+                    _cfg = _yaml.safe_load(_cf.read()) or {}
+                _mc = _cfg.get("model")
+                if isinstance(_mc, str):
+                    self._send_json(HTTPStatus.OK, {"model": _mc, "provider": ""})
+                elif isinstance(_mc, dict):
+                    self._send_json(HTTPStatus.OK, {
+                        "model": str(_mc.get("default", "")),
+                        "provider": str(_mc.get("provider", "")),
+                    })
+                else:
+                    self._send_json(HTTPStatus.OK, {"model": "", "provider": ""})
+            except Exception:  # noqa: BLE001
+                self._send_json(HTTPStatus.OK, {"model": "", "provider": ""})
             return
         if path == "/auth/status":
             self._send_json(HTTPStatus.OK, get_status())
