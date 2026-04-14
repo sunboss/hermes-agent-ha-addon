@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.9.10
+Version: 0.9.11
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
@@ -605,7 +605,42 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             body = patch + body
         return body
 
+    # Friendly "still building..." fallback page.  Auto-refreshes every 5s via
+    # <meta refresh> so the user doesn't have to manually reload once Vite
+    # finishes compiling the SPA.  Only served when the underlying GET to
+    # hermes dashboard refuses the connection (ECONNREFUSED) or the upstream
+    # returns 502 / 503 while still booting.
+    _PANEL_BOOT_PAGE = (
+        '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
+        '<meta http-equiv="refresh" content="4">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>Hermes 面板正在构建...</title>'
+        '<style>'
+        'body{margin:0;min-height:100vh;display:grid;place-items:center;'
+        'background:linear-gradient(180deg,#070b17 0%,#040711 48%,#02040a 100%);'
+        'color:#eef4fb;font-family:"Segoe UI Variable","Segoe UI",sans-serif;}'
+        '.panel{width:min(92vw,560px);padding:32px;border-radius:28px;'
+        'border:1px solid rgba(168,188,221,.18);background:rgba(7,12,24,.84);'
+        'box-shadow:0 30px 90px rgba(0,0,0,.45);}'
+        '.eyebrow{margin:0 0 12px;color:#74f2d4;letter-spacing:.16em;'
+        'text-transform:uppercase;font-size:.74rem;}'
+        'h1{margin:0 0 14px;font-size:1.8rem;}'
+        'p{margin:0 0 10px;line-height:1.75;color:#9cabbe;}'
+        '.dot{display:inline-block;width:8px;height:8px;border-radius:999px;'
+        'background:#74f2d4;box-shadow:0 0 12px #74f2d4;animation:p 1.2s ease-in-out infinite;}'
+        '@keyframes p{0%,100%{opacity:.35}50%{opacity:1}}'
+        '</style></head><body><section class="panel">'
+        '<p class="eyebrow"><span class="dot"></span> Hermes Dashboard</p>'
+        '<h1>官方控制面板正在构建…</h1>'
+        '<p>首次启动时 <code>hermes dashboard</code> 需要先构建 Web 资源，大约需要 30–60 秒。</p>'
+        '<p>这个页面会每 4 秒自动刷新一次，构建完成后会直接进入控制面板。</p>'
+        '</section></body></html>'
+    )
+
     def _proxy_panel_http(self) -> None:
+        import errno as _errno
+        import time as _time
+
         parsed = urllib.parse.urlsplit(self.path)
         upstream_path = parsed.path[len("/panel"):] or "/"
         if parsed.query:
@@ -635,64 +670,105 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             headers=headers,
             method=self.command,
         )
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                payload = response.read()
-                content_type = response.headers.get("Content-Type", "")
-                if "text/html" in content_type:
-                    payload = self._rewrite_panel_html(payload)
-                self.send_response(response.getcode())
-                seen: set[str] = set()
-                for key, value in response.headers.items():
+
+        # Boot-window retry: `hermes dashboard` starts listening on 9119
+        # AFTER its Vite build finishes (~30–60s on first boot).  During that
+        # window GETs refuse with ECONNREFUSED.  Short in-proxy retry papers
+        # over the momentary case; sustained failure falls through to the
+        # friendly auto-refreshing HTML page below (only for HTML-accepting
+        # browser GETs — SPA asset/API fetches still get JSON 502 so they
+        # can fail fast and the SPA can retry on its own).
+        _PANEL_RETRIES = 3
+        _PANEL_DELAY = 0.7
+
+        for attempt in range(_PANEL_RETRIES):
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    payload = response.read()
+                    content_type = response.headers.get("Content-Type", "")
+                    if "text/html" in content_type:
+                        payload = self._rewrite_panel_html(payload)
+                    self.send_response(response.getcode())
+                    seen: set[str] = set()
+                    for key, value in response.headers.items():
+                        lower = key.lower()
+                        if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
+                            continue
+                        if lower == "content-length":
+                            continue
+                        if lower == "content-encoding":
+                            continue
+                        # Strip Location-rewriting for now — upstream should
+                        # only redirect with relative paths inside its SPA.
+                        if lower not in seen:
+                            self.send_header(key, value)
+                            seen.add(lower)
+                    self.send_header("Content-Length", str(len(payload)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(payload)
+                return  # success
+            except urllib.error.HTTPError as exc:
+                payload = exc.read()
+                self.send_response(exc.code)
+                seen2: set[str] = set()
+                for key, value in exc.headers.items():
                     lower = key.lower()
                     if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
                         continue
                     if lower == "content-length":
                         continue
-                    if lower == "content-encoding":
-                        continue
-                    # Strip Location-rewriting for now — upstream should only
-                    # redirect with relative paths inside its own SPA.
-                    if lower not in seen:
+                    if lower not in seen2:
                         self.send_header(key, value)
-                        seen.add(lower)
+                        seen2.add(lower)
                 self.send_header("Content-Length", str(len(payload)))
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
                 self.wfile.write(payload)
-        except urllib.error.HTTPError as exc:
-            payload = exc.read()
-            self.send_response(exc.code)
-            seen2: set[str] = set()
-            for key, value in exc.headers.items():
-                lower = key.lower()
-                if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
+                return
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except OSError as exc:
+                is_refused = getattr(exc, "errno", None) in (
+                    _errno.ECONNREFUSED,
+                    _errno.ENOENT,
+                )
+                if is_refused and attempt < _PANEL_RETRIES - 1:
+                    _time.sleep(_PANEL_DELAY)
                     continue
-                if lower == "content-length":
-                    continue
-                if lower not in seen2:
-                    self.send_header(key, value)
-                    seen2.add(lower)
-            self.send_header("Content-Length", str(len(payload)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(payload)
-        except (BrokenPipeError, ConnectionResetError):
-            return
-        except OSError as exc:
-            self._send_json(
-                HTTPStatus.BAD_GATEWAY,
-                {
-                    "error": "panel_unavailable",
-                    "message": (
-                        f"Hermes 面板暂时无法连接（{PANEL_HOST}:{PANEL_PORT}）。"
-                        "请确认 `hermes dashboard` 子命令在该 Hermes 版本中可用。"
-                    ),
-                    "detail": str(exc),
-                },
-            )
-        except Exception as exc:  # noqa: BLE001
-            self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+                # Final attempt failed — serve the boot page to HTML-accepting
+                # browser GETs and JSON 502 to everything else (XHR/SPA/etc).
+                accept = (self.headers.get("Accept") or "").lower()
+                wants_html = (
+                    self.command == "GET"
+                    and ("text/html" in accept or "*/*" in accept or not accept)
+                    and upstream_path.rstrip("?").split("?", 1)[0].endswith(("/", ".html"))
+                )
+                if is_refused and wants_html:
+                    data = self._PANEL_BOOT_PAGE.encode("utf-8")
+                    self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Retry-After", "4")
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+                self._send_json(
+                    HTTPStatus.BAD_GATEWAY,
+                    {
+                        "error": "panel_unavailable",
+                        "message": (
+                            f"Hermes 面板暂时无法连接（{PANEL_HOST}:{PANEL_PORT}）。"
+                            "请确认 `hermes dashboard` 子命令在该 Hermes 版本中可用。"
+                        ),
+                        "detail": str(exc),
+                    },
+                )
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+                return
 
     def _proxy_panel_websocket(self) -> None:
         """Proxy a WebSocket upgrade from /panel/** to the upstream dashboard."""

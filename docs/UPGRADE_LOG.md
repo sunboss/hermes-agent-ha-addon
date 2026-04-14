@@ -43,6 +43,153 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v0.9.11 — Wrong default model + panel boot 502
+
+Shipped: 2026-04-15. Upstream still `v2026.4.13 / v0.9.0`
+(`sha256:0ee58988876f5bb3d6e8e664542bbad2eb9453b9f8ef9a669afc87316087b357`).
+
+#### Fix 1 — Default model changed from `NousResearch/Hermes-4-14B` → `gpt-5.4`
+
+**Symptom**
+User opens the ttyd terminal, types any message. Hermes starts, then prints:
+
+```
+⚠  Nous Research Hermes 3 & 4 models are NOT agentic and are not designed
+   for use with Hermes Agent. They lack tool-calling capabilities required
+   for agent workflows.
+
+⚠️  Stripped provider prefix from 'NousResearch/Hermes-4-14B';
+    using 'Hermes-4-14B' for OpenAI Codex.
+❌ HTTP 400: "The 'Hermes-4-14B' model is not supported when using Codex
+   with a ChatGPT account."
+```
+
+Every chat turn 400s in the first call. Reproducible from a clean install.
+
+**Root cause**
+Historical naming collision. Nous Research publishes a family of open-weight
+LLMs called "Hermes" (Hermes-4-14B, Hermes-4-70B, Hermes-4.3-36B, …). A
+*separate* upstream project called "Hermes Agent" — maintained by
+`nousresearch/hermes-agent` — is a general-purpose agent framework that
+needs tool-calling-capable models (Claude, GPT, Gemini, DeepSeek, Grok).
+
+v0.8.0 of this add-on was built under the wrong assumption that "Hermes
+Agent" = "shell for running Nous Research Hermes LLMs", so the default
+model was set to `NousResearch/Hermes-4-14B`. That default persisted
+through v0.9.10 without anyone noticing because most testing went through
+the in-page chat shim, which happily proxied to HuggingFace Inference API.
+
+In v0.9.11 the upstream gateway got stricter and started explicitly
+warning about this combination at agent-init time, then rejecting the
+model at the provider layer (Codex refuses anything that isn't a GPT
+model). This cascaded into a 100% chat-failure rate for any user on the
+default config paired with the web_login flow.
+
+Meanwhile `run.sh` bootstrap's `model_cfg.setdefault(...)` meant upgrade
+paths from v0.8.0–v0.9.10 could not self-heal: if `/data/config.yaml`
+already had `model.default: NousResearch/Hermes-4-14B` from a prior boot,
+`setdefault` preserved it forever.
+
+**Fix**
+Three layers, all in `run.sh` Python bootstrap + `config.yaml`:
+
+1. **`config.yaml` default** — `llm_model: "NousResearch/Hermes-4-14B"`
+   → `llm_model: "gpt-5.4"`. Fresh installs get a working pairing with
+   the default `openai-codex` provider + ChatGPT-account web login.
+
+2. **Active migration for existing users** — after reading
+   `/data/config.yaml`, check `model.default` against a blocklist of
+   non-agentic prefixes: `NousResearch/Hermes`, `Hermes-3`, `Hermes-4`.
+   If matched, overwrite with `gpt-5.4` and log:
+   ```
+   [run.sh] MIGRATING model.default 'NousResearch/Hermes-4-14B' → 'gpt-5.4'
+            (Hermes Agent requires agentic models; see CHANGELOG v0.9.11)
+   ```
+   Also resets `provider`/`base_url` to `openai-codex` if they were tied
+   to the legacy HuggingFace/NousResearch shim.
+
+3. **Block the HA option path too** — if the user explicitly sets
+   `llm_model: "NousResearch/Hermes-4-14B"` in the add-on UI, we log a
+   WARNING and still fall back to `gpt-5.4`. Rationale: better to work
+   with a surprising model than to fail every turn silently.
+
+`OPENAI_SHIM_MODEL` and `API_SERVER_MODEL_NAME` fallbacks updated to
+`gpt-5.4`. `translations/en.yaml`, `README.md`, `DOCS.md`, `INSTALL.md`
+rewritten to recommend agentic models (Claude 4.6, Gemini 2.5 Pro,
+DeepSeek V3, Grok 4, gpt-5.4, gpt-4o, o3, o4-mini) and explicitly warn
+against NousResearch Hermes 3/4, Llama/Mistral base.
+
+**Invariants for future upgrades**
+- Do NOT put any `NousResearch/Hermes-*` identifier back in the default
+  `llm_model` or in any recommended-model list. The name collision is a
+  trap; the upstream framework needs tool calling.
+- If upstream Hermes Agent *ever* adds support for Nous Research Hermes
+  models (unlikely — they'd need to train tool-calling variants), you
+  can remove the migration block. Until then, keep it.
+- Keep the migration block tolerant: it only rewrites `model.default`
+  when the current value is clearly non-agentic. Do not broaden it to
+  touch `provider` or `base_url` unless you've verified no one is using
+  a custom OpenAI-compatible endpoint with a legacy model name.
+- When updating the docs, write the agentic-model list in order of
+  expected preference: GPT > Claude > Gemini > DeepSeek > Grok — this
+  is the order that has working providers in `run.sh` bootstrap.
+
+#### Fix 2 — `/panel/` 502 during Vite build window
+
+**Symptom**
+First click on the "Hermes Dashboard" button after a fresh add-on start
+returns a blank 502 JSON error. Waiting ~60 seconds and clicking again
+works fine. Add-on log shows:
+
+```
+[run.sh] hermes dashboard started (PID 14)
+[Hermes UI] 172.30.32.2 - "GET /panel/ HTTP/1.1" 502 -
+...
+→ Building web UI...          ← Vite compiles the SPA; takes ~42s on aarch64
+  ✓ Web UI built
+  Hermes Web UI → http://127.0.0.1:9119
+[Hermes UI] 172.30.32.2 - "GET /panel/ HTTP/1.1" 200 -
+```
+
+**Root cause**
+`hermes dashboard` does not bind 9119 immediately on launch. It first
+runs a Vite build to produce the SPA bundle, which takes 30–60 seconds
+on aarch64 (HA Green / Home Assistant Yellow / Raspberry Pi 5 class).
+During that window, any connection attempt to 9119 gets `ECONNREFUSED`
+because nothing is listening yet. Our `_proxy_panel_http` mapped that
+directly to a plain JSON 502, which looked like a hard failure even
+though it's a transient startup race.
+
+**Fix**
+Two-layer retry in `_proxy_panel_http`:
+
+1. **In-proxy retries** — up to 3 attempts with 0.7s delay between each
+   on `ECONNREFUSED` / `ENOENT`. Papers over the typical case where the
+   build just finished a moment ago.
+
+2. **HTML fallback page** — if all retries exhaust and the request is a
+   browser HTML GET (`Accept: text/html`, path ends in `/` or `.html`),
+   serve `_PANEL_BOOT_PAGE`: a small Chinese page with
+   `<meta http-equiv="refresh" content="4">` that auto-reloads every
+   4 seconds. Once the build finishes on the next refresh the user
+   transparently lands on the real panel.
+
+3. **SPA fetch/XHR still get JSON 502** — distinguished by the Accept
+   header and the path shape. This is important: the SPA has its own
+   retry logic and doesn't want an HTML body as a JSON response.
+
+**Invariants for future upgrades**
+- If upstream starts pre-building the Vite bundle at image build time
+  (so 9119 binds instantly), the retry/boot-page logic becomes dead
+  code but is harmless — leave it as insurance against regressions.
+- Do not extend the retry count or delay much. HA Ingress aiohttp has
+  a request timeout; blocking for 10+ seconds in a single HTTP handler
+  risks the Supervisor killing the connection.
+- The boot page must stay tiny. No JS, no external fonts, no external
+  assets. It's served *precisely* when the network is flaky.
+
+---
+
 ### v0.9.10 — Adopt upstream web dashboard + terminal PATH + launcher UI
 
 Shipped: 2026-04-15. Upstream still `v2026.4.13 / v0.9.0`

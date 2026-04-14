@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Wraps the official Hermes Agent image as a Home Assistant add-on with an ingress Web UI."
-version: "0.9.10"
+version: "0.9.11"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -13,7 +13,7 @@ arch:
   - amd64
 url: "https://github.com/sunboss/hermes-agent-ha-addon"
 options:
-  llm_model: "NousResearch/Hermes-4-14B"
+  llm_model: "gpt-5.4"
   openrouter_api_key: ""
   openai_base_url: ""
   openai_api_key: ""

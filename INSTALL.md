@@ -11,12 +11,22 @@
 
 Use a narrow first-run setup:
 
-- `llm_model`: defaults to `NousResearch/Hermes-4-14B`; for larger models use `NousResearch/Hermes-4-70B`, `NousResearch/Hermes-4-405B`, or `NousResearch/Hermes-4.3-36B`
-- `auth_mode`: start with `api_key` unless you are intentionally validating the OpenAI Codex browser-login bridge
-- `huggingface_api_key`: if using NousResearch models via HuggingFace Inference API (recommended for Hermes 4 series)
-- `hf_base_url`: leave as `https://api-inference.huggingface.co/v1` unless using a custom HuggingFace endpoint
-- `openrouter_api_key`: if using OpenRouter
-- or `openai_base_url` + `openai_api_key`: if using any other OpenAI-compatible endpoint
+- `llm_model`: defaults to `gpt-5.4` (pairs with the built-in OpenAI Codex
+  ChatGPT-account web login).  **Must be an agentic / tool-calling model**:
+  `gpt-5.4`, `gpt-4o`, `o3`, `o4-mini`, `claude-opus-4-6`,
+  `claude-sonnet-4-6`, `gemini-2.5-pro`, `deepseek-v3`, `grok-4`, etc.
+  **Do NOT use** `NousResearch/Hermes-*` (rejected by upstream), Llama
+  base, or Mistral base.
+- `auth_mode`: `web_login` (default) uses the ChatGPT-account bridge;
+  attach your account by running `hermes auth login openai-codex` from
+  the ttyd terminal once after first boot.  Switch to `api_key` if you
+  prefer passing `openai_api_key` or `openrouter_api_key` directly.
+- `openai_api_key` + `openai_base_url`: use for OpenAI, Azure OpenAI, or
+  any OpenAI-compatible endpoint (incl. Anthropic via an OpenAI shim).
+- `openrouter_api_key`: if using OpenRouter.
+- `huggingface_api_key` / `hf_base_url`: optional, only useful once
+  upstream Hermes Agent supports HuggingFace-hosted agentic models
+  directly.  Not recommended for initial setup.
 - `auth_provider`: leave `openai_web` for the browser-login path
 - `auth_storage_path`: leave `/data/auth` unless you need a custom persistent location
 - `openai_oauth_client_id`: required only for `auth_mode=web_login`

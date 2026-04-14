@@ -25,18 +25,33 @@ If you prefer to add it manually:
 
 ## Quick Start
 
+> ⚠ **Model compatibility** — Hermes Agent is an **agent framework**, not a
+> wrapper around Nous Research Hermes models.  It needs tool-calling-capable
+> models to function.  **Supported**: GPT (`gpt-5.4`, `gpt-4o`, `o3`,
+> `o4-mini`), Claude (`claude-opus-4-6`, `claude-sonnet-4-6`), Gemini
+> (`gemini-2.5-pro`), DeepSeek (`deepseek-v3`), Grok.  **Not supported**:
+> NousResearch Hermes 3/4 series, Llama base, Mistral base — these will
+> be rejected by upstream with `model not supported` or silently drop
+> tool calls.  (The name collision is unfortunate; the upstream project
+> is a general-purpose agent framework that happens to share the name.)
+
 1. Install the add-on from this repository.
-2. Set `llm_model` (default: `NousResearch/Hermes-4-14B`; also available: `NousResearch/Hermes-4-70B`, `NousResearch/Hermes-4-405B`, `NousResearch/Hermes-4.3-36B`).
-3. Choose `auth_mode`.
-4. If `auth_mode=api_key`, set credentials via one of:
-   - `huggingface_api_key` (for NousResearch models on HuggingFace Inference API)
-   - `openrouter_api_key` (for OpenRouter)
-   - `openai_base_url` + `openai_api_key` (for any OpenAI-compatible endpoint)
-5. Keep `terminal_backend` on `local` for the first run.
-6. Start with a narrow `watch_domains` list.
-7. Start the add-on and check the logs.
-8. Open **OPEN WEB UI** from the add-on page.
-9. Use **进入命令行面板** when you want the full ttyd shell experience.
+2. Set `llm_model`.  Default is `gpt-5.4` which pairs with the built-in
+   OpenAI Codex ChatGPT-account web login.  Override it with any agentic
+   model ID your provider exposes (e.g. `claude-opus-4-6`,
+   `gemini-2.5-pro`, `deepseek-v3`).
+3. Choose `auth_mode`:
+   - `api_key` — fill in `openai_api_key` + `openai_base_url`, or
+     `openrouter_api_key`, etc.
+   - `web_login` (default) — after the add-on starts, open the ttyd
+     terminal from the launcher page and run
+     `hermes auth login openai-codex` to attach your ChatGPT account.
+4. Keep `terminal_backend` on `local` for the first run.
+5. Start with a narrow `watch_domains` list.
+6. Start the add-on and check the logs.
+7. Open **OPEN WEB UI** from the add-on page — you'll see two big buttons:
+   **Hermes Dashboard** (official FastAPI control panel) and
+   **Hermes 终端** (full ttyd shell).
 
 ## Add-ons
 
@@ -51,19 +66,27 @@ Wraps the official [`nousresearch/hermes-agent`](https://hub.docker.com/r/nousre
 
 Start with these settings:
 
-- `llm_model`: defaults to `NousResearch/Hermes-4-14B`; other Hermes 4 options: `NousResearch/Hermes-4-70B`, `NousResearch/Hermes-4-405B`, `NousResearch/Hermes-4.3-36B`
-- `auth_mode: api_key` for the current working chat path
-- `huggingface_api_key` for NousResearch models via HuggingFace Inference API, or `openrouter_api_key`, or `openai_base_url` + `openai_api_key`
+- `llm_model`: defaults to `gpt-5.4` (pairs with `openai-codex` provider and
+  the built-in ChatGPT-account web login).  Any agentic model ID works:
+  `claude-opus-4-6`, `claude-sonnet-4-6`, `gemini-2.5-pro`, `deepseek-v3`,
+  `gpt-4o`, `o3`, `o4-mini`, `grok-4`, etc.
+- `auth_mode: web_login` (default) lets you attach a ChatGPT account from
+  the ttyd terminal with `hermes auth login openai-codex`.  Use
+  `auth_mode: api_key` if you'd rather pass a raw key via
+  `openai_api_key` / `openrouter_api_key`.
 - `terminal_backend: local`
 - a narrow `watch_domains` list such as `climate`, `binary_sensor`, or `light`
 
 ## Web UI
 
 - Uses Home Assistant Ingress, so no extra port mapping is needed
-- Talks to Hermes through the add-on's internal OpenAI-compatible API server
-- Keeps the Hermes API bound to `127.0.0.1` and proxies requests through the ingress-only UI server
-- Ships with a polished chat-first control surface plus a dedicated ttyd terminal workspace
-- Exposes `/auth/status`, `/auth/start`, `/auth/exchange`, `/auth/refresh`, and `/auth/logout`
+- Slim two-button launcher: **Hermes Dashboard** (official FastAPI control
+  panel reverse-proxied at `/panel/**`) and **Hermes 终端** (ttyd shell
+  reverse-proxied at `/ttyd/**`)
+- Status strip shows current model, gateway health, ingress port, and
+  add-on version
+- Keeps the Hermes API and dashboard bound to `127.0.0.1` and proxies
+  requests through the ingress-only UI server
 
 ## Browser Login Bridge
 

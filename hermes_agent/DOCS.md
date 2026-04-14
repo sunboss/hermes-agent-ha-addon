@@ -27,35 +27,55 @@ The add-on uses the Supervisor proxy instead of requiring a manually created lon
 
 ## Recommended first setup
 
-1. Set `llm_model` (default: `NousResearch/Hermes-4-14B`; also available: `NousResearch/Hermes-4-70B`, `NousResearch/Hermes-4-405B`, `NousResearch/Hermes-4.3-36B`)
-2. Set `auth_mode=api_key` for the working chat path, or `auth_mode=web_login` if you want to validate the OpenAI Codex browser-login bridge
-3. If using the working chat path, set credentials via one of:
-   - `huggingface_api_key` for NousResearch models via HuggingFace Inference API (https://huggingface.co/NousResearch)
+1. Set `llm_model` to an agentic model ID.  The default `gpt-5.4` pairs
+   with the built-in OpenAI Codex ChatGPT-account web login (no API key
+   needed after a one-time `hermes auth login openai-codex` in the ttyd
+   terminal).  Override with anything agentic: `claude-opus-4-6`,
+   `claude-sonnet-4-6`, `gemini-2.5-pro`, `deepseek-v3`, `gpt-4o`, `o3`,
+   `o4-mini`, `grok-4`, …
+2. Leave `auth_mode=web_login` if you want the ChatGPT-account path.
+   Switch to `auth_mode=api_key` if you'd rather pass a raw key:
+   - `openai_api_key` + `openai_base_url` for OpenAI / Anthropic (via
+     OpenAI-compatible shim) / Azure OpenAI / any OpenAI-compatible
+     endpoint
    - `openrouter_api_key` for OpenRouter
-   - `openai_base_url` + `openai_api_key` for any OpenAI-compatible endpoint
-4. Start with a narrow `watch_domains` list such as `climate`, `binary_sensor`, or `light`
-5. Choose `terminal_backend` based on where Hermes should run shell commands
-6. Leave `watch_all` disabled unless you really need every state change
-7. Open the built-in Web UI from the add-on page after startup
+3. Start with a narrow `watch_domains` list such as `climate`,
+   `binary_sensor`, or `light`.
+4. Choose `terminal_backend` based on where Hermes should run shell
+   commands.
+5. Leave `watch_all` disabled unless you really need every state change.
+6. Open the built-in Web UI from the add-on page after startup.
 
-## NousResearch Hermes 4 Models
+## Which models actually work?
 
-The add-on is configured to use NousResearch Hermes 4 series models by default. These models use ChatML format with `<|im_start|>` tokens and the following recommended sampling parameters:
+Hermes Agent is an **agent framework** that requires tool-calling-capable
+models.  It is NOT a wrapper around Nous Research Hermes (the LLM series).
+The upstream gateway will reject non-agentic models at runtime with:
 
-- `temperature`: 0.6
-- `top_p`: 0.95
-- `top_k`: 20
+```
+⚠  Nous Research Hermes 3 & 4 models are NOT agentic and are not designed
+   for use with Hermes Agent. They lack tool-calling capabilities required
+   for agent workflows.
+```
 
-Models available on HuggingFace (https://huggingface.co/NousResearch):
+**Supported agentic models** (pick whichever your provider exposes):
 
-| Model | HuggingFace ID |
-|-------|----------------|
-| Hermes 4 14B (default) | `NousResearch/Hermes-4-14B` |
-| Hermes 4 70B | `NousResearch/Hermes-4-70B` |
-| Hermes 4 405B | `NousResearch/Hermes-4-405B` |
-| Hermes 4.3 36B | `NousResearch/Hermes-4.3-36B` |
+| Family   | Example IDs                                        |
+|----------|----------------------------------------------------|
+| OpenAI   | `gpt-5.4`, `gpt-4o`, `o3`, `o4-mini`               |
+| Anthropic| `claude-opus-4-6`, `claude-sonnet-4-6`             |
+| Google   | `gemini-2.5-pro`, `gemini-2.0-flash`               |
+| DeepSeek | `deepseek-v3`, `deepseek-r1`                       |
+| xAI      | `grok-4`                                           |
 
-To use these models, set `huggingface_api_key` to your HuggingFace token and leave `hf_base_url` at the default `https://api-inference.huggingface.co/v1`. The add-on will automatically wire up the HuggingFace Inference API as the OpenAI-compatible endpoint.
+**NOT supported** (will 400 on every chat turn): `NousResearch/Hermes-*`,
+Llama base, Mistral base, Qwen base, any non-tool-calling model.
+
+> Historical note: versions 0.8.0–0.9.10 of this add-on shipped with
+> `llm_model: "NousResearch/Hermes-4-14B"` as the default.  That was
+> wrong — it predated the v2026.4.13 upstream warning.  v0.9.11 migrates
+> any existing config with a `NousResearch/Hermes-*` model.default back
+> to `gpt-5.4` automatically on next boot.
 
 ## Browser login bridge
 

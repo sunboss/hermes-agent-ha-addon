@@ -1,6 +1,6 @@
 // app.js  —  Hermes Agent HA Add-on: Launcher UI Client
 // =====================================================
-// Version: 0.9.10 (Hermes upstream v2026.4.13 / v0.9.0)
+// Version: 0.9.11 (Hermes upstream v2026.4.13 / v0.9.0)
 //
 // This page is a minimal launcher: two big buttons (official Hermes
 // dashboard + ttyd terminal) and a status strip (model, gateway health).

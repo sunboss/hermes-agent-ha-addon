@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run.sh  —  Hermes Agent HA Add-on: Container Entrypoint
 # =========================================================
-# Version: 0.9.10 (Hermes upstream v2026.4.13 / v0.9.0)
+# Version: 0.9.11 (Hermes upstream v2026.4.13 / v0.9.0)
 #
 # Startup sequence
 # ----------------
@@ -24,7 +24,12 @@
 #
 # Options read from /data/options.json (set via HA add-on UI)
 # ------------------------------------------------------------
-#   llm_model            Model ID (default: NousResearch/Hermes-4-14B)
+#   llm_model            Agentic model ID (default: gpt-5.4 via openai-codex).
+#                        IMPORTANT: Hermes Agent requires tool-calling-capable
+#                        models — Claude / GPT / Gemini / DeepSeek / Grok.
+#                        Non-agentic models (Nous Research Hermes 3/4,
+#                        Mistral base, Llama base) will fail with
+#                        `model not supported` or silent tool-call dropouts.
 #   openrouter_api_key   OpenRouter API key
 #   openai_base_url      OpenAI-compatible base URL
 #   openai_api_key       OpenAI-compatible API key
@@ -130,10 +135,10 @@ env_map["API_SERVER_ENABLED"] = "true"
 env_map["API_SERVER_HOST"] = "127.0.0.1"
 env_map["API_SERVER_PORT"] = "8642"
 env_map["API_SERVER_KEY"] = str(options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24))
-env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or "NousResearch/Hermes-4-14B"
+env_map["OPENAI_SHIM_MODEL"] = llm_model or env_map.get("OPENAI_SHIM_MODEL") or "gpt-5.4"
 # API_SERVER_MODEL_NAME controls what the Hermes gateway returns from GET /v1/models.
 # Set it to the configured llm_model so the UI model picker shows the real model name.
-env_map["API_SERVER_MODEL_NAME"] = llm_model or env_map.get("API_SERVER_MODEL_NAME") or "NousResearch/Hermes-4-14B"
+env_map["API_SERVER_MODEL_NAME"] = llm_model or env_map.get("API_SERVER_MODEL_NAME") or "gpt-5.4"
 env_map["HERMES_TTYD_PORT"] = os.environ.get("HERMES_TTYD_PORT", "7681")
 # Allow all users — the HA add-on is a trusted internal component; HA Ingress
 # handles external auth, so we don't need the gateway to enforce its own allowlist.
@@ -217,11 +222,52 @@ if config_path.exists():
 model_cfg = config.get("model")
 if not isinstance(model_cfg, dict):
     model_cfg = {}
-if llm_model:
+
+# v0.9.11 migration — rescue users who were stuck on a non-agentic default.
+# Hermes Agent (the framework) requires tool-calling-capable models.  Nous
+# Research Hermes 3/4 variants (we shipped them as the default in v0.8.0
+# through v0.9.10 by mistake) are explicitly rejected by upstream at runtime
+# with the warning:
+#   "⚠  Nous Research Hermes 3 & 4 models are NOT agentic and are not
+#    designed for use with Hermes Agent."
+# If an existing /data/config.yaml still pins one of those, force it back to
+# the openai-codex default so the gateway stops 400ing on every chat turn.
+_NON_AGENTIC_PREFIXES = ("NousResearch/Hermes", "Hermes-3", "Hermes-4")
+_current_default = str(model_cfg.get("default") or "")
+_current_is_non_agentic = any(
+    _current_default == p or _current_default.startswith(p) for p in _NON_AGENTIC_PREFIXES
+)
+if _current_is_non_agentic:
+    print(
+        f"[run.sh] MIGRATING model.default '{_current_default}' → 'gpt-5.4' "
+        f"(Hermes Agent requires agentic models; see CHANGELOG v0.9.11)"
+    )
+    model_cfg["default"] = "gpt-5.4"
+    # Also reset provider/base_url if they were tied to the legacy shim.
+    if model_cfg.get("provider") in (None, "", "huggingface", "nous-research"):
+        model_cfg["provider"] = "openai-codex"
+        model_cfg["base_url"] = "https://chatgpt.com/backend-api/codex"
+
+# If the HA option explicitly provides a model, honour it — even if it's a
+# non-agentic one.  The user may be deliberately overriding (e.g. for a
+# custom endpoint we don't know about).  We already logged the migration
+# above for the legacy case.
+_llm_is_non_agentic = any(
+    llm_model == p or llm_model.startswith(p) for p in _NON_AGENTIC_PREFIXES
+)
+if llm_model and not _llm_is_non_agentic:
     model_cfg["default"] = llm_model
+elif llm_model and _llm_is_non_agentic:
+    print(
+        f"[run.sh] WARNING: llm_model='{llm_model}' is non-agentic; "
+        f"Hermes Agent will likely reject it.  Prefer Claude / GPT / Gemini "
+        f"/ DeepSeek / Grok.  Falling back to 'gpt-5.4'."
+    )
+    model_cfg["default"] = "gpt-5.4"
+
 # Preserve the OpenAI Codex defaults on first boot so the web-login flow
 # lights up immediately after an `hermes auth login openai-codex`.
-model_cfg.setdefault("default", llm_model or "gpt-5.4")
+model_cfg.setdefault("default", "gpt-5.4")
 model_cfg.setdefault("provider", "openai-codex")
 model_cfg.setdefault("base_url", "https://chatgpt.com/backend-api/codex")
 config["model"] = model_cfg

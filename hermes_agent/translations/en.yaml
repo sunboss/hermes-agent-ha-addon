@@ -1,10 +1,10 @@
 configuration:
   llm_model:
-    name: Model Name
-    description: "Main Hermes model. Defaults to NousResearch/Hermes-4-14B. Also available: NousResearch/Hermes-4-70B, NousResearch/Hermes-4-405B, NousResearch/Hermes-4.3-36B."
+    name: Agent Model
+    description: "Agentic model ID. Defaults to gpt-5.4 (via the OpenAI Codex ChatGPT account login — run `hermes auth login openai-codex` inside the terminal). Hermes Agent REQUIRES tool-calling-capable models: GPT (gpt-5.4, gpt-4o, o3, o4-mini), Claude (claude-opus-4-6, claude-sonnet-4-6), Gemini (gemini-2.5-pro), DeepSeek (deepseek-v3), or Grok. Non-agentic models like NousResearch Hermes 3/4, Mistral base, or Llama base are rejected by the upstream gateway and should NOT be used here."
   huggingface_api_key:
     name: HuggingFace API Key
-    description: "API key for the HuggingFace Inference API. Used to access NousResearch Hermes 4 series models directly from HuggingFace. Get yours at https://huggingface.co/settings/tokens."
+    description: "Optional. API key for the HuggingFace Inference API. Only useful when Hermes Agent adds tool-calling support for HF-hosted agentic models. Get yours at https://huggingface.co/settings/tokens."
   hf_base_url:
     name: HuggingFace Inference Base URL
     description: "OpenAI-compatible base URL for the HuggingFace Inference API. Default: https://api-inference.huggingface.co/v1. Change only for custom or self-hosted HuggingFace endpoints."

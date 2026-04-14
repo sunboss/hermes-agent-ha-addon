@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.9.11
+
+### Critical bug fix — wrong default model
+
+- **历史遗留的默认模型错配**: v0.8.0 起 `llm_model` 默认值一直是
+  `NousResearch/Hermes-4-14B`，但 Hermes Agent 框架（从 v2026.4.13 起）
+  **明确拒绝** Nous Research Hermes 3/4 系列，运行时会打印：
+  ```
+  ⚠  Nous Research Hermes 3 & 4 models are NOT agentic and are not designed
+     for use with Hermes Agent. They lack tool-calling capabilities ...
+  ```
+  + HTTP 400 `model not supported` —— 任何聊天调用都会在第一轮就失败。
+  历史上把这一家叫"Hermes"的 LLM 系列和这一家叫"Hermes Agent"的通用 agent
+  框架搞混了，v0.8.0 当时以为本 add-on 是跑 Hermes 模型的外壳，其实完全不是。
+
+- **默认模型改为 `gpt-5.4`**: 与默认的 `openai-codex` provider 对齐，
+  首次启动就能通过 `hermes auth login openai-codex` 绑 ChatGPT 账号后直接用。
+  也可以手动换成任何 agentic 模型：Claude 4.6 系列、Gemini 2.5 Pro、
+  DeepSeek V3、Grok 4、gpt-4o、o3、o4-mini 等。
+- **自动迁移旧配置**: `run.sh` bootstrap 检查 `/data/config.yaml` 的
+  `model.default`，如果匹配 `NousResearch/Hermes*` 或 `Hermes-3*` / `Hermes-4*`，
+  自动改写成 `gpt-5.4`，并在日志里打印 `[run.sh] MIGRATING model.default ...`。
+  这样从 v0.8.0–v0.9.10 任何一版升级上来的用户都能立刻恢复可用。
+- **同步清理** `OPENAI_SHIM_MODEL` / `API_SERVER_MODEL_NAME` 默认值、
+  `translations/en.yaml` 的字段说明、`README.md` / `DOCS.md` / `INSTALL.md`
+  的推广文案和模型表，全部换成 agentic 模型列表。
+
+### Panel boot UX
+
+- **`/panel/` 首次启动 502 退避重试**: 上游 `hermes dashboard` 启动后要先
+  跑约 30–60 秒的 Vite 构建才开始监听 9119。这段窗口里访问 `/panel/` 会因
+  `ECONNREFUSED` 返回 502。现在 `_proxy_panel_http` 会先做 3 次退避重试
+  （总计约 2.1 秒）；仍然失败时，对浏览器的 HTML GET 返回一张带
+  `<meta refresh content="4">` 的"控制面板正在构建…"友好页面，构建完成后
+  会自动跳回面板；对 SPA 的 XHR/fetch 仍然返回 JSON 502，不干扰前端重试逻辑。
+
 ## 0.9.10
 
 ### New features
