@@ -19,7 +19,9 @@
         <div class="terminal-brand">
           <p class="eyebrow">Hermes Native Shell</p>
           <h1>正在进入命令行</h1>
-          <p class="terminal-copy">页面会直接切换到原生 ttyd 终端。如果没有自动跳转，请使用下面的按钮手动打开。</p>
+          <p class="terminal-copy">
+            页面会自动跳转到原生 ttyd 终端。如果没有自动跳转，请使用下方按钮手动打开。
+          </p>
         </div>
         <div class="terminal-actions-row">
           <a class="ghost-button" href="./">返回控制台</a>
@@ -29,7 +31,7 @@
     </div>
 
     <script>
-      window.location.replace('./ttyd/');
+      window.location.replace("./ttyd/");
     </script>
   </body>
 </html>

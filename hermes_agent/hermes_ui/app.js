@@ -1,51 +1,33 @@
-// app.js  —  Hermes Agent HA Add-on: Launcher UI Client
-// =====================================================
-// Version: 0.9.11 (Hermes upstream v2026.4.13 / v0.9.0)
-//
-// This page is a minimal launcher: two big buttons (official Hermes
-// dashboard + ttyd terminal) and a status strip (model, gateway health).
-// All heavy lifting — chat, auth, prompt history — moved to the upstream
-// `hermes dashboard` web UI which we reverse-proxy at /panel/** via
-// server.py.
-//
-// URL routing handled by server.py (NOT direct browser-to-gateway):
-//   ./health        → local liveness + gateway ping
-//   ./config-model  → reads /data/config.yaml → {model, provider}
-//   ./models        → shim / gateway fallback
-//   ./panel/        → upstream `hermes dashboard` (FastAPI)
-//   ./ttyd/         → ttyd terminal WebSocket proxy
-
-// Global error handler — catches runtime errors and uncaught promise rejections.
-// Shows the red banner so users know JS is broken even when the file loaded fine.
-window.onerror = function (msg, src, line, col, err) {
-  var banner = document.getElementById("js-error-banner");
+﻿window.onerror = function (msg, src, line, col, err) {
+  const banner = document.getElementById("js-error-banner");
   if (banner) {
     banner.textContent =
-      "Hermes UI 运行出错（" +
+      "Hermes UI \u8fd0\u884c\u51fa\u9519\uff1a" +
       (err && err.message ? err.message : msg) +
-      "）。请强制刷新（Ctrl+Shift+R）或查看浏览器控制台（F12）。";
+      "\u3002\u8bf7\u5f3a\u5236\u5237\u65b0\u9875\u9762\uff0c\u6216\u7a0d\u540e\u91cd\u65b0\u6253\u5f00\u3002";
     banner.hidden = false;
   }
-  return false; // don't suppress default console logging
-};
-window.onunhandledrejection = function (e) {
-  console.error("[Hermes UI] unhandled promise rejection:", e.reason);
+  return false;
 };
 
-const uiText = {
-  statuses: {
-    checking: "检查中…",
-    detecting: "识别中…",
-    ready: "已就绪",
-    gatewayStarting: "网关启动中…",
-    unhealthy: "异常",
-    unavailable: "不可用",
+window.onunhandledrejection = function (event) {
+  console.error("[Hermes UI] unhandled promise rejection:", event.reason);
+};
+
+const textMap = {
+  status: {
+    checking: "\u68c0\u67e5\u4e2d",
+    detecting: "\u8bc6\u522b\u4e2d",
+    ready: "\u5df2\u5c31\u7eea",
+    starting: "\u542f\u52a8\u4e2d",
+    unhealthy: "\u5f02\u5e38",
+    unavailable: "\u4e0d\u53ef\u7528",
   },
-  messages: {
-    gatewayReady: "Hermes 网关已连通，全部接口可用。",
-    gatewayStarting: "UI 已就绪，Hermes 网关还在初始化，稍候会自动刷新。",
-    gatewayUnhealthy: "网关返回了非预期状态，可能需要查看日志排查。",
-    gatewayUnreachable: "无法连接 Hermes 网关，请检查 add-on 日志后重试。",
+  detail: {
+    gatewayReady: "Hermes \u7f51\u5173\u5df2\u8fde\u63a5\uff0cDashboard \u4e0e\u7ec8\u7aef\u5165\u53e3\u90fd\u53ef\u76f4\u63a5\u4f7f\u7528\u3002",
+    gatewayStarting: "UI \u5df2\u542f\u52a8\uff0c\u4f46 Hermes \u7f51\u5173\u4ecd\u5728\u521d\u59cb\u5316\u4e2d\uff0c\u8bf7\u7a0d\u5019\u51e0\u79d2\u3002",
+    gatewayUnhealthy: "\u7f51\u5173\u8fd4\u56de\u4e86\u5f02\u5e38\u72b6\u6001\uff0c\u8bf7\u68c0\u67e5 add-on \u65e5\u5fd7\u3002",
+    gatewayUnavailable: "\u6682\u65f6\u65e0\u6cd5\u8fde\u63a5 Hermes \u7f51\u5173\uff0c\u8bf7\u68c0\u67e5\u542f\u52a8\u65e5\u5fd7\u3002",
   },
 };
 
@@ -54,93 +36,81 @@ const modelProviderEl = document.getElementById("model-provider");
 const healthStatusEl = document.getElementById("health-status");
 const healthDetailEl = document.getElementById("health-detail");
 
-function setText(el, text) {
-  if (el) el.textContent = text;
+function setText(element, value) {
+  if (element) {
+    element.textContent = value;
+  }
 }
 
 function setHealth(state, label, detail) {
   if (healthStatusEl) {
-    healthStatusEl.textContent = label;
     healthStatusEl.dataset.state = state;
+    healthStatusEl.textContent = label;
   }
-  if (healthDetailEl) {
-    healthDetailEl.textContent = detail || "";
-  }
+  setText(healthDetailEl, detail);
 }
 
-async function loadModels() {
-  // Prefer /config-model: it reads Hermes config.yaml directly and returns
-  // both the default model name and the provider (openai-codex, huggingface,
-  // openrouter, etc.). Falls back to /models (gateway /v1/models) when
-  // /config-model is unavailable.
+async function loadConfiguredModel() {
   try {
-    const response = await fetch("./config-model");
-    if (response.ok) {
-      const data = await response.json();
-      const modelId = data && data.model ? String(data.model) : "";
-      const provider = data && data.provider ? String(data.provider) : "";
-      if (modelId) {
-        setText(modelNameEl, modelId);
-        setText(modelProviderEl, provider ? provider : "");
-        return;
-      }
-    }
-  } catch (_) {
-    /* fall through */
-  }
-
-  try {
-    const response = await fetch("./models");
+    const response = await fetch("./config-model", { cache: "no-store" });
     if (!response.ok) {
-      setText(modelNameEl, uiText.statuses.unavailable);
-      return;
+      throw new Error("config-model " + response.status);
     }
     const data = await response.json();
-    if (Array.isArray(data.data) && data.data.length > 0 && data.data[0].id) {
-      setText(modelNameEl, data.data[0].id);
+    const model = data && data.model ? String(data.model) : "";
+    const provider = data && data.provider ? String(data.provider) : "";
+    if (model) {
+      setText(modelNameEl, model);
+      setText(modelProviderEl, provider);
+      return;
+    }
+  } catch (_) {}
+
+  try {
+    const response = await fetch("./models", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("models " + response.status);
+    }
+    const data = await response.json();
+    const first = Array.isArray(data.data) ? data.data[0] : null;
+    if (first && first.id) {
+      setText(modelNameEl, String(first.id));
       setText(modelProviderEl, "");
       return;
     }
-    setText(modelNameEl, uiText.statuses.unavailable);
-  } catch (_) {
-    setText(modelNameEl, uiText.statuses.unavailable);
-  }
+  } catch (_) {}
+
+  setText(modelNameEl, textMap.status.unavailable);
+  setText(modelProviderEl, "");
 }
 
 async function checkHealth() {
   try {
-    const response = await fetch("./health");
+    const response = await fetch("./health", { cache: "no-store" });
     if (!response.ok) {
-      throw new Error("HTTP " + response.status);
+      throw new Error("health " + response.status);
     }
     const data = await response.json();
-    if (data.status === "ok") {
-      if (data.gateway === "ready") {
-        setHealth("ready", uiText.statuses.ready, uiText.messages.gatewayReady);
-      } else {
-        setHealth(
-          "warning",
-          uiText.statuses.gatewayStarting,
-          uiText.messages.gatewayStarting
-        );
-        // Retry in 5s so the status auto-updates once the gateway is up.
-        setTimeout(checkHealth, 5000);
-      }
+    if (data.status === "ok" && data.gateway === "ready") {
+      setHealth("ready", textMap.status.ready, textMap.detail.gatewayReady);
       return;
     }
-    setHealth("error", uiText.statuses.unhealthy, uiText.messages.gatewayUnhealthy);
+    if (data.status === "ok") {
+      setHealth("starting", textMap.status.starting, textMap.detail.gatewayStarting);
+      setTimeout(checkHealth, 5000);
+      return;
+    }
+    setHealth("error", textMap.status.unhealthy, textMap.detail.gatewayUnhealthy);
   } catch (_) {
-    setHealth("error", uiText.statuses.unavailable, uiText.messages.gatewayUnreachable);
+    setHealth("error", textMap.status.unavailable, textMap.detail.gatewayUnavailable);
   }
 }
 
 function init() {
-  // Seed neutral "checking..." labels — these also work when JS is blocked
-  // because index.html already has Chinese placeholder text.
-  setText(modelNameEl, uiText.statuses.detecting);
+  setText(modelNameEl, textMap.status.detecting);
   setText(modelProviderEl, "");
-  setHealth("checking", uiText.statuses.checking, "正在连接 Hermes 网关…");
-  Promise.all([loadModels(), checkHealth()]);
+  setHealth("checking", textMap.status.checking, "\u6b63\u5728\u8fde\u63a5 Hermes \u7f51\u5173");
+  void Promise.all([loadConfiguredModel(), checkHealth()]);
 }
 
 init();

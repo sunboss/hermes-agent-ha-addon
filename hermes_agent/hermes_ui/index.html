@@ -13,11 +13,12 @@
       <div class="backdrop-grid"></div>
     </div>
 
-    <!-- Shown only if app.js fails to load (CSP block, network error, syntax error, etc.)
-         The onerror on the <script> tag below flips hidden=false when the file 404s or
-         the browser refuses to execute it. -->
-    <div id="js-error-banner" hidden style="position:fixed;top:0;left:0;right:0;z-index:999;padding:14px 20px;background:#ff7a7a;color:#031018;font-weight:700;text-align:center">
-      Hermes UI 脚本加载失败。请检查浏览器控制台（F12），或强制刷新页面（Ctrl+Shift+R / Cmd+Shift+R）。
+    <div
+      id="js-error-banner"
+      hidden
+      style="position:fixed;top:0;left:0;right:0;z-index:999;padding:14px 20px;background:#ff7a7a;color:#031018;font-weight:700;text-align:center"
+    >
+      Hermes UI 脚本加载失败。请强制刷新当前页面，或稍后重新打开。
     </div>
 
     <main class="launcher-shell">
@@ -30,35 +31,42 @@
           </div>
         </div>
         <p class="launcher-tagline">
-          从这里一键进入官方 Web 控制面板或命令行终端。下方显示的是当前 Hermes 的实时状态。
+          这里保留两个最核心的入口：官方 Hermes Dashboard，以及原生命令行终端。
+          下方状态条会显示当前模型、网关状态、Ingress 端口和当前 add-on 版本。
         </p>
       </header>
 
       <section class="status-strip" aria-label="运行状态">
         <article class="status-card status-card-primary">
           <span class="micro-label">当前模型</span>
-          <strong id="model-name" class="status-value">识别中…</strong>
+          <strong id="model-name" class="status-value">识别中</strong>
           <span id="model-provider" class="status-sub"></span>
         </article>
         <article class="status-card">
           <span class="micro-label">网关状态</span>
-          <strong id="health-status" class="status-value" data-state="checking">检查中…</strong>
-          <span id="health-detail" class="status-sub">正在连接 Hermes 网关…</span>
+          <strong id="health-status" class="status-value" data-state="checking">检查中</strong>
+          <span id="health-detail" class="status-sub">正在连接 Hermes 网关</span>
         </article>
         <article class="status-card">
           <span class="micro-label">Ingress 端口</span>
           <strong class="status-value">8099</strong>
-          <span class="status-sub">内部回环 · HA Ingress 托管</span>
+          <span class="status-sub">由 Home Assistant Ingress 托管</span>
         </article>
         <article class="status-card">
-          <span class="micro-label">添加组件版本</span>
-          <strong class="status-value">v0.9.11</strong>
-          <span class="status-sub">Hermes v2026.4.13</span>
+          <span class="micro-label">Add-on 版本</span>
+          <strong class="status-value">v0.10.0</strong>
+          <span class="status-sub">Hermes upstream v2026.4.16</span>
         </article>
       </section>
 
       <section class="launch-grid" aria-label="快速入口">
-        <a id="launch-panel" class="launch-card launch-card-panel" href="./panel/" target="_blank" rel="noopener noreferrer">
+        <a
+          id="launch-panel"
+          class="launch-card launch-card-panel"
+          href="./panel/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <div class="launch-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="16" rx="2.4"></rect>
@@ -71,13 +79,19 @@
             <p class="launch-eyebrow">官方 Web 控制面板</p>
             <h2>Hermes Dashboard</h2>
             <p class="launch-description">
-              进入 Hermes 官方内置的浏览器控制台，管理会话、技能、配置与运行中的 Agent。
+              直接进入上游 Hermes 自带的 Dashboard，查看会话、工具、状态和运行中的 Agent。
             </p>
           </div>
-          <span class="launch-cta">打开控制面板 →</span>
+          <span class="launch-cta">打开 Dashboard →</span>
         </a>
 
-        <a id="launch-terminal" class="launch-card launch-card-terminal" href="./ttyd/" target="_blank" rel="noopener noreferrer">
+        <a
+          id="launch-terminal"
+          class="launch-card launch-card-terminal"
+          href="./ttyd/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <div class="launch-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="16" rx="2.4"></rect>
@@ -87,29 +101,23 @@
           </div>
           <div class="launch-copy">
             <p class="launch-eyebrow">原生命令行</p>
-            <h2>Hermes 终端</h2>
+            <h2>Hermes Terminal</h2>
             <p class="launch-description">
-              在完整的 ttyd 终端里运行 <code>hermes</code>、查看日志、配置账号或做高级调试。
+              打开 ttyd 终端，直接运行 <code>hermes</code>、查看日志、登录账号、调试配置或排查故障。
             </p>
           </div>
-          <span class="launch-cta">进入命令行 →</span>
+          <span class="launch-cta">进入终端 →</span>
         </a>
       </section>
 
       <footer class="launcher-footer">
         <p>
-          所有流量都经 Home Assistant Ingress 代理，Hermes 网关和面板仅监听本机回环地址。
-          如果官方面板或终端打不开，请先检查 add-on 日志。
+          所有外部访问都经由 Home Assistant Ingress。
+          Hermes 网关、Dashboard 和 ttyd 仅监听容器内部地址，不额外暴露公网端口。
         </p>
       </footer>
     </main>
 
-    <!--
-      app.js is deferred so it runs after the DOM is fully parsed.
-      onerror fires if the file cannot be fetched (404, CSP block, network error).
-      Syntax errors inside the script will NOT trigger onerror — they are caught
-      by the window.onerror handler defined at the top of app.js instead.
-    -->
     <script src="./app.js" defer onerror="document.getElementById('js-error-banner').hidden=false"></script>
   </body>
 </html>
