@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI, dashboard proxy, and ttyd terminal."
-version: "0.10.4"
+version: "0.11.0"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -16,9 +16,7 @@ arch:
   - amd64
 url: "https://github.com/sunboss/hermes-agent-ha-addon"
 map:
-  - type: homeassistant_config
-    read_only: false
-    path: /config
+  - addon_config:rw
 options:
   llm_model: "gpt-5.4"
   openrouter_api_key: ""
@@ -28,7 +26,7 @@ options:
   hf_base_url: "https://api-inference.huggingface.co/v1"
   auth_mode: "api_key"
   auth_provider: "openai_web"
-  auth_storage_path: "/config/addons_data/hermes-agent/addon-state/auth"
+  auth_storage_path: "/config/auth"
   openai_oauth_client_id: ""
   openai_oauth_redirect_uri: "http://127.0.0.1:1455/auth/callback"
   openai_oauth_scopes: "openid profile email offline_access"
@@ -38,7 +36,7 @@ options:
   ignore_entities: []
   watch_all: false
   cooldown_seconds: 30
-  messaging_cwd: "/config/addons_data/hermes-agent/workspace"
+  messaging_cwd: "/config/workspace"
   api_server_key: ""
 schema:
   llm_model: "str?"

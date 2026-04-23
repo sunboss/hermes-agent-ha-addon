@@ -34,22 +34,23 @@
 
 - 升级到 Hermes 官方最新镜像 `v2026.4.16`
 - `Dockerfile` 与 `build.yaml` 改成 digest 固定
-- Hermes 主数据迁移到 `/config/addons_data/hermes-agent/.hermes`
-- 默认工作目录迁移到 `/config/addons_data/hermes-agent/workspace`
-- add-on 认证桥状态迁移到 `/config/addons_data/hermes-agent/addon-state/auth`
-- 补齐 `homeassistant_config` 映射
+- 规范化存储布局到 HA 2023.11+ 标准 `addon_config:rw`：宿主机 `/addon_configs/<slug>_hermes_agent/`，每个 add-on 独立隔离目录，不再污染主 `/homeassistant/` 配置
+- 扁平化容器内路径：`/config/.hermes`、`/config/workspace`、`/config/auth`（不再嵌套 `addons_data/hermes-agent/`）
 - Ingress 首页保留两个原生入口：`Hermes Dashboard` 与 `Hermes Terminal`
-- 版本号统一提升到 `0.10.1`
+- 版本号 `0.11.0`
 
 ## 数据目录
 
+容器内：
+
 ```text
-/config/addons_data/hermes-agent/
-├── .hermes/
-├── workspace/
-└── addon-state/
-    └── auth/
+/config/             ← 通过 addon_config:rw 挂载到宿主机 /addon_configs/<slug>_hermes_agent/
+├── .hermes/         ← Hermes 主数据（.env、config.yaml、sessions、skills 等）
+├── workspace/       ← ttyd 终端工作目录、messaging 数据
+└── auth/            ← add-on 认证桥状态（session.json 等）
 ```
+
+宿主机路径（HA OS SSH 下查看）：`/addon_configs/<slug>_hermes_agent/`（`<slug>` 通过 `ls /addon_configs/` 查实际 hash）
 
 `/data/options.json` 仍由 Supervisor 管理，用作 add-on 配置输入。
 

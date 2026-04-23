@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.11.0
+
+- **Breaking**: 规范化 add-on 存储布局，迁移到 HA 2023.11+ 标准 `addon_config` map type
+  - `config.yaml`: `map` 从 `homeassistant_config + path:/config` 改为 `addon_config:rw`
+  - 容器内挂载点仍是 `/config`，但宿主机位置从 `/homeassistant/addons_data/hermes-agent/` 变为 `/addon_configs/<slug>_hermes_agent/`（每个 add-on 独立隔离目录）
+  - 去掉 `/config/addons_data/hermes-agent/` 多层嵌套，扁平化到 `/config/` 根：
+    - `HERMES_HOME`: `/config/addons_data/hermes-agent/.hermes` → `/config/.hermes`
+    - `messaging_cwd`: `/config/addons_data/hermes-agent/workspace` → `/config/workspace`
+    - `auth_storage_path`: `/config/addons_data/hermes-agent/addon-state/auth` → `/config/auth`
+  - 同步更新 `Dockerfile`、`run.sh`、`server.py`、`/etc/profile.d/hermes.sh`
+- run.sh 增加一次性布局迁移：如果 `/config/addons_data/hermes-agent/` 存在（例如用户手工从旧位置拷贝进来），自动把内容上移到 `/config/` 根，幂等
+- 升级迁移说明（SSH 到 HA OS 执行一次，老数据在旧宿主机路径下不会自动被 add-on 看到）：
+  ```
+  ls /addon_configs/                                    # 找到 <slug>_hermes_agent 实际目录名
+  mkdir -p /addon_configs/<slug>_hermes_agent/
+  cp -a /homeassistant/addons_data/hermes-agent/. /addon_configs/<slug>_hermes_agent/
+  ```
+  然后在 HA 里 Rebuild add-on。如果接受重新登录 OpenAI + 丢弃 workspace 历史，可以跳过拷贝，让 add-on 自己重新生成全部默认文件
+
 ## 0.10.4
 
 - 再次修复 `MESSAGING_CWD` deprecation 警告（v0.10.2 的补丁不彻底）

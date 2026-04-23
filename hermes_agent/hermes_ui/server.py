@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.10.4
+Version: 0.11.0
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
@@ -1029,7 +1029,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             # Return the model/provider declared in HERMES_HOME/config.yaml so`r`n            # the launcher can show the actual configured model.
             try:
                 import yaml as _yaml  # local import — yaml is already a dep
-                with open(Path(os.environ.get("HERMES_HOME", "/config/addons_data/hermes-agent/.hermes")) / "config.yaml", "r", encoding="utf-8") as _cf:
+                with open(Path(os.environ.get("HERMES_HOME", "/config/.hermes")) / "config.yaml", "r", encoding="utf-8") as _cf:
                     _cfg = _yaml.safe_load(_cf.read()) or {}
                 _mc = _cfg.get("model")
                 if isinstance(_mc, str):

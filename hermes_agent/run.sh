@@ -2,8 +2,13 @@
 set -euo pipefail
 
 export CONFIG_PATH=/data/options.json
-export HA_CONFIG_ROOT=/config
-export ADDON_STATE_ROOT="${HA_CONFIG_ROOT}/addons_data/hermes-agent"
+# v0.11.0+: /config is the add-on's PRIVATE config dir via `addon_config:rw`.
+# Host path is /addon_configs/<slug>_hermes_agent/ (HA 2023.11+ standard
+# per-addon config layout, isolated from the main /homeassistant/ tree).
+# Do NOT re-nest into /config/addons_data/hermes-agent/ — that pattern was
+# only needed when we were mounted under homeassistant_config and had to
+# avoid polluting the user's main config directory.
+export ADDON_STATE_ROOT=/config
 export HERMES_HOME="${ADDON_STATE_ROOT}/.hermes"
 export HOME="${ADDON_STATE_ROOT}"
 export HERMES_INSTALL_DIR=/opt/hermes
@@ -33,13 +38,34 @@ def env_quote(value: str) -> str:
 config_path = Path("/data/options.json")
 options = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
 
-ha_config_root = Path(os.environ["HA_CONFIG_ROOT"])
 addon_state_root = Path(os.environ["ADDON_STATE_ROOT"])
 hermes_home = Path(os.environ["HERMES_HOME"])
 install_dir = Path(os.environ["HERMES_INSTALL_DIR"])
 
+# v0.11.0: layout flattened — /config itself IS our per-addon config dir
+# (addon_config:rw), so defaults live directly under it. No more
+# /config/addons_data/hermes-agent/ nesting, no more addon-state/auth
+# sub-tier. Option overrides from config.yaml still take precedence.
 default_workspace = addon_state_root / "workspace"
-default_auth_root = addon_state_root / "addon-state" / "auth"
+default_auth_root = addon_state_root / "auth"
+
+# One-shot migration from the v0.10.x layout. If a user rebuilds with the
+# same addon_config volume after somehow seeding it with the old nested
+# layout (e.g. manually copied from /homeassistant/addons_data/hermes-agent/),
+# lift the contents of addons_data/hermes-agent/* up to /config/*.
+# No-op for fresh installs.
+legacy_root = addon_state_root / "addons_data" / "hermes-agent"
+if legacy_root.is_dir():
+    for entry in legacy_root.iterdir():
+        dest = addon_state_root / entry.name
+        if dest.exists():
+            continue  # Respect anything the new layout already created.
+        entry.rename(dest)
+    try:
+        legacy_root.rmdir()
+        (addon_state_root / "addons_data").rmdir()
+    except OSError:
+        pass  # Non-empty (user placed unrelated files); leave alone.
 
 messaging_cwd = Path(options.get("messaging_cwd") or str(default_workspace))
 auth_storage_path = Path(options.get("auth_storage_path") or str(default_auth_root))

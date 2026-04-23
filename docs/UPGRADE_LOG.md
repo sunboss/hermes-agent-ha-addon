@@ -43,6 +43,81 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v0.11.0 — Normalize storage layout to `addon_config:rw`
+
+Shipped: 2026-04-23. Same upstream as v0.10.x.
+
+**Symptom / motivation.** Up through v0.10.4 the add-on used
+`map: homeassistant_config` with `path: /config`, so container `/config` was
+HA's **main** config directory (host `/homeassistant/`) and we nested our
+state under `/config/addons_data/hermes-agent/` to avoid polluting it. This
+was functional but non-standard: HA 2023.11 introduced `addon_config` as
+the proper per-addon isolated config store (host `/addon_configs/<slug>_<name>/`),
+and that is now what every first-party add-on uses.
+
+**Root cause of the old layout.** Earlier releases predated `addon_config`
+and reused `homeassistant_config` because nothing else would survive an
+add-on uninstall. By 2024–2026 this was obsolete: `addon_config` survives
+uninstall, is SMB/File-Editor visible, and doesn't touch the user's main
+config tree.
+
+**Fix.**
+
+1. `config.yaml`:
+
+   ```yaml
+   map:
+     - addon_config:rw
+   ```
+
+   No `path:` — `addon_config` defaults to container `/config`.
+
+2. Flatten the state tree. Container paths:
+
+   | role        | v0.10.x                                                  | v0.11.0              |
+   | ----------- | -------------------------------------------------------- | -------------------- |
+   | Hermes home | `/config/addons_data/hermes-agent/.hermes`               | `/config/.hermes`    |
+   | workspace   | `/config/addons_data/hermes-agent/workspace`             | `/config/workspace`  |
+   | auth bridge | `/config/addons_data/hermes-agent/addon-state/auth`      | `/config/auth`       |
+
+3. `Dockerfile`, `run.sh`, `hermes_ui/server.py`, and the in-container
+   `/etc/profile.d/hermes.sh` all updated to match.
+
+4. `run.sh` carries a one-shot in-container migration: if a user somehow
+   ends up with `/config/addons_data/hermes-agent/` inside the new mount
+   (e.g. copy-pasted from the old host path), the script lifts every
+   child up to `/config/` and removes the empty wrappers. Idempotent —
+   runs on every boot but no-ops once clean.
+
+**Host-path migration for existing installs.** The container mount target
+is the same (`/config`) but the **host** directory it backs to is
+different. The new mount will NOT see v0.10.x data automatically. SSH to
+HA OS and copy once before rebuilding:
+
+```sh
+ls /addon_configs/                                            # find the real slug
+SLUG=<the slug>_hermes_agent
+mkdir -p /addon_configs/${SLUG}/
+cp -a /homeassistant/addons_data/hermes-agent/. /addon_configs/${SLUG}/
+# Verify, then rebuild the add-on in HA UI.
+# Optionally, once you've confirmed everything works:
+# rm -rf /homeassistant/addons_data/hermes-agent/
+```
+
+If you're OK re-logging into OpenAI and losing the workspace history,
+skip the copy — the add-on regenerates every default file on first boot.
+
+**Invariants preserved.**
+
+- Container `HERMES_HOME` remains the single source of truth; bash and
+  Python blocks read it from the env rather than hardcoding paths.
+- `MESSAGING_CWD` scrub from v0.10.4 is unchanged.
+- WS URL patch (`patches/ha_ws_url.py`) is unchanged.
+- `addon_config` data survives add-on uninstall (a feature of the map
+  type, unlike `/data/` which is wiped).
+
+---
+
 ### v0.10.4 — `MESSAGING_CWD` deprecation warning still firing (v0.10.2 regression)
 
 Shipped: 2026-04-23. Same upstream as v0.10.2/v0.10.3.

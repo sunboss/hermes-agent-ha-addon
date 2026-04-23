@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="0.10.4"
+ARG BUILD_VERSION="0.11.0"
 ARG HERMES_IMAGE_DIGEST="sha256:14ba9a26cf2d498ea773f1825326c404795ec4cb436a9479d22b7a345396c370"
 
 FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
@@ -7,9 +7,9 @@ ARG BUILD_VERSION
 ARG BUILD_ARCH
 
 ENV HERMES_INSTALL_DIR=/opt/hermes
-ENV HERMES_STATE_ROOT=/config/addons_data/hermes-agent
-ENV HERMES_HOME=/config/addons_data/hermes-agent/.hermes
-ENV HOME=/config/addons_data/hermes-agent
+ENV HERMES_STATE_ROOT=/config
+ENV HERMES_HOME=/config/.hermes
+ENV HOME=/config
 ENV PATH=/opt/hermes/.venv/bin:$PATH
 ENV HERMES_UI_PORT=8099
 ENV HERMES_UI_DIR=/opt/hermes-ha-ui
@@ -35,9 +35,9 @@ RUN set -eux; \
     mkdir -p /etc/profile.d; \
     printf '%s\n' \
       '# Added by hermes-agent-ha-addon' \
-      'export HERMES_STATE_ROOT=/config/addons_data/hermes-agent' \
-      'export HERMES_HOME=/config/addons_data/hermes-agent/.hermes' \
-      'export HOME=/config/addons_data/hermes-agent' \
+      'export HERMES_STATE_ROOT=/config' \
+      'export HERMES_HOME=/config/.hermes' \
+      'export HOME=/config' \
       'export HERMES_INSTALL_DIR=/opt/hermes' \
       'case ":$PATH:" in' \
       '  *":/opt/hermes/.venv/bin:"*) ;;' \
