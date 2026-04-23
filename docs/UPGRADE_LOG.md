@@ -43,6 +43,60 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v0.10.4 — `MESSAGING_CWD` deprecation warning still firing (v0.10.2 regression)
+
+Shipped: 2026-04-23. Same upstream as v0.10.2/v0.10.3.
+
+**Symptom**
+Even after v0.10.2's `env_map.pop("MESSAGING_CWD", None)` fix, every boot still logs:
+
+```
+⚠ Deprecated .env settings detected:
+  ⚠ MESSAGING_CWD=/config/addons_data/hermes-agent/workspace found in .env
+    — this is deprecated.
+```
+
+The `.env` file on disk is genuinely clean (no `MESSAGING_CWD=` line). The
+warning persists anyway.
+
+**Root cause**
+The v0.10.2 fix was incomplete. To keep ttyd's `cd` fallback working without
+putting the value in `.env`, it wrote `export MESSAGING_CWD=...` into
+`${HERMES_HOME}/.addon-runtime` and had `run.sh` source that file after `.env`.
+
+But Hermes v0.10.0's deprecation check reads `os.environ`, not just the
+`.env` file. Because run.sh sourced `.addon-runtime`, MESSAGING_CWD ended up
+in the process environment. The gateway's upstream check then reported it
+with the misleading text "found in .env" — its error message hardcodes the
+filename, even when the value actually came from environ. We were chasing
+the wrong layer.
+
+**Fix**
+- Renamed the side-file variable from `MESSAGING_CWD` to `TTYD_CWD`. The
+  name collision with the deprecated Hermes env var is what triggered the
+  warning; picking a distinct name makes it impossible for the upstream
+  check to match.
+- Dropped `export` from the side file. It now emits a plain `TTYD_CWD="..."`
+  line that `run.sh` parses with `sed` into a *local* bash variable — never
+  an exported one. The Hermes gateway inherits nothing from this path.
+- Changed the ttyd command from env-var fallback to positional argument:
+  `bash -c 'cd "$1" && exec bash -i' _ "${TTYD_CWD}"`. This bypasses
+  environment entirely for the cwd hand-off.
+- Added `unset MESSAGING_CWD` right after `.env` is sourced, as
+  belt-and-suspenders against any stale `MESSAGING_CWD=...` still sitting
+  in an old `.env` (e.g. if a user downgraded then upgraded).
+
+**Invariants**
+- Never name a side-channel variable with a prefix that matches an upstream
+  deprecated env var (`MESSAGING_*`, `HERMES_*`, `LLM_*`, etc.). Upstream
+  scans `os.environ` for these patterns.
+- If you *must* communicate a value from `run.sh` to a child process that
+  is NOT the Hermes gateway (e.g. ttyd), prefer positional arguments or a
+  pipe, not exported env vars.
+- On every upstream bump, grep the upstream source for
+  `DEPRECATED` / `deprecat` inside `gateway/` to see which env var names
+  are landmines.
+
 ### v0.10.3 — `server.py` mojibake SyntaxError
 
 Shipped: 2026-04-23. Same upstream as v0.10.2.

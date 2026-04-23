@@ -89,13 +89,17 @@ env_map["SUPERVISOR_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["HASS_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["HERMES_HOME"] = str(hermes_home)
 env_map["HERMES_STATE_ROOT"] = str(addon_state_root)
-# NOTE: MESSAGING_CWD is deprecated in Hermes v0.10.0 — the gateway now
-# prints a warning on boot and expects `terminal.cwd` in config.yaml
-# instead.  We write the value to config.yaml below and strip any stale
-# MESSAGING_CWD=... left over from older .env files.  ttyd still reads it
-# from the bash shell environment via ${HERMES_HOME}/.addon-runtime (written
-# at the bottom of this heredoc), so the terminal `cd` fallback keeps working
-# even though it's no longer in /config/addons_data/hermes-agent/.hermes/.env.
+# NOTE: MESSAGING_CWD is deprecated in Hermes v0.10.0.  The gateway now
+# expects `terminal.cwd` in config.yaml (written further down) and scans
+# both `.env` AND os.environ for the legacy name, printing a warning
+# whenever it finds a match.  We:
+#   1. Pop it from env_map here so the regenerated .env never has it.
+#   2. `unset MESSAGING_CWD` in the bash parent (after sourcing .env)
+#      so it doesn't live in the process environment either.
+#   3. Communicate the workspace path to ttyd via a distinct variable
+#      name (TTYD_CWD) written to ${HERMES_HOME}/.addon-runtime and read
+#      as a LOCAL bash variable — never exported.
+# See UPGRADE_LOG §v0.10.4 for the full backstory.
 env_map.pop("MESSAGING_CWD", None)
 env_map["AUTH_MODE"] = auth_mode
 env_map["AUTH_PROVIDER"] = auth_provider
@@ -215,12 +219,16 @@ runtime_config_path.write_text(
     encoding="utf-8",
 )
 
-# Write MESSAGING_CWD to a side file the bash parent sources after .env.
-# Keeping it out of .env avoids the upstream deprecation warning while still
-# letting ttyd `cd` into the user's chosen workspace on terminal launch.
+# Emit the resolved messaging cwd to a side file for bash to pick up.  This
+# MUST NOT use `export` — Hermes v0.10.0's deprecation check scans the
+# process environment (not just .env), so any variable named MESSAGING_CWD
+# in os.environ will trigger the "deprecated in .env" warning even when
+# .env itself is clean.  We write a plain VAR=value line and read it
+# in bash via a non-exporting read, so ttyd gets the path it needs
+# without polluting the Hermes gateway's environment.
 addon_runtime_path = hermes_home / ".addon-runtime"
 addon_runtime_path.write_text(
-    f'export MESSAGING_CWD={env_quote(str(messaging_cwd))}\n',
+    f'TTYD_CWD={env_quote(str(messaging_cwd))}\n',
     encoding="utf-8",
 )
 PY
@@ -229,12 +237,22 @@ set -a
 . "${HERMES_HOME}/.env"
 set +a
 
-# Source the add-on-specific runtime env (MESSAGING_CWD, etc.) — kept
-# separate from .env to avoid the upstream Hermes deprecation warning.
+# Belt-and-suspenders: make absolutely sure MESSAGING_CWD is not in the
+# process environment before we hand off to ttyd / Hermes.  An older build
+# (v0.10.1 / v0.10.2) exported MESSAGING_CWD via .addon-runtime which made
+# Hermes v0.10.0 flag it as deprecated even though .env was clean.  Clear
+# it unconditionally — the new side file uses TTYD_CWD instead.
+unset MESSAGING_CWD
+
+# Read TTYD_CWD from the side file without exporting it to the rest of the
+# environment.  `sh -c 'eval ...'` would also work; a bare `read` over a
+# here-doc is simpler and avoids any quoting surprises.
+TTYD_CWD=""
 if [ -f "${HERMES_HOME}/.addon-runtime" ]; then
-  # shellcheck disable=SC1091
-  . "${HERMES_HOME}/.addon-runtime"
+  # Matches `TTYD_CWD="..."` and extracts the quoted value.
+  TTYD_CWD="$(sed -n 's/^TTYD_CWD="\(.*\)"$/\1/p' "${HERMES_HOME}/.addon-runtime")"
 fi
+: "${TTYD_CWD:=${ADDON_STATE_ROOT}/workspace}"
 
 TTYD_BIN="$(command -v ttyd 2>/dev/null || true)"
 if [ -n "${TTYD_BIN}" ]; then
@@ -242,7 +260,7 @@ if [ -n "${TTYD_BIN}" ]; then
     --port "${HERMES_TTYD_PORT}" \
     --base-path /ttyd \
     --writable \
-    /bin/bash -c 'cd "${MESSAGING_CWD:-/config/addons_data/hermes-agent/workspace}" && exec /bin/bash -i' &
+    /bin/bash -c 'cd "$1" && exec /bin/bash -i' _launch "${TTYD_CWD}" &
 fi
 
 python3 "${HERMES_UI_DIR}/server.py" &

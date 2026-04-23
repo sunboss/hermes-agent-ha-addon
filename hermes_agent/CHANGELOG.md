@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.4
+
+- 再次修复 `MESSAGING_CWD` deprecation 警告（v0.10.2 的补丁不彻底）
+  - 真因：v0.10.2 把 `export MESSAGING_CWD=...` 放进 `.addon-runtime`，run.sh source 后该变量进了**进程环境变量**。Hermes v0.10.0 的 deprecation 检查扫 `os.environ` 而不只是 `.env` 文件，所以即使 .env 干净也照样告警（措辞是 "found in .env" 但实际读的是 environ）
+  - 修法：side 文件改用 `TTYD_CWD=...` 变量名（不与 Hermes 的遗留 env 冲突），bash 用 `sed` 提取后作为**局部变量**喂给 ttyd，不再 `export` 任何相关变量
+  - ttyd 命令改用位置参数传递 cwd（`bash -c 'cd "$1" && exec bash -i' _ "${TTYD_CWD}"`），比 env var fallback 更健壮
+  - 额外加一道 `unset MESSAGING_CWD` 做双保险，清掉从老 .env 里 source 进来的残留
+
 ## 0.10.3
 
 - 修复 `hermes_ui/server.py` 中文字符串编码损坏导致的启动 SyntaxError
