@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="0.13.0"
+ARG BUILD_VERSION="0.13.1"
 # Upstream `latest` snapshot from 2026-04-23.  Newer than the last tagged
 # release v2026.4.16 (2026-04-16).  Picked up because v2026.4.16 shipped
 # with a `hermes dashboard` regression where the web UI first-boot
@@ -14,6 +14,12 @@ FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
 
 ARG BUILD_VERSION
 ARG BUILD_ARCH
+
+# Expose the add-on version at runtime so server.py can inject it into
+# index.html without baking a literal version string into the HTML.
+ENV ADDON_VERSION=${BUILD_VERSION}
+# Human-readable label for the upstream Hermes snapshot baked into this image.
+ENV HERMES_UPSTREAM_LABEL="v2026.4.16 snapshot 2026-04-23"
 
 ENV HERMES_INSTALL_DIR=/opt/hermes
 ENV HERMES_STATE_ROOT=/config

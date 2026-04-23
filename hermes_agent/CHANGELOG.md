@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1
+
+- **修复控制台首页版本号硬编码**：`index.html` 中 "Add-on 版本" 字段长期显示 `v0.10.1`（从 v0.10.1 起从未更新）
+  - `Dockerfile` 新增 `ENV ADDON_VERSION=${BUILD_VERSION}` 和 `ENV HERMES_UPSTREAM_LABEL`，将版本信息注入容器运行时环境
+  - `index.html` 改为占位符 `{{ADDON_VERSION}}` / `{{HERMES_UPSTREAM}}`，不再硬编码
+  - `server.py _serve_index` 在响应时读取环境变量完成替换，版本号每次 Rebuild 自动更新
+
 ## 0.13.0
 
 - **配置页精简**：移除 6 个很少需要改的字段，配置页只保留真正有用的选项
