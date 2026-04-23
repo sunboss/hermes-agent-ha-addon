@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="dark light">
     <title>Hermes Agent</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -39,12 +40,12 @@
       <section class="status-strip" aria-label="运行状态">
         <article class="status-card status-card-primary">
           <span class="micro-label">当前模型</span>
-          <strong id="model-name" class="status-value">识别中</strong>
+          <strong id="model-name" class="status-value is-loading">识别中</strong>
           <span id="model-provider" class="status-sub"></span>
         </article>
         <article class="status-card">
           <span class="micro-label">网关状态</span>
-          <strong id="health-status" class="status-value" data-state="checking">检查中</strong>
+          <strong id="health-status" class="status-value is-loading" data-state="checking">检查中</strong>
           <span id="health-detail" class="status-sub">正在连接 Hermes 网关</span>
         </article>
         <article class="status-card">
@@ -52,9 +53,16 @@
           <strong class="status-value">8099</strong>
           <span class="status-sub">由 Home Assistant Ingress 托管</span>
         </article>
-        <article class="status-card">
+        <article class="status-card status-card-version">
           <span class="micro-label">Add-on 版本</span>
-          <strong class="status-value">{{ADDON_VERSION}}</strong>
+          <a
+            id="version-link"
+            class="status-value version-link"
+            href="https://github.com/sunboss/hermes-agent-ha-addon/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="查看发布说明"
+          >{{ADDON_VERSION}}</a>
           <span class="status-sub">{{HERMES_UPSTREAM}}</span>
         </article>
       </section>
@@ -66,14 +74,18 @@
           href="./panel/"
           target="_blank"
           rel="noopener noreferrer"
+          data-status="checking"
         >
-          <div class="launch-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2.4"></rect>
-              <path d="M3 9h18"></path>
-              <path d="M7 14h6"></path>
-              <path d="M7 17h4"></path>
-            </svg>
+          <div class="service-status-row">
+            <div class="launch-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2.4"></rect>
+                <path d="M3 9h18"></path>
+                <path d="M7 14h6"></path>
+                <path d="M7 17h4"></path>
+              </svg>
+            </div>
+            <span class="service-dot" id="dot-panel" data-state="checking" title="检查服务可用性…"></span>
           </div>
           <div class="launch-copy">
             <p class="launch-eyebrow">官方 Web 控制面板</p>
@@ -91,13 +103,17 @@
           href="./ttyd/"
           target="_blank"
           rel="noopener noreferrer"
+          data-status="checking"
         >
-          <div class="launch-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2.4"></rect>
-              <path d="M7 9l3 3-3 3"></path>
-              <path d="M13 15h4"></path>
-            </svg>
+          <div class="service-status-row">
+            <div class="launch-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2.4"></rect>
+                <path d="M7 9l3 3-3 3"></path>
+                <path d="M13 15h4"></path>
+              </svg>
+            </div>
+            <span class="service-dot" id="dot-ttyd" data-state="checking" title="检查服务可用性…"></span>
           </div>
           <div class="launch-copy">
             <p class="launch-eyebrow">原生命令行</p>

@@ -1161,3 +1161,214 @@ body.launcher-body {
     font-size: 1.35rem;
   }
 }
+
+/* =========================================================================
+ * v0.14.0 — Enhancements: skeleton, service dots, card states,
+ *            version link, mobile 480px, light-mode
+ * ========================================================================= */
+
+/* --- Skeleton shimmer ---------------------------------------------------- */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.is-loading {
+  color: transparent !important;
+  background: linear-gradient(
+    90deg,
+    rgba(168, 188, 221, 0.08) 25%,
+    rgba(168, 188, 221, 0.2) 50%,
+    rgba(168, 188, 221, 0.08) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 8px;
+  min-width: 6ch;
+  display: inline-block;
+}
+
+/* --- Service availability dot ------------------------------------------- */
+.service-status-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.service-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+  transition: background 300ms ease, box-shadow 300ms ease;
+}
+
+.service-dot[data-state="checking"] {
+  background: rgba(168, 188, 221, 0.35);
+  animation: dot-pulse 1.6s ease-in-out infinite;
+}
+
+.service-dot[data-state="ok"] {
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(116, 242, 212, 0.6);
+}
+
+.service-dot[data-state="unavailable"] {
+  background: var(--danger);
+  box-shadow: 0 0 8px rgba(255, 122, 122, 0.5);
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* --- Launch card availability states ------------------------------------ */
+.launch-card[data-status="unavailable"] {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+.launch-card[data-status="unavailable"] .launch-cta::after {
+  content: " (不可用)";
+  font-size: 0.82em;
+  opacity: 0.7;
+}
+
+/* --- Version badge link -------------------------------------------------- */
+.version-link {
+  display: inline-block;
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.version-link:hover,
+.version-link:focus-visible {
+  color: var(--accent);
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Mobile 480px: force single column ---------------------------------- */
+@media (max-width: 480px) {
+  .status-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .launch-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .launch-card {
+    padding: 22px 18px 20px;
+  }
+
+  .launch-copy h2 {
+    font-size: 1.25rem;
+  }
+
+  .launcher-tagline {
+    font-size: 0.95rem;
+  }
+
+  .brand-mark {
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .status-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Light mode --------------------------------------------------------- */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f2f6ff;
+    --bg-deep: #e8eefb;
+    --panel: rgba(255, 255, 255, 0.88);
+    --panel-strong: rgba(255, 255, 255, 0.96);
+    --line: rgba(30, 60, 130, 0.11);
+    --line-strong: rgba(30, 60, 130, 0.2);
+    --text: #0c1422;
+    --muted: #3b5070;
+    --soft: #58708a;
+    --shadow: 0 24px 72px rgba(10, 30, 80, 0.1);
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top, rgba(116, 242, 212, 0.07), transparent 28%),
+      linear-gradient(180deg, #eaf1ff 0%, #f2f6ff 52%, #f8faff 100%);
+  }
+
+  .backdrop-orb {
+    opacity: 0.35;
+  }
+
+  .backdrop-grid {
+    background-image:
+      linear-gradient(rgba(30, 60, 130, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30, 60, 130, 0.04) 1px, transparent 1px);
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 80%);
+  }
+
+  .status-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(242, 248, 255, 0.84));
+    border-color: rgba(30, 60, 130, 0.13);
+    box-shadow: 0 16px 48px rgba(10, 30, 80, 0.07);
+  }
+
+  .status-card-primary {
+    background: linear-gradient(
+      180deg,
+      rgba(116, 242, 212, 0.14),
+      rgba(242, 248, 255, 0.88) 72%
+    );
+    border-color: rgba(42, 180, 150, 0.3);
+    box-shadow: 0 20px 56px rgba(116, 242, 212, 0.1);
+  }
+
+  .launch-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 247, 255, 0.88));
+    border-color: rgba(30, 60, 130, 0.13);
+    box-shadow: 0 20px 60px rgba(10, 30, 80, 0.08);
+  }
+
+  .launch-card:hover {
+    box-shadow: 0 32px 88px rgba(10, 30, 80, 0.13);
+  }
+
+  .launcher-footer {
+    border-color: rgba(30, 60, 130, 0.14);
+    color: var(--soft);
+  }
+
+  .is-loading {
+    background: linear-gradient(
+      90deg,
+      rgba(30, 60, 130, 0.07) 25%,
+      rgba(30, 60, 130, 0.16) 50%,
+      rgba(30, 60, 130, 0.07) 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  #js-error-banner {
+    background: #d43a3a;
+    color: #fff;
+  }
+}
