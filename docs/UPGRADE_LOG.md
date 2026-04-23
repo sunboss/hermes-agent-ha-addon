@@ -43,6 +43,120 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v0.10.2 — HA WebSocket 502 loop + `MESSAGING_CWD` deprecation
+
+Shipped: 2026-04-23. Upstream still `v2026.4.16 / v0.10.0`
+(`sha256:14ba9a26cf2d498ea773f1825326c404795ec4cb436a9479d22b7a345396c370`).
+
+#### Fix 1 — HA WebSocket reconnection loop (`502 Invalid response status`)
+
+**Symptom**
+Immediately after the gateway prints `✓ Web UI built`, the Home Assistant
+platform adapter spams reconnect failures:
+
+```
+WARNING gateway.platforms.homeassistant: [Homeassistant] Reconnection failed:
+  502, message='Invalid response status',
+  url='ws://supervisor/core/api/websocket'
+```
+
+Every 2–3 seconds, forever. HA state changes never reach the gateway, so
+Hermes has zero situational awareness of the house.
+
+**Root cause**
+Upstream `hermes.gateway.platforms.homeassistant._ws_connect()` hard-codes
+the WebSocket URL suffix:
+
+```python
+ws_url = self._hass_url.replace("http://", "ws://").replace("https://", "wss://")
+ws_url = f"{ws_url}/api/websocket"
+```
+
+For direct HA Core (`http://homeassistant.local:8123/api/websocket`) that
+suffix is correct. But **every** HA add-on reaches HA through the
+Supervisor proxy, whose endpoint map is:
+
+| Protocol | Path                      | Proxies to                        |
+|----------|---------------------------|-----------------------------------|
+| HTTP     | `/core/api/*`             | HA Core REST API (`/api/*`)        |
+| WS       | `/core/websocket`         | HA Core WebSocket (`/api/websocket`) |
+
+Notice the asymmetry: REST keeps `/api`, WS drops it. With
+`HASS_URL=http://supervisor/core`, the upstream code builds
+`ws://supervisor/core/api/websocket` — an endpoint the Supervisor proxy
+doesn't expose, hence the 502.
+
+Upstream v0.10.0 offers **no env var or config key** to override the WS
+URL path (verified by reading the source). So we have to patch the
+installed Python module in place.
+
+**Fix**
+New `hermes_agent/patches/ha_ws_url.py`, invoked from the Dockerfile after
+the venv is finalized. Regex-matches the hard-coded assignment line,
+captures its leading indent, and replaces it with a conditional:
+
+```python
+if 'supervisor' in (self._hass_url or ''):
+    ws_url = f"{ws_url}/websocket"        # Supervisor proxy mode
+else:
+    ws_url = f"{ws_url}/api/websocket"    # direct HA Core (original)
+```
+
+Idempotent — a marker comment prevents re-patching. Non-fatal — if the
+upstream refactors the pattern away, the script logs a warning and exits 0
+so the image still builds; the next release just needs a new patch target.
+
+**Invariants**
+- Never change `HASS_URL` away from `http://supervisor/core`. The REST path
+  (`/api/services/...`) is correct as-is; only the WS suffix was wrong.
+- If upstream ever adds a native `ws_url` override (env var or
+  `platforms.homeassistant.ws_url`), delete this patch and use the
+  supported interface.
+- On every upstream upgrade, verify the patch still applies:
+  `docker run ... python3 /opt/hermes-ha-patches/ha_ws_url.py` should
+  print `applied` on first build and `already applied` on rebuild.
+
+#### Fix 2 — `MESSAGING_CWD` removed from `.env`
+
+**Symptom**
+On every boot, upstream prints:
+
+```
+⚠ Deprecated .env settings detected:
+  ⚠ MESSAGING_CWD=/config/addons_data/hermes-agent/workspace found in .env
+    — this is deprecated.
+  Move to config.yaml instead:  terminal:\n    cwd: /your/project/path
+```
+
+Non-fatal, but future Hermes releases may start rejecting the variable
+outright.
+
+**Root cause**
+Hermes v0.10.0 migrated the working-directory configuration from the
+legacy `MESSAGING_CWD` env var to a dedicated `terminal.cwd` key in
+`config.yaml`. Our `run.sh` was writing both — `.env` (legacy) AND
+`config.yaml` (new). The legacy write was left over from the v0.9.x era
+and no longer needed.
+
+**Fix**
+- Replaced `env_map["MESSAGING_CWD"] = str(messaging_cwd)` with
+  `env_map.pop("MESSAGING_CWD", None)` — actively strips the value from
+  existing `.env` files on upgrade, doesn't just stop writing it.
+- The value is still written to `config.yaml` as `terminal.cwd`, which is
+  where v0.10.0 reads it from.
+- ttyd still needs `MESSAGING_CWD` in the bash environment to `cd` into
+  the user's workspace on terminal launch. Rather than pollute Hermes's
+  `.env`, we write it to `${HERMES_HOME}/.addon-runtime`, which `run.sh`
+  sources after `.env`. This keeps the variable in the add-on's shell
+  context without tripping Hermes's deprecation check.
+
+**Invariants**
+- Never reintroduce `MESSAGING_CWD` to `env_map` — it will regress the
+  warning.
+- If upstream eventually hard-errors on the variable, remove the
+  `.addon-runtime` fallback too and have ttyd read `terminal.cwd` from
+  `config.yaml` instead (e.g. via `yq`).
+
 ### v0.9.11 — Wrong default model + panel boot 502
 
 Shipped: 2026-04-15. Upstream still `v2026.4.13 / v0.9.0`

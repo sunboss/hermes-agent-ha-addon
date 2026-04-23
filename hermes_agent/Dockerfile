@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="0.10.1"
+ARG BUILD_VERSION="0.10.2"
 ARG HERMES_IMAGE_DIGEST="sha256:14ba9a26cf2d498ea773f1825326c404795ec4cb436a9479d22b7a345396c370"
 
 FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
@@ -48,6 +48,14 @@ RUN set -eux; \
 
 RUN /opt/hermes/.venv/bin/pip install --no-cache-dir --disable-pip-version-check \
       'fastapi>=0.104.0,<1' 'uvicorn[standard]>=0.24.0,<1' || true
+
+# Patch upstream HA platform so the WebSocket URL uses the Supervisor proxy
+# endpoint (/core/websocket) instead of the hard-coded /core/api/websocket
+# that v0.10.0 emits.  See patches/ha_ws_url.py for the full rationale —
+# symptom is a tight reconnection loop with "502 Invalid response status"
+# in the gateway logs.  Idempotent; safe on rebuild.
+COPY patches/ /opt/hermes-ha-patches/
+RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ha_ws_url.py
 
 COPY run.sh /run.sh
 COPY hermes_ui/ /opt/hermes-ha-ui/

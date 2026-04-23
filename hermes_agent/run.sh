@@ -89,7 +89,14 @@ env_map["SUPERVISOR_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["HASS_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
 env_map["HERMES_HOME"] = str(hermes_home)
 env_map["HERMES_STATE_ROOT"] = str(addon_state_root)
-env_map["MESSAGING_CWD"] = str(messaging_cwd)
+# NOTE: MESSAGING_CWD is deprecated in Hermes v0.10.0 — the gateway now
+# prints a warning on boot and expects `terminal.cwd` in config.yaml
+# instead.  We write the value to config.yaml below and strip any stale
+# MESSAGING_CWD=... left over from older .env files.  ttyd still reads it
+# from the bash shell environment via ${HERMES_HOME}/.addon-runtime (written
+# at the bottom of this heredoc), so the terminal `cd` fallback keeps working
+# even though it's no longer in /config/addons_data/hermes-agent/.hermes/.env.
+env_map.pop("MESSAGING_CWD", None)
 env_map["AUTH_MODE"] = auth_mode
 env_map["AUTH_PROVIDER"] = auth_provider
 env_map["AUTH_STORAGE_PATH"] = str(auth_storage_path)
@@ -207,11 +214,27 @@ runtime_config_path.write_text(
     yaml.safe_dump(runtime_config, sort_keys=False, allow_unicode=True),
     encoding="utf-8",
 )
+
+# Write MESSAGING_CWD to a side file the bash parent sources after .env.
+# Keeping it out of .env avoids the upstream deprecation warning while still
+# letting ttyd `cd` into the user's chosen workspace on terminal launch.
+addon_runtime_path = hermes_home / ".addon-runtime"
+addon_runtime_path.write_text(
+    f'export MESSAGING_CWD={env_quote(str(messaging_cwd))}\n',
+    encoding="utf-8",
+)
 PY
 
 set -a
 . "${HERMES_HOME}/.env"
 set +a
+
+# Source the add-on-specific runtime env (MESSAGING_CWD, etc.) — kept
+# separate from .env to avoid the upstream Hermes deprecation warning.
+if [ -f "${HERMES_HOME}/.addon-runtime" ]; then
+  # shellcheck disable=SC1091
+  . "${HERMES_HOME}/.addon-runtime"
+fi
 
 TTYD_BIN="$(command -v ttyd 2>/dev/null || true)"
 if [ -n "${TTYD_BIN}" ]; then
