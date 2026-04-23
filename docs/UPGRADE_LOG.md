@@ -43,6 +43,74 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v0.10.3 — `server.py` mojibake SyntaxError
+
+Shipped: 2026-04-23. Same upstream as v0.10.2.
+
+**Symptom**
+On container start the add-on logs:
+
+```
+  File "/opt/hermes-ha-ui/server.py", line 263
+    "message": f"浠ｇ悊璇锋眰澶辫触锛歿type(exc).__name__}",
+                                              ^
+SyntaxError: f-string: single '}' is not allowed
+```
+
+The ingress UI server (`hermes_ui/server.py`) fails to start. Every user-
+visible surface — the launcher page at `/`, the `/panel/` proxy, `/ttyd/`,
+`/health` — returns 502 Bad Gateway through HA Ingress. The underlying
+gateway is still running, but the user cannot reach any of it.
+
+**Root cause**
+The file was UTF-8 encoded, containing Chinese status messages like
+`代理请求失败：{type(exc).__name__}`. At some point (likely an editor-on-
+Windows save during the v0.10.0 storage-layout refactor) the file was
+re-opened with the wrong encoding — its UTF-8 bytes were misread as GBK
+characters — and then saved again as UTF-8. The result is
+"mojibake-squared": the file is valid UTF-8, but the text is garbage
+Chinese like `浠ｇ悊璇锋眰澶辫触锛歿`.
+
+On most of the corrupted strings this only manifests as ugly error
+messages. But on line 263 specifically, the full-width colon `：`
+(U+FF1A, 3 UTF-8 bytes `EF BC 9A`) was followed immediately by `{`.
+When those 4 bytes were decoded as GBK, the opening `{` got absorbed
+into a multi-byte character, producing `歿` with no `{` left to start
+the f-string interpolation. That turned a valid f-string into a syntax
+error.
+
+A UTF-8 BOM (`EF BB BF`) was also added at file start during the same
+save — not a Python error on its own (Python tolerates a BOM), but
+noise worth cleaning up.
+
+**Fix**
+- Reversed the mojibake by treating the current UTF-8 chars as GBK
+  bytes and decoding them back as UTF-8: recovers ~95% of the original
+  Chinese. Lost characters (`—`, `→`, `…`, `│` — none of which exist in
+  GBK) were recovered by cross-referencing the pre-corruption
+  `hermes_ui/server.py` at commit `223f295` (v0.9.11), which was the
+  last clean version.
+- Hand-reconstructed 4 lines that were added *after* v0.9.11 (in the
+  new `/panel/` proxy block) and so had no clean reference — the Chinese
+  there was rewritten from code context.
+- Stripped the BOM so future `ast.parse()` and `git diff` don't include
+  the invisible `\ufeff` marker.
+- Updated the in-file `Version:` docstring from the stale `0.9.11` to
+  the current `0.10.3`.
+
+**Invariants**
+- `hermes_ui/server.py` must stay **UTF-8 without BOM**. Any editor
+  that auto-inserts a BOM or re-saves as GBK will immediately re-break
+  this. When editing on Windows, set VS Code's `files.encoding: utf8`
+  and `files.autoGuessEncoding: false`.
+- Pre-commit check recommendation: run
+  `python3 -c "import ast; ast.parse(open('hermes_agent/hermes_ui/server.py', encoding='utf-8').read())"`
+  before every commit — catches both encoding corruption and plain
+  syntax errors.
+- When replacing text in this file, always go through the `Edit` tool
+  (exact-match semantics), never a `sed` pipeline that might reinterpret
+  the encoding.
+
 ### v0.10.2 — HA WebSocket 502 loop + `MESSAGING_CWD` deprecation
 
 Shipped: 2026-04-23. Upstream still `v2026.4.16 / v0.10.0`

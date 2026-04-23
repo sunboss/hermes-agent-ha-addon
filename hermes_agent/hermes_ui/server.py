@@ -1,20 +1,20 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
-hermes_ui/server.py  鈥? Hermes Agent HA Add-on: Ingress UI Server
+hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.9.11
+Version: 0.10.3
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
 
-  1. Static UI files       鈥?index.html, app.js, styles.css, 鈥?(HERMES_UI_DIR)
-  2. Hermes API proxy      鈥?/api/**   鈫? proxied to Hermes gateway (API_BASE :8642)
-  3. Auth bridge           鈥?/auth/**  鈫? local PKCE OAuth helpers (auth_bridge.py)
-  4. ttyd proxy            鈥?/ttyd/**  鈫? HTTP + WebSocket to ttyd (TTYD_PORT :7681)
-  5. Panel proxy           鈥?/panel/** 鈫? HTTP + WebSocket to upstream `hermes dashboard`
+  1. Static UI files       — index.html, app.js, styles.css, … (HERMES_UI_DIR)
+  2. Hermes API proxy      — /api/**   →  proxied to Hermes gateway (API_BASE :8642)
+  3. Auth bridge           — /auth/**  →  local PKCE OAuth helpers (auth_bridge.py)
+  4. ttyd proxy            — /ttyd/**  →  HTTP + WebSocket to ttyd (TTYD_PORT :7681)
+  5. Panel proxy           — /panel/** →  HTTP + WebSocket to upstream `hermes dashboard`
                                           (PANEL_HOST:PANEL_PORT, default 127.0.0.1:9119)
-  6. Provider shim         鈥?/shim/**  鈫? loopback-only; LLM bridge for web_login mode
-  7. Metadata endpoints    鈥?/models, /health, /config-model  鈫? local; never proxied
+  6. Provider shim         — /shim/**  →  loopback-only; LLM bridge for web_login mode
+  7. Metadata endpoints    — /models, /health, /config-model  →  local; never proxied
 
 Security model
 --------------
@@ -227,7 +227,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                     response_type = response.headers.get("Content-Type", "application/json")
                     self._send_common_headers(status, response_type)
                     self.wfile.write(payload)
-                return  # success 鈥?done
+                return  # success — done
             except urllib.error.HTTPError as exc:
                 payload = exc.read()
                 response_type = exc.headers.get("Content-Type", "application/json")
@@ -246,7 +246,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 if is_refused and attempt < _PROXY_RETRIES - 1:
                     _time.sleep(_RETRY_DELAY)
                     continue
-                # Final attempt failed or non-retryable OSError 鈥?return friendly 503
+                # Final attempt failed or non-retryable OSError — return friendly 503
                 self._send_json(
                     HTTPStatus.SERVICE_UNAVAILABLE,
                     {
@@ -260,7 +260,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                     HTTPStatus.BAD_GATEWAY,
                     {
                         "error": "proxy_error",
-                        "message": f"浠ｇ悊璇锋眰澶辫触锛歿type(exc).__name__}",
+                        "message": f"代理请求失败：{type(exc).__name__}",
                     },
                 )
                 return
@@ -271,15 +271,15 @@ class HermesUiHandler(BaseHTTPRequestHandler):
     #   ttyd JS makes TWO requests that both use absolute URLs based on
     #   window.location.HOST (bypassing HA Ingress token path):
     #
-    #   1. fetch('http://HOST:8123/ttyd/token')   鈫?GET one-time auth token
-    #   2. new WebSocket('ws://HOST:8123/ttyd/ws?token=XXX')  鈫?connect terminal
+    #   1. fetch('http://HOST:8123/ttyd/token')   ← GET one-time auth token
+    #   2. new WebSocket('ws://HOST:8123/ttyd/ws?token=XXX')  ← connect terminal
     #
-    #   Both bypass HA Ingress 鈫?HA returns 502 or 404.
+    #   Both bypass HA Ingress → HA returns 502 or 404.
     #   Without a valid token from step 1, step 2 also fails even if URL is fixed.
     #
     # Fix: intercept both fetch() and WebSocket() in the browser:
     #   1. Redirect /ttyd/token fetches to a relative path (./token) so they
-    #      travel through HA Ingress 鈫?our server 鈫?ttyd.
+    #      travel through HA Ingress → our server → ttyd.
     #   2. Rewrite WebSocket URL to include the full HA Ingress path AND preserve
     #      the ?token= query parameter.
     _TTYD_WS_PATCH = (
@@ -334,10 +334,10 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 continue
             # CRITICAL: strip Accept-Encoding so ttyd never returns gzip.
             # urllib does not auto-decompress, and we need to inject the
-            # JS patch into the HTML payload 鈥?impossible on a gzip stream.
+            # JS patch into the HTML payload — impossible on a gzip stream.
             # If we forwarded a gzip body and kept Content-Encoding: gzip,
             # HA Supervisor's aiohttp proxy would later fail with
-            # ContentDecodingError 鈫?the browser would see a 502.  See
+            # ContentDecodingError → the browser would see a 502.  See
             # v0.9.8 fix in CHANGELOG.md.
             if lower == "accept-encoding":
                 continue
@@ -360,7 +360,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 if "text/html" in content_type:
                     patch = self._TTYD_WS_PATCH.encode()
                     payload = payload.replace(b"</head>", patch + b"</head>", 1)
-                    if patch not in payload:  # no </head> tag 鈥?prepend
+                    if patch not in payload:  # no </head> tag — prepend
                         payload = patch + payload
                 self.send_response(response.getcode())
                 seen: set[str] = set()
@@ -368,10 +368,11 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                     lower = key.lower()
                     if lower in HOP_BY_HOP_HEADERS or lower == "cache-control":
                         continue
-                    # Skip content-length 鈥?we'll set the correct value below
+                    # Skip content-length — we'll set the correct value below
                     if lower == "content-length":
                         continue
-                    # Strip any content-encoding header the upstream sent 鈥?                    # we forced Accept-Encoding: identity above so the body
+                    # Strip any content-encoding header the upstream sent —
+                    # we forced Accept-Encoding: identity above so the body
                     # is guaranteed to be uncompressed plain text/html.
                     if lower == "content-encoding":
                         continue
@@ -416,12 +417,12 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         try:
             upstream = socket.create_connection((TTYD_HOST, TTYD_PORT), timeout=10)
         except OSError as exc:
-            self.log_error("[ttyd-ws] cannot connect to ttyd:%s 鈥?%s", TTYD_PORT, exc)
+            self.log_error("[ttyd-ws] cannot connect to ttyd:%s — %s", TTYD_PORT, exc)
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": f"ttyd unavailable: {exc}"})
             return
 
         try:
-            # Build upgrade request for ttyd 鈥?replace Host, keep all WS headers
+            # Build upgrade request for ttyd — replace Host, keep all WS headers
             request_lines = [f"{self.command} {self.path} HTTP/1.1"]
             has_host = False
             for key, value in self.headers.items():
@@ -460,7 +461,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 upstream.close()
                 return
 
-            self.log_message("[ttyd-ws] WebSocket tunnel open 鈥?%s", self.path)
+            self.log_message("[ttyd-ws] WebSocket tunnel open — %s", self.path)
 
         except Exception as exc:  # noqa: BLE001
             self.log_error("[ttyd-ws] handshake failed: %s", exc)
@@ -482,7 +483,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             while True:
                 readable, _, _ = select.select(sockets, [], [], 60)
                 if not readable:
-                    # keepalive ping 鈥?nothing to do; loop
+                    # keepalive ping — nothing to do; loop
                     continue
                 for sock in readable:
                     try:
@@ -490,7 +491,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                     except OSError:
                         chunk = b""
                     if not chunk:
-                        return  # one side closed 鈫?stop relay
+                        return  # one side closed → stop relay
                     target = upstream if sock is self.connection else self.connection
                     try:
                         target.sendall(chunk)
@@ -503,17 +504,17 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 pass
 
     # -----------------------------------------------------------------------
-    # /panel/** reverse proxy  鈫? upstream `hermes dashboard` FastAPI SPA
+    # /panel/** reverse proxy  →  upstream `hermes dashboard` FastAPI SPA
     # -----------------------------------------------------------------------
     # Upstream layout: `hermes dashboard` binds to 127.0.0.1:9119 and serves a
     # Vite-built single-page app with absolute-path asset references (e.g.
     # `<script src="/assets/index-xyz.js">`) plus runtime fetch() / WebSocket
     # calls to absolute paths like `/api/session/list`.  None of those paths
-    # know about Home Assistant Ingress 鈥?they'd bypass the ingress token and
+    # know about Home Assistant Ingress — they'd bypass the ingress token and
     # 404 straight at HA's nginx.
     #
     # Fix (three parts):
-    #   1. HTTP path stripping: incoming "/panel/foo" 鈫?upstream "/foo".
+    #   1. HTTP path stripping: incoming "/panel/foo" → upstream "/foo".
     #   2. HTML rewrite: for text/html responses, rewrite `href="/x"` /
     #      `src="/x"` / `action="/x"` to `./x` so the browser resolves them
     #      against the current page (which sits under /panel/).
@@ -580,7 +581,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
 
     # Rewrites absolute-path attribute values in HTML so the browser resolves
     # them against the current (HA-ingress-prefixed) page path, not the bare
-    # origin.  Only touches values that start with a single "/" 鈥?not "//host"
+    # origin.  Only touches values that start with a single "/" — not "//host"
     # (protocol-relative), not "http://", not "#anchor".
     _PANEL_HTML_ATTR_RX = re.compile(
         rb'(\s(?:href|src|action|data-src|data-href)\s*=\s*)(["\'])/(?!/)',
@@ -610,7 +611,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
         '<meta http-equiv="refresh" content="4">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        '<title>Hermes 闈㈡澘姝ｅ湪鏋勫缓...</title>'
+        '<title>Hermes 面板正在构建...</title>'
         '<style>'
         'body{margin:0;min-height:100vh;display:grid;place-items:center;'
         'background:linear-gradient(180deg,#070b17 0%,#040711 48%,#02040a 100%);'
@@ -627,9 +628,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         '@keyframes p{0%,100%{opacity:.35}50%{opacity:1}}'
         '</style></head><body><section class="panel">'
         '<p class="eyebrow"><span class="dot"></span> Hermes Dashboard</p>'
-        '<h1>瀹樻柟鎺у埗闈㈡澘姝ｅ湪鏋勫缓鈥?/h1>'
-        '<p>棣栨鍚姩鏃?<code>hermes dashboard</code> 闇€瑕佸厛鏋勫缓 Web 璧勬簮锛屽ぇ绾﹂渶瑕?30鈥?0 绉掋€?/p>'
-        '<p>杩欎釜椤甸潰浼氭瘡 4 绉掕嚜鍔ㄥ埛鏂颁竴娆★紝鏋勫缓瀹屾垚鍚庝細鐩存帴杩涘叆鎺у埗闈㈡澘銆?/p>'
+        '<h1>官方控制面板正在构建…</h1>'
+        '<p>首次访问此页时，<code>hermes dashboard</code> 需要先构建 Web 资源，大约需要 30–60 秒。</p>'
+        '<p>这个页面会每 4 秒自动刷新一次，构建完成后会直接进入控制面板。</p>'
         '</section></body></html>'
     )
 
@@ -653,7 +654,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             lower = key.lower()
             if lower in HOP_BY_HOP_HEADERS or lower == "host":
                 continue
-            # Force identity encoding 鈥?we need plaintext HTML to inject the patch.
+            # Force identity encoding — we need plaintext HTML to inject the patch.
             if lower == "accept-encoding":
                 continue
             headers[key] = value
@@ -668,11 +669,11 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         )
 
         # Boot-window retry: `hermes dashboard` starts listening on 9119
-        # AFTER its Vite build finishes (~30鈥?0s on first boot).  During that
+        # AFTER its Vite build finishes (~30–60s on first boot).  During that
         # window GETs refuse with ECONNREFUSED.  Short in-proxy retry papers
         # over the momentary case; sustained failure falls through to the
         # friendly auto-refreshing HTML page below (only for HTML-accepting
-        # browser GETs 鈥?SPA asset/API fetches still get JSON 502 so they
+        # browser GETs — SPA asset/API fetches still get JSON 502 so they
         # can fail fast and the SPA can retry on its own).
         _PANEL_RETRIES = 3
         _PANEL_DELAY = 0.7
@@ -694,7 +695,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                             continue
                         if lower == "content-encoding":
                             continue
-                        # Strip Location-rewriting for now 鈥?upstream should
+                        # Strip Location-rewriting for now — upstream should
                         # only redirect with relative paths inside its SPA.
                         if lower not in seen:
                             self.send_header(key, value)
@@ -732,7 +733,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 if is_refused and attempt < _PANEL_RETRIES - 1:
                     _time.sleep(_PANEL_DELAY)
                     continue
-                # Final attempt failed 鈥?serve the boot page to HTML-accepting
+                # Final attempt failed — serve the boot page to HTML-accepting
                 # browser GETs and JSON 502 to everything else (XHR/SPA/etc).
                 accept = (self.headers.get("Accept") or "").lower()
                 wants_html = (
@@ -755,8 +756,8 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                     {
                         "error": "panel_unavailable",
                         "message": (
-                            f"Hermes 闈㈡澘鏆傛椂鏃犳硶杩炴帴锛坽PANEL_HOST}:{PANEL_PORT}锛夈€?
-                            "璇风‘璁?`hermes dashboard` 瀛愬懡浠ゅ湪璇?Hermes 鐗堟湰涓彲鐢ㄣ€?
+                            f"Hermes 面板暂时无法连接（{PANEL_HOST}:{PANEL_PORT}）。"
+                            "请确认 `hermes dashboard` 子命令在当前 Hermes 版本中可用。"
                         ),
                         "detail": str(exc),
                     },
@@ -771,7 +772,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         try:
             upstream = socket.create_connection((PANEL_HOST, PANEL_PORT), timeout=10)
         except OSError as exc:
-            self.log_error("[panel-ws] cannot connect to panel:%s 鈥?%s", PANEL_PORT, exc)
+            self.log_error("[panel-ws] cannot connect to panel:%s — %s", PANEL_PORT, exc)
             self._send_json(HTTPStatus.BAD_GATEWAY, {"error": f"panel unavailable: {exc}"})
             return
 
@@ -817,7 +818,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 upstream.close()
                 return
 
-            self.log_message("[panel-ws] WebSocket tunnel open 鈥?%s", self.path)
+            self.log_message("[panel-ws] WebSocket tunnel open — %s", self.path)
 
         except Exception as exc:  # noqa: BLE001
             self.log_error("[panel-ws] handshake failed: %s", exc)
@@ -1027,7 +1028,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         if path == "/config-model":
             # Return the model/provider declared in HERMES_HOME/config.yaml so`r`n            # the launcher can show the actual configured model.
             try:
-                import yaml as _yaml  # local import 鈥?yaml is already a dep
+                import yaml as _yaml  # local import — yaml is already a dep
                 with open(Path(os.environ.get("HERMES_HOME", "/config/addons_data/hermes-agent/.hermes")) / "config.yaml", "r", encoding="utf-8") as _cf:
                     _cfg = _yaml.safe_load(_cf.read()) or {}
                 _mc = _cfg.get("model")
@@ -1062,7 +1063,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 self._send_html(status, self._callback_page(False, payload.get("message") or "\u767b\u5f55\u56de\u8c03\u5904\u7406\u5931\u8d25\u3002"))
             return
         if path == "/health":
-            # Fast local liveness probe 鈥?also pings the Hermes gateway so the UI
+            # Fast local liveness probe — also pings the Hermes gateway so the UI
             # can distinguish "UI is up" from "gateway is ready".
             gateway_status = "starting"
             try:
@@ -1173,7 +1174,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self._proxy_panel_or_api("PATCH")
 
     def _proxy_panel_or_api(self, method: str) -> None:
-        """Handle PUT / PATCH 鈥?currently only routed to /panel/** and /api/**.
+        """Handle PUT / PATCH — currently only routed to /panel/** and /api/**.
 
         FastAPI-based `hermes dashboard` uses REST-style verbs for some of its
         endpoints (creating/updating config, sessions, skills).  We accept the

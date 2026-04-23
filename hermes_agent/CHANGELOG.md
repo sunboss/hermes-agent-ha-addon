@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.3
+
+- 修复 `hermes_ui/server.py` 中文字符串编码损坏导致的启动 SyntaxError
+  - line 263 原本是 `f"代理请求失败：{type(exc).__name__}"`，被误当 GBK 重新编码后变成 `f"浠ｇ悊璇锋眰澶辫触锛歿type(exc).__name__}"`，`{` 被吞进 mojibake 导致 f-string 语法错误
+  - ingress UI server 启动即崩，`/`、`/panel/`、`/ttyd/`、健康检查全部 502
+- 一并还原：文件 BOM 去除、所有 `—` / `→` / `…` 等非 GBK Unicode 字符恢复
+- 内嵌版本号从 `0.9.11` 对齐到 `0.10.3`
+
 ## 0.10.2
 
 - 修复 Home Assistant WebSocket 反复 502 的问题（`ws://supervisor/core/api/websocket` → `/core/websocket`）
