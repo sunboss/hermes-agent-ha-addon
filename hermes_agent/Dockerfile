@@ -1,5 +1,14 @@
-ARG BUILD_VERSION="0.11.1"
-ARG HERMES_IMAGE_DIGEST="sha256:14ba9a26cf2d498ea773f1825326c404795ec4cb436a9479d22b7a345396c370"
+ARG BUILD_VERSION="0.12.0"
+# Upstream `latest` snapshot from 2026-04-23.  Newer than the last tagged
+# release v2026.4.16 (2026-04-16).  Picked up because v2026.4.16 shipped
+# with a `hermes dashboard` regression where the web UI first-boot
+# `npm install` ran without sourcing the shell profile, so n/nvm-managed
+# node was not on PATH and the build exited non-zero ("Web UI npm install
+# failed").  Fixed upstream in commit series ending 2026-04-23 — see
+# fix(terminal): auto-source ~/.profile and ~/.bash_profile.
+# Revisit on the next tagged release (v2026.4.17+) and switch back to a
+# release-tag digest.
+ARG HERMES_IMAGE_DIGEST="sha256:7ab9fc410f95fb5e779f4fadbbd599e68ae37a9f25c4f657df8ff952e0172aee"
 
 FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
 
@@ -56,6 +65,20 @@ RUN /opt/hermes/.venv/bin/pip install --no-cache-dir --disable-pip-version-check
 # in the gateway logs.  Idempotent; safe on rebuild.
 COPY patches/ /opt/hermes-ha-patches/
 RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ha_ws_url.py
+
+# Pre-build the Hermes web UI at image build time so that `hermes dashboard`
+# starts immediately on first boot without re-running npm install/build inside
+# the container.  Without this, the build runs inside the container writable
+# layer and is lost on every Rebuild — forcing a 30-60s delay plus a manual
+# `npm install` workaround on the first request to /panel/.
+# If the web/ directory or npm are absent in a future upstream image, the
+# `|| true` makes this step non-fatal.
+RUN set -eux; \
+    if [ -d /opt/hermes/web ] && command -v npm >/dev/null 2>&1; then \
+      cd /opt/hermes/web && npm install --prefer-offline && npm run build; \
+    else \
+      echo "[Dockerfile] web/ or npm not found — skipping pre-build (dashboard will build on first boot)"; \
+    fi || true
 
 COPY run.sh /run.sh
 COPY hermes_ui/ /opt/hermes-ha-ui/

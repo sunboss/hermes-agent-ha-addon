@@ -326,12 +326,5 @@ if [ -f "${HERMES_INSTALL_DIR}/tools/skills_sync.py" ]; then
   python3 "${HERMES_INSTALL_DIR}/tools/skills_sync.py" || true
 fi
 
-mkdir -p /opt/data
-for file_name in auth.json config.yaml .env SOUL.md; do
-  if [ -e "${HERMES_HOME}/${file_name}" ]; then
-    ln -sf "${HERMES_HOME}/${file_name}" "/opt/data/${file_name}" 2>/dev/null || true
-  fi
-done
-
 echo "[run.sh] Starting Hermes Agent gateway (HERMES_HOME=${HERMES_HOME})..."
 exec hermes gateway run

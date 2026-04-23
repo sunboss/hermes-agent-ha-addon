@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0
+
+- **Dockerfile 预编译 web UI**：`RUN cd /opt/hermes/web && npm install && npm run build` 在镜像 build 时就把 dashboard 前端编译进去，彻底解掉首启 `✗ Web UI npm install failed` 问题
+  - 之前：node_modules 和 dist 在容器写入层，每次 Rebuild 清空，首启需要 30–60s npm 重装 + 上游 PATH/nvm bug 导致 npm 直接失败，`/panel/` 永远 502，靠手动 `npm install` 才能恢复
+  - 之后：dist 已经在镜像里，dashboard 启动时检测到 dist 存在直接跳过 build，`/panel/` 立即可用
+  - 非致命：若未来上游镜像没有 web/ 或 npm，`|| true` 保证不阻断构建，回退到首启 build 行为
+- 升级上游 Hermes 镜像到 2026-04-23 `latest` 快照（digest `7ab9fc41…`，比 v2026.4.16 新 7 天），带入上游 PATH/nvm、gateway session 锁、D-Bus preflight 等修复
+- 删除 `run.sh` 里 v0.9 时代的 `/opt/data` 死代码（符号链接农场，v0.11 后已无任何代码读取 `/opt/data`）
+
 ## 0.11.1
 
 - 恢复 v0.9.11 在 v0.10.0 重写时丢掉的 `hermes dashboard` 启动诊断块
