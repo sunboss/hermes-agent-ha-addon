@@ -291,11 +291,35 @@ fi
 
 python3 "${HERMES_UI_DIR}/server.py" &
 
+# Launch upstream `hermes dashboard` on loopback; server.py reverse-proxies
+# /panel/** to this host:port.  The diagnostic block below was originally
+# added in v0.9.11 to catch the common first-boot failure mode where
+# `hermes dashboard` tries to `npm install && npm run build` the web UI
+# and exits non-zero (missing node, network-blocked registry, permission
+# issues on the writable layer, etc.).  Lost in the v0.10.0 rewrite,
+# restored in v0.11.1 after the same symptom resurfaced in the wild.
 if hermes dashboard --help >/dev/null 2>&1; then
+  echo "[run.sh] Starting hermes dashboard on ${HERMES_PANEL_HOST}:${HERMES_PANEL_PORT}..."
   hermes dashboard \
     --host "${HERMES_PANEL_HOST}" \
     --port "${HERMES_PANEL_PORT}" \
     --no-open &
+  DASH_PID=$!
+  # Give dashboard a moment to either bind or crash.  0.5s is enough to
+  # catch immediate exits (missing command, bad args, npm failure before
+  # the build even starts); the first-boot npm build itself takes 30-60s
+  # and will not be caught here — but that case manifests as a live PID
+  # that hasn't yet bound 9119, which is a different (and more patient)
+  # failure mode.
+  sleep 0.5
+  if ! kill -0 "${DASH_PID}" 2>/dev/null; then
+    echo "[run.sh] WARNING: hermes dashboard exited immediately — /panel/ will be unavailable" >&2
+    echo "[run.sh]          check the lines above for the upstream error (commonly npm install / web build failures)" >&2
+  else
+    echo "[run.sh] hermes dashboard started (PID ${DASH_PID})"
+  fi
+else
+  echo "[run.sh] NOTICE: this Hermes build has no \`hermes dashboard\` subcommand — /panel/ will return 502" >&2
 fi
 
 if [ -f "${HERMES_INSTALL_DIR}/tools/skills_sync.py" ]; then

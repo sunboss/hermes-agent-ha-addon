@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.1
+
+- 恢复 v0.9.11 在 v0.10.0 重写时丢掉的 `hermes dashboard` 启动诊断块
+  - 启动时打印 `Starting hermes dashboard on 127.0.0.1:9119...`
+  - `sleep 0.5` 后用 `kill -0 ${DASH_PID}` 探活，立即退出则在日志上方直接报 `WARNING: hermes dashboard exited immediately — /panel/ will be unavailable`
+  - 如果 `--help` 都不通，提示 `this Hermes build has no hermes dashboard subcommand`
+  - 针对常见首启失败场景（npm install 炸、上游没打 node、网络被墙 npmjs.org）给出下一步排查提示
+- 纯诊断改动，无行为变化；如果 dashboard 能跑起来，输出只多两行日志
+
 ## 0.11.0
 
 - **Breaking**: 规范化 add-on 存储布局，迁移到 HA 2023.11+ 标准 `addon_config` map type

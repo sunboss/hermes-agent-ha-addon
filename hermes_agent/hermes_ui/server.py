@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.11.0
+Version: 0.11.1
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
