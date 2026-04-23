@@ -70,11 +70,13 @@ if legacy_root.is_dir():
 messaging_cwd = Path(options.get("messaging_cwd") or str(default_workspace))
 auth_storage_path = Path(options.get("auth_storage_path") or str(default_auth_root))
 auth_mode = str(options.get("auth_mode") or "api_key")
-auth_provider = str(options.get("auth_provider") or "openai_web")
+auth_provider = "openai_web"  # hardcoded; was a config option until v0.13.0
 llm_model = str(options.get("llm_model") or "gpt-5.4")
-openai_oauth_client_id = str(options.get("openai_oauth_client_id") or "")
-openai_oauth_redirect_uri = str(options.get("openai_oauth_redirect_uri") or "http://127.0.0.1:1455/auth/callback")
-openai_oauth_scopes = str(options.get("openai_oauth_scopes") or "openid profile email offline_access")
+# OAuth fields removed from config UI in v0.13.0 (power-user settings with
+# sensible defaults that rarely need changing). Hardcoded here.
+openai_oauth_client_id = ""
+openai_oauth_redirect_uri = "http://127.0.0.1:1455/auth/callback"
+openai_oauth_scopes = "openid profile email offline_access"
 watch_domains = [str(item) for item in (options.get("watch_domains") or [])]
 watch_entities = [str(item) for item in (options.get("watch_entities") or [])]
 ignore_entities = [str(item) for item in (options.get("ignore_entities") or [])]
@@ -146,8 +148,6 @@ for option_key, env_key in (
     ("openrouter_api_key", "OPENROUTER_API_KEY"),
     ("openai_base_url", "OPENAI_BASE_URL"),
     ("openai_api_key", "OPENAI_API_KEY"),
-    ("huggingface_api_key", "HUGGINGFACE_API_KEY"),
-    ("hf_base_url", "HF_BASE_URL"),
 ):
     value = options.get(option_key)
     if value not in (None, ""):
@@ -155,14 +155,8 @@ for option_key, env_key in (
 
 env_map.pop("LLM_MODEL", None)
 
-hf_key = str(options.get("huggingface_api_key") or "")
-hf_base_url = str(options.get("hf_base_url") or "https://api-inference.huggingface.co/v1")
 openrouter_key = str(options.get("openrouter_api_key") or "")
 openai_base_url = str(options.get("openai_base_url") or "")
-
-if hf_key and not openrouter_key and not openai_base_url:
-    env_map.setdefault("OPENAI_BASE_URL", hf_base_url)
-    env_map.setdefault("OPENAI_API_KEY", hf_key)
 
 if auth_mode == "web_login" and auth_provider == "openai_web":
     env_map["OPENAI_BASE_URL"] = "http://127.0.0.1:8099/shim/v1"
@@ -209,8 +203,6 @@ elif openrouter_key:
     model_cfg.setdefault("provider", "openrouter")
 elif openai_base_url:
     model_cfg["base_url"] = openai_base_url
-elif hf_key:
-    model_cfg["base_url"] = hf_base_url
 runtime_config["model"] = model_cfg
 
 terminal_cfg = runtime_config.get("terminal")

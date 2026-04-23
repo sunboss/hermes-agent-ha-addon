@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.13.0
+
+- **配置页精简**：移除 6 个很少需要改的字段，配置页只保留真正有用的选项
+  - 删除：`huggingface_api_key`、`hf_base_url`（HF 目前不支持 tool calling，这两个字段没有实际作用）
+  - 删除：`auth_provider`（内部固定 `openai_web`，用户不需要改）
+  - 删除：`openai_oauth_client_id`、`openai_oauth_redirect_uri`、`openai_oauth_scopes`（OAuth 参数有合理默认值，硬编码进 run.sh）
+  - 保留：`llm_model`、三个 API key、`auth_mode`、`auth_storage_path`、`terminal_backend`、HA watch 参数、`messaging_cwd`、`api_server_key`
+- **新增中文翻译** `translations/zh.yaml`：配置页 label/description 现在支持中文显示
+- **精简英文翻译** `translations/en.yaml`：对应删除的字段一并移除，描述文字更简洁
+- **`docs/ARCHITECTURE.md` 完整重写**：更新到 v0.11+ 布局（原文档还在描述 pre-v0.9 的 `/data` 路径，已完全过时）
+- **新建 `docs/STORAGE.md`**：记录容器/宿主机路径映射、目录重要性分级、三种备份策略、跨版本/跨机器迁移步骤
+- **新建 `hermes_agent/patches/README.md`**：说明 patches/ 目录的设计原则和 `ha_ws_url.py` 的完整背景，方便未来升级时判断是否可以删除
+- **新增 GitHub Actions CI** (`.github/workflows/lint.yml`)：每次 push/PR 自动检查 bash 语法、Python 编译、run.sh 内嵌 Python 块、YAML 合法性、Dockerfile hadolint
+
 ## 0.12.0
 
 - **Dockerfile 预编译 web UI**：`RUN cd /opt/hermes/web && npm install && npm run build` 在镜像 build 时就把 dashboard 前端编译进去，彻底解掉首启 `✗ Web UI npm install failed` 问题

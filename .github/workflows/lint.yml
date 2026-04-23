@@ -1,0 +1,50 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bash syntax check
+        run: bash -n hermes_agent/run.sh
+
+      - name: Python syntax check
+        run: |
+          python3 -m py_compile hermes_agent/hermes_ui/server.py
+          python3 -m py_compile hermes_agent/hermes_ui/auth_bridge.py
+          python3 -m py_compile hermes_agent/hermes_ui/provider_shim.py
+          python3 -m py_compile hermes_agent/patches/ha_ws_url.py
+
+      - name: Python block in run.sh
+        run: |
+          python3 - << 'PY'
+          import re
+          src = open("hermes_agent/run.sh").read()
+          m = re.search(r"python3 - <<'PY'\n(.*?)\nPY", src, re.DOTALL)
+          if not m:
+              raise SystemExit("Could not locate Python block in run.sh")
+          compile(m.group(1), "run.sh.py", "exec")
+          print("OK")
+          PY
+
+      - name: YAML syntax check
+        run: |
+          python3 -c "
+          import yaml, glob
+          for f in glob.glob('hermes_agent/**/*.yaml', recursive=True) + glob.glob('hermes_agent/**/*.yml', recursive=True):
+              yaml.safe_load(open(f))
+              print('OK:', f)
+          "
+
+      - name: Dockerfile lint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: hermes_agent/Dockerfile
+          ignore: DL3008,DL3009,DL4006

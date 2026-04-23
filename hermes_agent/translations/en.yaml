@@ -1,61 +1,43 @@
 configuration:
   llm_model:
     name: Agent Model
-    description: "Agentic model ID. Defaults to gpt-5.4 (via the OpenAI Codex ChatGPT account login — run `hermes auth login openai-codex` inside the terminal). Hermes Agent REQUIRES tool-calling-capable models: GPT (gpt-5.4, gpt-4o, o3, o4-mini), Claude (claude-opus-4-6, claude-sonnet-4-6), Gemini (gemini-2.5-pro), DeepSeek (deepseek-v3), or Grok. Non-agentic models like NousResearch Hermes 3/4, Mistral base, or Llama base are rejected by the upstream gateway and should NOT be used here."
-  huggingface_api_key:
-    name: HuggingFace API Key
-    description: "Optional. API key for the HuggingFace Inference API. Only useful when Hermes Agent adds tool-calling support for HF-hosted agentic models. Get yours at https://huggingface.co/settings/tokens."
-  hf_base_url:
-    name: HuggingFace Inference Base URL
-    description: "OpenAI-compatible base URL for the HuggingFace Inference API. Default: https://api-inference.huggingface.co/v1. Change only for custom or self-hosted HuggingFace endpoints."
+    description: "Model ID for the Hermes Agent. Defaults to gpt-5.4 (ChatGPT web login via `hermes auth login openai-codex` in the terminal). Requires tool-calling capable models: GPT (gpt-5.4, gpt-4o, o3, o4-mini), Claude (claude-opus-4-6, claude-sonnet-4-6), Gemini (gemini-2.5-pro), DeepSeek (deepseek-v3), or Grok."
   openrouter_api_key:
     name: OpenRouter API Key
-    description: Optional. Set this when using OpenRouter as the model provider.
+    description: "Optional. Set this to use OpenRouter as the inference provider."
   openai_base_url:
     name: OpenAI-Compatible Base URL
-    description: Optional. Use this for OpenAI or self-hosted OpenAI-compatible endpoints.
+    description: "Optional. Base URL for OpenAI or any OpenAI-compatible endpoint (e.g. local Ollama, vLLM)."
   openai_api_key:
     name: OpenAI-Compatible API Key
-    description: Optional. API key for the OpenAI-compatible endpoint.
+    description: "Optional. API key for the above endpoint."
   auth_mode:
     name: Authentication Mode
-    description: Choose between direct API keys and the web-login bridge workflow.
-  auth_provider:
-    name: Web Login Provider
-    description: Provider profile used when auth_mode is set to web_login.
+    description: "api_key — use API keys above. web_login — authenticate via ChatGPT browser login (run `hermes auth login openai-codex` in the terminal after first boot)."
   auth_storage_path:
     name: Auth Storage Path
-    description: Directory used to persist auth sessions, bridge state, and login tokens.
-  openai_oauth_client_id:
-    name: OpenAI OAuth Client ID
-    description: Required for OpenAI Codex web login mode. Leave empty when using API key mode.
-  openai_oauth_redirect_uri:
-    name: OpenAI OAuth Redirect URI
-    description: Redirect URI used during the PKCE web login flow. The default matches OpenClaw's loopback callback flow.
-  openai_oauth_scopes:
-    name: OpenAI OAuth Scopes
-    description: Space-separated scopes requested during OpenAI Codex web login.
+    description: "Directory for persisting login sessions and auth tokens. Change only if you want to relocate auth data."
   terminal_backend:
     name: Terminal Backend
-    description: "Where Hermes should execute shell commands: local, docker, ssh, modal, daytona, or singularity."
+    description: "Where Hermes executes shell commands. Use 'local' for the built-in ttyd terminal."
   watch_domains:
     name: Watch Domains
-    description: Home Assistant domains Hermes should watch for state changes.
+    description: "Home Assistant entity domains Hermes should monitor for state changes (e.g. light, switch, sensor)."
   watch_entities:
     name: Watch Entities
-    description: Specific Home Assistant entities Hermes should watch.
+    description: "Specific Home Assistant entities to monitor (e.g. light.living_room)."
   ignore_entities:
     name: Ignore Entities
-    description: Entities Hermes should always ignore.
+    description: "Entities Hermes should always ignore, even if they match a watched domain."
   watch_all:
     name: Watch All Entities
-    description: Forward all Home Assistant state changes to Hermes. Usually leave this disabled.
+    description: "Forward every Home Assistant state change to Hermes. Leave disabled unless you have a specific reason — high event volume."
   cooldown_seconds:
-    name: Event Cooldown Seconds
-    description: Minimum seconds between repeated events for the same entity.
+    name: Event Cooldown (seconds)
+    description: "Minimum seconds between repeated events for the same entity. Prevents event storms."
   messaging_cwd:
     name: Working Directory
-    description: Default working directory for Hermes gateway sessions and local terminal execution.
+    description: "Default working directory for terminal sessions and agent file operations."
   api_server_key:
     name: API Server Key
-    description: Optional authentication key for the built-in Hermes API server that powers the ingress Web UI.
+    description: "Optional key for the built-in Hermes API server. Auto-generated if left empty."

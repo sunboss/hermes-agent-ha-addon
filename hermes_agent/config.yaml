@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI, dashboard proxy, and ttyd terminal."
-version: "0.12.0"
+version: "0.13.0"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -22,14 +22,8 @@ options:
   openrouter_api_key: ""
   openai_base_url: ""
   openai_api_key: ""
-  huggingface_api_key: ""
-  hf_base_url: "https://api-inference.huggingface.co/v1"
   auth_mode: "api_key"
-  auth_provider: "openai_web"
   auth_storage_path: "/config/auth"
-  openai_oauth_client_id: ""
-  openai_oauth_redirect_uri: "http://127.0.0.1:1455/auth/callback"
-  openai_oauth_scopes: "openid profile email offline_access"
   terminal_backend: "local"
   watch_domains: []
   watch_entities: []
@@ -43,14 +37,8 @@ schema:
   openrouter_api_key: "password?"
   openai_base_url: "str?"
   openai_api_key: "password?"
-  huggingface_api_key: "password?"
-  hf_base_url: "str?"
   auth_mode: "list(api_key|web_login)"
-  auth_provider: "list(openai_web|custom)"
   auth_storage_path: "str?"
-  openai_oauth_client_id: "str?"
-  openai_oauth_redirect_uri: "str?"
-  openai_oauth_scopes: "str?"
   terminal_backend: "list(local|docker|ssh|modal|daytona|singularity)"
   watch_domains:
     - "str"
