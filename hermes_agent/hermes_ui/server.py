@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 2026.4.24.2
+Version: 2026.4.24.3
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
@@ -286,42 +286,6 @@ class HermesUiHandler(BaseHTTPRequestHandler):
     #      travel through HA Ingress → our server → ttyd.
     #   2. Rewrite WebSocket URL to include the full HA Ingress path AND preserve
     #      the ?token= query parameter.
-    # Mobile-friendly CSS injected into ttyd's HTML.
-    # Problems on iOS/Android without this:
-    #   - Tapping in the terminal doesn't trigger the soft keyboard because
-    #     xterm.js's hidden <textarea> (used for keyboard input) has opacity:0
-    #     and is positioned off-screen; iOS won't focus it on tap.
-    #   - Double-tap triggers zoom instead of being forwarded to the terminal.
-    #   - 100vh doesn't account for the collapsible browser chrome on mobile,
-    #     causing the bottom row of the terminal to be hidden.
-    _TTYD_MOBILE_CSS = (
-        "<style>"
-        # Use dynamic viewport height so the terminal fills the screen correctly
-        # when the mobile browser's address bar collapses/expands.
-        "html,body{height:100%;height:100dvh;}"
-        # Prevent double-tap zoom and two-finger zoom from interfering with
-        # terminal input; manipulation still allows single-tap and scroll.
-        "body,#terminal-container,.xterm{"
-        "touch-action:manipulation;"
-        "-ms-touch-action:manipulation;}"
-        # Allow text selection so iOS shows "Paste" menu and the selection
-        # bubble; xterm.js re-enables its own selection model on top of this.
-        ".xterm-viewport,.xterm-screen{"
-        "user-select:text;-webkit-user-select:text;}"
-        # Keep the hidden input textarea accessible to the browser's focus
-        # manager so tapping anywhere in the terminal can route a focus() call
-        # to it, triggering the soft keyboard.
-        ".xterm-helper-textarea{"
-        "opacity:0.01!important;"  # near-invisible but not display:none
-        "position:fixed!important;"
-        "left:0!important;top:0!important;"
-        "width:1px!important;height:1px!important;"
-        "z-index:1!important;}"
-        # Smooth momentum scrolling in the xterm viewport on iOS.
-        ".xterm-viewport{-webkit-overflow-scrolling:touch;}"
-        "</style>"
-    )
-
     _TTYD_WS_PATCH = (
         "<script>"
         "(function(){"
@@ -405,9 +369,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             with urllib.request.urlopen(request, timeout=30) as response:
                 payload = response.read()
                 content_type = response.headers.get("Content-Type", "")
-                # Inject mobile CSS + WebSocket URL patch into ttyd's HTML.
+                # Inject WebSocket URL patch into ttyd's HTML.
                 if "text/html" in content_type:
-                    inject = (self._TTYD_MOBILE_CSS + self._TTYD_WS_PATCH).encode()
+                    inject = self._TTYD_WS_PATCH.encode()
                     if b"</head>" in payload:
                         payload = payload.replace(b"</head>", inject + b"</head>", 1)
                     else:

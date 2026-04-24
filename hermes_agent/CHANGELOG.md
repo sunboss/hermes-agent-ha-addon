@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.4.24.3
+
+- **修复 ttyd 移动端白屏**：移除 `_TTYD_MOBILE_CSS` 注入块，仅保留 `_TTYD_WS_PATCH`
+  - 根因：之前注入的 CSS 对 `.xterm-helper-textarea` 应用了 `position:fixed!important`，xterm.js 依赖 `position:absolute` 计算文本光标坐标，`fixed` 导致布局计算异常，Chrome 移动端整个终端页面白屏
+  - 修法：删除 `_TTYD_MOBILE_CSS` 类属性及其在 `_proxy_ttyd_http` 中的引用；tap-to-focus JS 保留在 `_TTYD_WS_PATCH` 中
+
 ## 2026.4.24.2
 
 - **彻底修复版本号显示**：改为 Dockerfile 构建时替换，不再依赖运行时代码
