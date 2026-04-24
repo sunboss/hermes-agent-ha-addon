@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.4.24.6
+
+- **自动适配架构 + 构建检测**
+  - 改用 HA 标准 `build_from` 模式：`build.yaml` 按 `aarch64` / `amd64` 分别指定镜像，HA Supervisor 自动注入正确架构的 `BUILD_FROM`，Dockerfile 只需 `FROM ${BUILD_FROM}`，彻底告别 digest 手动管理和 exec format error
+  - Dockerfile 新增 `RUN printf` 检测步骤：构建日志中直接打印 `BUILD_FROM`、`BUILD_ARCH`、`uname -m`，方便核查实际拉取的镜像架构
+  - 升级上游只需改 `build.yaml` 中的 tag 名，一处修改两端同时生效
+
 ## 2026.4.24.5
 
 - **修复 aarch64 构建失败**（exec format error）

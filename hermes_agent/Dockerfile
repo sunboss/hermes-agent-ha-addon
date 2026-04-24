@@ -1,17 +1,17 @@
-ARG BUILD_VERSION="2026.4.24.5"
-# Upstream v0.11.0 "The Interface Release" — latest tag pushed 2026-04-24.
-# IMPORTANT: use the multi-arch manifest-list digest (not a per-arch digest).
-# Per-arch digests (e.g. the amd64-only sha256:821b164d) cause an
-# "exec format error" on aarch64 HA hosts because Docker pulls the wrong
-# platform image.  The manifest-list digest lets Docker pick the right arch
-# (amd64 or arm64) automatically at build time.
-# Manifest-list digest for `latest` as of 2026-04-24:
-ARG HERMES_IMAGE_DIGEST="sha256:095c9e006b65aa464326d222f0ea0f5b3c8fc80473afd37401ed2d4a1aa35199"
+ARG BUILD_VERSION="2026.4.24.6"
+# BUILD_FROM is injected by HA Supervisor from build.yaml `build_from`.
+# It resolves to the correct arch-specific image automatically — no digest
+# pinning needed here.  To upgrade upstream: update the tag in build.yaml.
+ARG BUILD_FROM
 
-FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
+FROM ${BUILD_FROM}
 
 ARG BUILD_VERSION
 ARG BUILD_ARCH
+
+# Print build context for log verification.
+RUN printf '[Dockerfile] BUILD_FROM=%s  BUILD_ARCH=%s  HOST_ARCH=%s\n' \
+      "${BUILD_FROM}" "${BUILD_ARCH}" "$(uname -m)"
 
 ENV HERMES_INSTALL_DIR=/opt/hermes
 ENV HERMES_STATE_ROOT=/config
