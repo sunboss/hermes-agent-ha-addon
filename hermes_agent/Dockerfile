@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.4.24.1"
+ARG BUILD_VERSION="2026.4.24.2"
 # Upstream `latest` snapshot from 2026-04-23.  Newer than the last tagged
 # release v2026.4.16 (2026-04-16).  Picked up because v2026.4.16 shipped
 # with a `hermes dashboard` regression where the web UI first-boot
@@ -82,6 +82,26 @@ RUN set -eux; \
 
 COPY run.sh /run.sh
 COPY hermes_ui/ /opt/hermes-ha-ui/
+
+# Bake the version string from version.json into index.html at build time.
+# Runtime substitution via server.py proved unreliable when HA doesn't pass
+# --build-arg correctly.  Reading version.json here is the single source of
+# truth and needs no ENV variable chain.
+RUN python3 - <<'PYEOF'
+import json, pathlib, sys
+ui = pathlib.Path('/opt/hermes-ha-ui')
+vf = ui / 'version.json'
+if not vf.exists():
+    print('[Dockerfile] version.json not found — skipping substitution', file=sys.stderr)
+    sys.exit(0)
+v = json.loads(vf.read_text())
+html = (ui / 'index.html').read_text()
+html = html.replace('{{ADDON_VERSION}}', 'v' + str(v.get('version', 'unknown')))
+html = html.replace('{{HERMES_UPSTREAM}}', str(v.get('upstream', 'upstream')))
+(ui / 'index.html').write_text(html)
+print('[Dockerfile] version substituted:', v)
+PYEOF
+
 RUN chmod a+x /run.sh
 
 ENTRYPOINT ["/run.sh"]

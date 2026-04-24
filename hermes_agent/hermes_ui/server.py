@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 2026.4.24.1
+Version: 2026.4.24.2
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
@@ -174,34 +174,11 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _serve_index(self) -> None:
-        # Read version info from version.json sitting next to index.html.
-        # This is more reliable than ENV vars because COPY hermes_ui/ always
-        # lands it on disk at a known path, regardless of how HA passes
-        # --build-arg BUILD_VERSION to docker build.
-        version_path = UI_DIR / "version.json"
-        addon_version = "unknown"
-        hermes_upstream = "upstream"
-        if version_path.exists():
-            try:
-                import json as _json
-                vdata = _json.loads(version_path.read_text(encoding="utf-8"))
-                addon_version = str(vdata.get("version") or addon_version)
-                hermes_upstream = str(vdata.get("upstream") or hermes_upstream)
-            except Exception:
-                pass
-        index_path = UI_DIR / "index.html"
-        html = index_path.read_text(encoding="utf-8")
-        html = html.replace("{{ADDON_VERSION}}", f"v{addon_version}")
-        html = html.replace("{{HERMES_UPSTREAM}}", hermes_upstream)
-        data = html.encode("utf-8")
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.end_headers()
-        self.wfile.write(data)
+        # Version placeholders ({{ADDON_VERSION}}, {{HERMES_UPSTREAM}}) are
+        # substituted into index.html at Docker build time by the RUN python3
+        # block in Dockerfile — not at request time.  Serving the file as-is
+        # is therefore sufficient and avoids any runtime ENV dependency.
+        self._serve_file(UI_DIR / "index.html")
 
     def _read_json_body(self) -> dict:
         length = self.headers.get("Content-Length")
@@ -652,32 +629,14 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "['CONNECTING','OPEN','CLOSING','CLOSED'].forEach(function(k){WSProxy[k]=_WS[k];});"
         "window.WebSocket=WSProxy;"
         "}"
-        # ── history.pushState / replaceState ───────────────────────────────
-        # The upstream Vite SPA (hermes dashboard) uses a client-side router
-        # that calls history.replaceState / pushState with absolute paths like
-        # '/' or '/sessions'.  Without patching, the browser URL bar reverts
-        # to the bare origin, losing the HA Ingress path prefix (/panel/…).
-        "function rewriteHist(url){"
-        "if(url==null)return url;"
-        "var s=String(url);"
-        "if(s.charAt(0)==='/'&&s.charAt(1)!=='/'){"
-        "if(s.indexOf(BASE+'/')===0||s===BASE)return s;"
-        "return BASE+s;"
-        "}"
-        "return url;"
-        "}"
-        "var _hs=history.pushState;"
-        "if(_hs){"
-        "history.pushState=function(st,ti,url){"
-        "return _hs.call(this,st,ti,rewriteHist(url));"
-        "};"
-        "}"
-        "var _rs=history.replaceState;"
-        "if(_rs){"
-        "history.replaceState=function(st,ti,url){"
-        "return _rs.call(this,st,ti,rewriteHist(url));"
-        "};"
-        "}"
+        # NOTE: history.pushState / replaceState are intentionally NOT patched.
+        # The SPA's client-side router uses these to navigate between routes
+        # (/analytics, /sessions, etc.).  Prepending /panel to those paths
+        # breaks routing because the SPA only knows routes like '/analytics',
+        # not '/panel/analytics'.  The trade-off is that the URL bar shows
+        # the route path without the full ingress prefix after navigation —
+        # acceptable since the ingress session is maintained by the HTTP
+        # token, not the URL.
         "})();"
         "</script>"
     )

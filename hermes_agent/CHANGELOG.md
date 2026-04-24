@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026.4.24.2
+
+- **彻底修复版本号显示**：改为 Dockerfile 构建时替换，不再依赖运行时代码
+  - 新增 `RUN python3` 步骤：读取 `version.json`，在构建阶段将 `{{ADDON_VERSION}}` / `{{HERMES_UPSTREAM}}` 直接写入 `index.html`
+  - `server.py _serve_index` 回归直接 `_serve_file`，无运行时依赖
+  - 根因：历次 ENV、环境变量、运行时读文件方案均因 HA 构建/运行时机问题失效；构建时替换是最可靠的方式
+- **修复 Hermes Dashboard 子页面空白**（`/analytics`、`/sessions` 等）
+  - 根因：`history.pushState` 拦截把 `/analytics` 改为 `/panel/analytics`，SPA 路由无此路径 → 空白页
+  - 移除 `history.pushState` 和 `history.replaceState` 两个拦截，SPA 自主管理路由；fetch/XHR/WebSocket 拦截保留
+
 ## 2026.4.24.1
 
 - **ttyd 移动端支持**：向 ttyd HTML 注入移动端 CSS + tap-to-focus JS
