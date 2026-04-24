@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.4.24.4
+
+- **升级上游至 v0.11.0**（The Interface Release，2026-04-24 latest）
+  - digest 从非正式 snapshot `sha256:7ab9fc41...` 切换到 `sha256:821b164d...`
+  - 上游主要新增：React/Ink TUI 重写、AWS Bedrock 原生支持、NVIDIA NIM / Google Gemini CLI OAuth / Arcee AI 等 5 条新推理路径、QQBot（第 17 个消息平台）、Dashboard 插件系统 + 实时主题切换、`/steer` 命令、Shell hooks
+
 ## 2026.4.24.3
 
 - **修复 ttyd 移动端白屏**：移除 `_TTYD_MOBILE_CSS` 注入块，仅保留 `_TTYD_WS_PATCH`

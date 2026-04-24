@@ -1,14 +1,10 @@
-ARG BUILD_VERSION="2026.4.24.3"
-# Upstream `latest` snapshot from 2026-04-23.  Newer than the last tagged
-# release v2026.4.16 (2026-04-16).  Picked up because v2026.4.16 shipped
-# with a `hermes dashboard` regression where the web UI first-boot
-# `npm install` ran without sourcing the shell profile, so n/nvm-managed
-# node was not on PATH and the build exited non-zero ("Web UI npm install
-# failed").  Fixed upstream in commit series ending 2026-04-23 — see
-# fix(terminal): auto-source ~/.profile and ~/.bash_profile.
-# Revisit on the next tagged release (v2026.4.17+) and switch back to a
-# release-tag digest.
-ARG HERMES_IMAGE_DIGEST="sha256:7ab9fc410f95fb5e779f4fadbbd599e68ae37a9f25c4f657df8ff952e0172aee"
+ARG BUILD_VERSION="2026.4.24.4"
+# Upstream v0.11.0 "The Interface Release" — latest tag pushed 2026-04-24.
+# Corresponds to tagged release v2026.4.23 (pushed 2026-04-23 22:59) plus a
+# same-day patch pushed to `latest` at 2026-04-24 01:09 (same image size,
+# likely a minor fix).  Switching from the untagged 2026-04-23 snapshot
+# (sha256:7ab9fc...) to this digest to track the official v0.11.0 baseline.
+ARG HERMES_IMAGE_DIGEST="sha256:821b164daad22ad902a92dd1716acda9dc25d2bfcae375dddbe64186af7f43ab"
 
 FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
 
