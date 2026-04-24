@@ -278,7 +278,7 @@ if [ -n "${TTYD_BIN}" ]; then
     --port "${HERMES_TTYD_PORT}" \
     --base-path /ttyd \
     --writable \
-    /bin/bash -c 'cd "$1" && exec /bin/bash -i' _launch "${TTYD_CWD}" &
+    /bin/bash -c 'cd "$1" && exec /bin/bash -il' _launch "${TTYD_CWD}" &
 fi
 
 python3 "${HERMES_UI_DIR}/server.py" &

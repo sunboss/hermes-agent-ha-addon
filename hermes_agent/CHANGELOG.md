@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026.4.24.1
+
+- **ttyd 移动端支持**：向 ttyd HTML 注入移动端 CSS + tap-to-focus JS
+  - `touch-action: manipulation` 阻止双击缩放干扰终端输入
+  - `.xterm-helper-textarea` 保持 `opacity:0.01` 而非 `display:none`，确保 iOS 焦点管理器可见
+  - `touchend` 事件转发到隐藏 textarea，tap 终端区域即触发软键盘
+  - `height: 100dvh` 适配移动端浏览器地址栏动态高度，防止底部行被遮挡
+  - `-webkit-overflow-scrolling: touch` 为 xterm 视口启用 iOS 惯性滚动
+- **终端进入目录修正**：`exec /bin/bash -i` 改为 `exec /bin/bash -il`（login + interactive）
+  - `-l` 触发 `/etc/profile` → `/etc/profile.d/hermes.sh`，保证 `HERMES_HOME`、`PATH` 等变量在任何启动方式下都正确设置，不依赖父进程继承
+
 ## 2026.4.24.0
 
 - **版本号格式改为 `年.月.日.序号`**：与上游 Hermes 日期版本风格对齐，同一天的多次发布用末位序号区分（`.0` `.1` `.2` …）
