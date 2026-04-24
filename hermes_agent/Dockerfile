@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.4.24.8"
+ARG BUILD_VERSION="2026.4.24.9"
 # BUILD_FROM is injected by HA Supervisor as --build-arg at build time
 # (arch-specific, e.g. linux/arm64 on aarch64 hosts).  The default here
 # is used when building outside of HA (e.g. local docker build).
@@ -31,24 +31,28 @@ LABEL \
   io.hass.arch="aarch64|amd64"
 
 RUN set -eux; \
-    # Install ttyd via Python urllib — avoids apt entirely (apt-get update
-    # exits 100 in the v0.11.0 arm64 image due to broken/missing sources).
-    # Python is always present in the hermes-agent image.
     case "$(uname -m)" in \
       aarch64|arm64) TTYD_ARCH="aarch64" ;; \
       x86_64|amd64)  TTYD_ARCH="x86_64"  ;; \
-      *)             echo "[Dockerfile] Unsupported arch: $(uname -m)" >&2; exit 1 ;; \
+      *) echo "[Dockerfile] Unsupported arch" >&2; exit 1 ;; \
     esac; \
     if command -v ttyd >/dev/null 2>&1; then \
-      echo "[Dockerfile] ttyd already in base image: $(ttyd --version 2>&1)"; \
+      echo "[Dockerfile] ttyd already in base image: $(ttyd --version 2>&1 | head -1)"; \
     else \
-      python3 -c "import urllib.request,os; \
-        arch='${TTYD_ARCH}'; \
-        url='https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.'+arch; \
-        print('[Dockerfile] downloading',url); \
-        urllib.request.urlretrieve(url,'/usr/local/bin/ttyd'); \
-        os.chmod('/usr/local/bin/ttyd',0o755); \
-        print('[Dockerfile] ttyd installed')"; \
+      TTYD_URL="https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${TTYD_ARCH}"; \
+      python3 - <<PYEOF
+import urllib.request, ssl, os
+ctx = ssl._create_unverified_context()
+url = "${TTYD_URL}"
+print("[ttyd] downloading:", url)
+req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+with urllib.request.urlopen(req, context=ctx) as r:
+    data = r.read()
+with open("/usr/local/bin/ttyd", "wb") as f:
+    f.write(data)
+os.chmod("/usr/local/bin/ttyd", 0o755)
+print("[ttyd] installed, size:", os.path.getsize("/usr/local/bin/ttyd"))
+PYEOF
       ttyd --version; \
     fi
 
