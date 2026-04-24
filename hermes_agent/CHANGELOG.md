@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.4.24.5
+
+- **修复 aarch64 构建失败**（exec format error）
+  - 根因：之前选用的 `sha256:821b164d` 是 amd64 专用 digest，在 ARM64 的 HA 主机上构建时 Docker 拉取了错误架构的镜像，导致 `/bin/sh: exec format error`
+  - 修法：改用 manifest-list digest（`sha256:095c9e00`），Docker 构建时自动选择对应架构（amd64/arm64）
+
 ## 2026.4.24.4
 
 - **升级上游至 v0.11.0**（The Interface Release，2026-04-24 latest）

@@ -1,10 +1,12 @@
-ARG BUILD_VERSION="2026.4.24.4"
+ARG BUILD_VERSION="2026.4.24.5"
 # Upstream v0.11.0 "The Interface Release" — latest tag pushed 2026-04-24.
-# Corresponds to tagged release v2026.4.23 (pushed 2026-04-23 22:59) plus a
-# same-day patch pushed to `latest` at 2026-04-24 01:09 (same image size,
-# likely a minor fix).  Switching from the untagged 2026-04-23 snapshot
-# (sha256:7ab9fc...) to this digest to track the official v0.11.0 baseline.
-ARG HERMES_IMAGE_DIGEST="sha256:821b164daad22ad902a92dd1716acda9dc25d2bfcae375dddbe64186af7f43ab"
+# IMPORTANT: use the multi-arch manifest-list digest (not a per-arch digest).
+# Per-arch digests (e.g. the amd64-only sha256:821b164d) cause an
+# "exec format error" on aarch64 HA hosts because Docker pulls the wrong
+# platform image.  The manifest-list digest lets Docker pick the right arch
+# (amd64 or arm64) automatically at build time.
+# Manifest-list digest for `latest` as of 2026-04-24:
+ARG HERMES_IMAGE_DIGEST="sha256:095c9e006b65aa464326d222f0ea0f5b3c8fc80473afd37401ed2d4a1aa35199"
 
 FROM nousresearch/hermes-agent@${HERMES_IMAGE_DIGEST}
 
