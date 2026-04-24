@@ -163,13 +163,64 @@ async function checkServices() {
   setTimeout(checkServices, 30_000);
 }
 
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+const THEME_KEY = "hermes-ui-theme";
+const iconMoon = document.getElementById("icon-moon");
+const iconSun  = document.getElementById("icon-sun");
+const themeBtn = document.getElementById("theme-toggle");
+
+function applyTheme(theme) {
+  // theme: "dark" | "light" | null (= follow system)
+  const root = document.documentElement;
+  if (theme === "dark") {
+    root.setAttribute("data-theme", "dark");
+  } else if (theme === "light") {
+    root.setAttribute("data-theme", "light");
+  } else {
+    root.removeAttribute("data-theme");
+  }
+
+  // Determine whether the effective appearance is dark.
+  const effectiveDark =
+    theme === "dark" ||
+    (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  if (iconMoon) iconMoon.hidden = effectiveDark;   // moon shown in light mode
+  if (iconSun)  iconSun.hidden  = !effectiveDark;  // sun shown in dark mode
+  if (themeBtn) themeBtn.title = effectiveDark ? "切换到浅色模式" : "切换到深色模式";
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY); // "dark" | "light" | null
+  applyTheme(saved);
+
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme");
+      const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      // Cycle: system → opposite → other → system (simplified: just toggle)
+      let next;
+      if (current === "dark")       next = "light";
+      else if (current === "light") next = "dark";
+      else next = sysDark ? "light" : "dark"; // flip from system default
+      localStorage.setItem(THEME_KEY, next);
+      applyTheme(next);
+    });
+  }
+
+  // Keep in sync if the system preference changes while the page is open.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    const saved2 = localStorage.getItem(THEME_KEY);
+    if (!saved2) applyTheme(null); // only update icon if following system
+  });
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function init() {
+  initTheme();
   setText(modelNameEl, textMap.status.detecting);
   setText(modelProviderEl, "");
   setHealth("checking", textMap.status.checking, "正在连接 Hermes 网关");
-  // model-name starts with is-loading in HTML; health-status too.
-  // checkHealth / loadConfiguredModel will call removeSkeleton when done.
 
   void Promise.all([loadConfiguredModel(), checkHealth(), checkServices()]);
 }

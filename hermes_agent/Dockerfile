@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="0.14.0"
+ARG BUILD_VERSION="0.14.1"
 # Upstream `latest` snapshot from 2026-04-23.  Newer than the last tagged
 # release v2026.4.16 (2026-04-16).  Picked up because v2026.4.16 shipped
 # with a `hermes dashboard` regression where the web UI first-boot
