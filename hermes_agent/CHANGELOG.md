@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.2
+
+- **修复版本号显示**：改为从 `hermes_ui/version.json` 静态文件读取，不再依赖 Docker `ARG → ENV` 链路
+  - 之前：`ENV ADDON_VERSION=${BUILD_VERSION}` 需要 HA 构建系统正确传递 `--build-arg`，实际未生效导致 `{{ADDON_VERSION}}` 字面量显示
+  - 之后：`version.json` 随 `COPY hermes_ui/` 直接进入镜像，`server.py _serve_index` 从磁盘读取，不依赖任何运行时环境变量
+  - 删除 Dockerfile 中已无用的 `ENV ADDON_VERSION` 和 `ENV HERMES_UPSTREAM_LABEL`
+
 ## 0.14.1
 
 - **新增深色/浅色手动切换按钮**：页面右上角新增月亮/太阳图标按钮，点击即可在深色和浅色模式之间切换

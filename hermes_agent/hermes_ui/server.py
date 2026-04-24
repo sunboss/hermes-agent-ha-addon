@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.14.1
+Version: 0.14.2
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
@@ -174,8 +174,21 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _serve_index(self) -> None:
-        addon_version = os.environ.get("ADDON_VERSION", "unknown")
-        hermes_upstream = os.environ.get("HERMES_UPSTREAM_LABEL", "upstream")
+        # Read version info from version.json sitting next to index.html.
+        # This is more reliable than ENV vars because COPY hermes_ui/ always
+        # lands it on disk at a known path, regardless of how HA passes
+        # --build-arg BUILD_VERSION to docker build.
+        version_path = UI_DIR / "version.json"
+        addon_version = "unknown"
+        hermes_upstream = "upstream"
+        if version_path.exists():
+            try:
+                import json as _json
+                vdata = _json.loads(version_path.read_text(encoding="utf-8"))
+                addon_version = str(vdata.get("version") or addon_version)
+                hermes_upstream = str(vdata.get("upstream") or hermes_upstream)
+            except Exception:
+                pass
         index_path = UI_DIR / "index.html"
         html = index_path.read_text(encoding="utf-8")
         html = html.replace("{{ADDON_VERSION}}", f"v{addon_version}")
