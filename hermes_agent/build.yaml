@@ -1,7 +1,0 @@
-# To upgrade upstream Hermes Agent: update the tag for each arch below.
-# Docker Hub multi-arch manifest is NOT used here — each entry is an
-# arch-specific pull, so HA Supervisor always gets the right binary.
-# Current upstream: v0.11.0 (tag v2026.4.23, latest as of 2026-04-24)
-build_from:
-  aarch64: "nousresearch/hermes-agent:latest"
-  amd64: "nousresearch/hermes-agent:latest"

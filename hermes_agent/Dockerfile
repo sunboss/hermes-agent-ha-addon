@@ -1,8 +1,9 @@
 ARG BUILD_VERSION="2026.4.24.7"
-# BUILD_FROM is injected by HA Supervisor from build.yaml `build_from`.
-# It resolves to the correct arch-specific image automatically — no digest
-# pinning needed here.  To upgrade upstream: update the tag in build.yaml.
-ARG BUILD_FROM
+# BUILD_FROM is injected by HA Supervisor as --build-arg at build time
+# (arch-specific, e.g. linux/arm64 on aarch64 hosts).  The default here
+# is used when building outside of HA (e.g. local docker build).
+# To upgrade upstream: change the default tag below.
+ARG BUILD_FROM="nousresearch/hermes-agent:latest"
 
 FROM ${BUILD_FROM}
 
