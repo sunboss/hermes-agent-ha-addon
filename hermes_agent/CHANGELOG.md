@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.4.24.8
+
+- **修复 ttyd 安装 apt exit code 100**
+  - 根因：v0.11.0 arm64 基础镜像的 apt 源配置异常，`apt-get update` 返回 100
+  - 修法：完全绕过 apt，改用 Python `urllib.request` 直接从 GitHub Releases 下载 ttyd 二进制；若基础镜像已内置 ttyd 则跳过下载
+
 ## 2026.4.24.7
 
 - **修复 arm64 ttyd 安装失败**（exit code 2）

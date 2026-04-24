@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI, dashboard proxy, and ttyd terminal."
-version: "2026.4.24.7"
+version: "2026.4.24.8"
 slug: "hermes_agent"
 init: false
 startup: "application"

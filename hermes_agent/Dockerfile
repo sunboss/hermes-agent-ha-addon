@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.4.24.7"
+ARG BUILD_VERSION="2026.4.24.8"
 # BUILD_FROM is injected by HA Supervisor as --build-arg at build time
 # (arch-specific, e.g. linux/arm64 on aarch64 hosts).  The default here
 # is used when building outside of HA (e.g. local docker build).
@@ -31,23 +31,26 @@ LABEL \
   io.hass.arch="aarch64|amd64"
 
 RUN set -eux; \
-    # Install ttyd binary from GitHub Releases — arch-aware, no Debian sid needed.
-    # Debian sid's ttyd is amd64-only and fails on arm64 with exit code 2.
+    # Install ttyd via Python urllib — avoids apt entirely (apt-get update
+    # exits 100 in the v0.11.0 arm64 image due to broken/missing sources).
+    # Python is always present in the hermes-agent image.
     case "$(uname -m)" in \
       aarch64|arm64) TTYD_ARCH="aarch64" ;; \
       x86_64|amd64)  TTYD_ARCH="x86_64"  ;; \
       *)             echo "[Dockerfile] Unsupported arch: $(uname -m)" >&2; exit 1 ;; \
     esac; \
-    TTYD_VER="1.7.7"; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates curl; \
-    curl -fsSL \
-      "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VER}/ttyd.${TTYD_ARCH}" \
-      -o /usr/local/bin/ttyd; \
-    chmod +x /usr/local/bin/ttyd; \
-    command -v ttyd; \
-    ttyd --version; \
-    rm -rf /var/lib/apt/lists/*
+    if command -v ttyd >/dev/null 2>&1; then \
+      echo "[Dockerfile] ttyd already in base image: $(ttyd --version 2>&1)"; \
+    else \
+      python3 -c "import urllib.request,os; \
+        arch='${TTYD_ARCH}'; \
+        url='https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.'+arch; \
+        print('[Dockerfile] downloading',url); \
+        urllib.request.urlretrieve(url,'/usr/local/bin/ttyd'); \
+        os.chmod('/usr/local/bin/ttyd',0o755); \
+        print('[Dockerfile] ttyd installed')"; \
+      ttyd --version; \
+    fi
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
