@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.3
+
+- **修复 Hermes Dashboard 地址栏丢失 Ingress 路径**：点击"打开 Dashboard →"后地址栏还原为 `192.168.1.66:8123`，Ingress 前缀 `/panel/…` 消失
+  - 根因：上游 Hermes Dashboard 是 Vite 构建的 SPA，客户端路由初始化时调用 `history.replaceState({}, '', '/')` 把路径改写为 `/`，Ingress 前缀被抹掉
+  - 修法：在 `_PANEL_JS_PATCH` 里同步拦截 `history.pushState` 和 `history.replaceState`，任何绝对路径的 URL 参数都加上 `BASE`（即 `/panel`）前缀，与现有 fetch/XHR/WebSocket 拦截逻辑一致
+
 ## 0.14.2
 
 - **修复版本号显示**：改为从 `hermes_ui/version.json` 静态文件读取，不再依赖 Docker `ARG → ENV` 链路

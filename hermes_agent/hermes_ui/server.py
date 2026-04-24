@@ -2,7 +2,7 @@
 """
 hermes_ui/server.py  —  Hermes Agent HA Add-on: Ingress UI Server
 ==================================================================
-Version: 0.14.2
+Version: 0.14.3
 
 Single-process HTTP server that runs at HERMES_UI_PORT (default 8099) inside the
 Home Assistant Ingress proxy.  It handles seven distinct traffic classes:
@@ -555,6 +555,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "var p=window.location.pathname;"
         "var i=p.indexOf('/panel');"
         "var BASE=i>=0?p.slice(0,i+6):'/panel';"
+        # ── absolute-path rewrite helpers ──────────────────────────────────
         "function rewrite(u){"
         "if(typeof u!=='string')return u;"
         "if(u.length===0)return u;"
@@ -574,6 +575,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "return scheme+window.location.host+BASE+parsed.pathname+parsed.search;"
         "}catch(e){return u;}"
         "}"
+        # ── fetch ──────────────────────────────────────────────────────────
         "var _f=window.fetch;"
         "if(_f){"
         "window.fetch=function(input,opts){"
@@ -584,6 +586,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "return _f.call(this,input,opts);"
         "};"
         "}"
+        # ── XMLHttpRequest ─────────────────────────────────────────────────
         "var _XHR=window.XMLHttpRequest;"
         "if(_XHR&&_XHR.prototype&&_XHR.prototype.open){"
         "var _open=_XHR.prototype.open;"
@@ -592,6 +595,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "return _open.apply(this,arguments);"
         "};"
         "}"
+        # ── WebSocket ──────────────────────────────────────────────────────
         "var _WS=window.WebSocket;"
         "if(_WS){"
         "var WSProxy=function(url,protocols){"
@@ -601,6 +605,32 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "WSProxy.prototype=_WS.prototype;"
         "['CONNECTING','OPEN','CLOSING','CLOSED'].forEach(function(k){WSProxy[k]=_WS[k];});"
         "window.WebSocket=WSProxy;"
+        "}"
+        # ── history.pushState / replaceState ───────────────────────────────
+        # The upstream Vite SPA (hermes dashboard) uses a client-side router
+        # that calls history.replaceState / pushState with absolute paths like
+        # '/' or '/sessions'.  Without patching, the browser URL bar reverts
+        # to the bare origin, losing the HA Ingress path prefix (/panel/…).
+        "function rewriteHist(url){"
+        "if(url==null)return url;"
+        "var s=String(url);"
+        "if(s.charAt(0)==='/'&&s.charAt(1)!=='/'){"
+        "if(s.indexOf(BASE+'/')===0||s===BASE)return s;"
+        "return BASE+s;"
+        "}"
+        "return url;"
+        "}"
+        "var _hs=history.pushState;"
+        "if(_hs){"
+        "history.pushState=function(st,ti,url){"
+        "return _hs.call(this,st,ti,rewriteHist(url));"
+        "};"
+        "}"
+        "var _rs=history.replaceState;"
+        "if(_rs){"
+        "history.replaceState=function(st,ti,url){"
+        "return _rs.call(this,st,ti,rewriteHist(url));"
+        "};"
         "}"
         "})();"
         "</script>"
