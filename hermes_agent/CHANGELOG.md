@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.4.24.7
+
+- **修复 arm64 ttyd 安装失败**（exit code 2）
+  - 根因：Debian sid 的 ttyd 包在 arm64 上不可用，`apt-get` 返回 exit code 2
+  - 修法：改为从 GitHub Releases 下载架构对应的预编译二进制（`ttyd.aarch64` / `ttyd.x86_64`），用 `uname -m` 在构建时自动检测，彻底告别 Debian sid 依赖
+
 ## 2026.4.24.6
 
 - **自动适配架构 + 构建检测**

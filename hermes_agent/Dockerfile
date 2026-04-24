@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.4.24.6"
+ARG BUILD_VERSION="2026.4.24.7"
 # BUILD_FROM is injected by HA Supervisor from build.yaml `build_from`.
 # It resolves to the correct arch-specific image automatically — no digest
 # pinning needed here.  To upgrade upstream: update the tag in build.yaml.
@@ -30,13 +30,23 @@ LABEL \
   io.hass.arch="aarch64|amd64"
 
 RUN set -eux; \
-    printf "deb http://deb.debian.org/debian sid main\n" >/etc/apt/sources.list.d/ttyd-sid.list; \
-    printf "Package: *\nPin: release a=unstable\nPin-Priority: 100\n\nPackage: ttyd\nPin: release a=unstable\nPin-Priority: 990\n" >/etc/apt/preferences.d/ttyd-sid; \
+    # Install ttyd binary from GitHub Releases — arch-aware, no Debian sid needed.
+    # Debian sid's ttyd is amd64-only and fails on arm64 with exit code 2.
+    case "$(uname -m)" in \
+      aarch64|arm64) TTYD_ARCH="aarch64" ;; \
+      x86_64|amd64)  TTYD_ARCH="x86_64"  ;; \
+      *)             echo "[Dockerfile] Unsupported arch: $(uname -m)" >&2; exit 1 ;; \
+    esac; \
+    TTYD_VER="1.7.7"; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates ttyd; \
+    apt-get install -y --no-install-recommends ca-certificates curl; \
+    curl -fsSL \
+      "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VER}/ttyd.${TTYD_ARCH}" \
+      -o /usr/local/bin/ttyd; \
+    chmod +x /usr/local/bin/ttyd; \
     command -v ttyd; \
     ttyd --version; \
-    rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/ttyd-sid.list /etc/apt/preferences.d/ttyd-sid
+    rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
