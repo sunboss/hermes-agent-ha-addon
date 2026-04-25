@@ -1,9 +1,16 @@
-ARG BUILD_VERSION="2026.4.24.10"
+ARG BUILD_VERSION="2026.4.25.1"
 # BUILD_FROM is injected by HA Supervisor as --build-arg at build time
 # (arch-specific, e.g. linux/arm64 on aarch64 hosts).  The default here
 # is used when building outside of HA (e.g. local docker build).
-# To upgrade upstream: change the default tag below.
-ARG BUILD_FROM="nousresearch/hermes-agent:latest"
+#
+# Pinned to a calendar tag (NOT :latest) so:
+#   - upstream ship-day doesn't auto-pull an untested image
+#   - rebuilds reuse the same Docker layer cache (1.78GB base layer)
+#   - upgrades are an explicit, reviewable Dockerfile edit
+# To upgrade: pick a newer tag from
+# https://hub.docker.com/r/nousresearch/hermes-agent/tags and bump
+# BUILD_VERSION below in lockstep.
+ARG BUILD_FROM="nousresearch/hermes-agent:v2026.4.23"
 
 FROM ${BUILD_FROM}
 
@@ -55,8 +62,12 @@ RUN set -eux; \
       >/etc/profile.d/hermes.sh; \
     chmod 644 /etc/profile.d/hermes.sh
 
-RUN /opt/hermes/.venv/bin/pip install --no-cache-dir --disable-pip-version-check \
-      'fastapi>=0.104.0,<1' 'uvicorn[standard]>=0.24.0,<1' || true
+# NOTE: an explicit `pip install fastapi uvicorn` step lived here through
+# v2026.4.24.10.  The upstream v0.11.0 image (a) renamed/relocated its
+# venv so the .venv/bin/pip path no longer existed, making the step a
+# silent no-op (`|| true`), and (b) already bundles fastapi+uvicorn for
+# `hermes dashboard`, so reinstalling them was redundant even when the
+# path was correct.  Removed in v2026.4.25.1.
 
 # Patch upstream HA platform so the WebSocket URL uses the Supervisor proxy
 # endpoint (/core/websocket) instead of the hard-coded /core/api/websocket

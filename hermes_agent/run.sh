@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
+# Hermes Agent add-on entrypoint.
+#
+# Layout:
+#   /config                  — addon_config:rw mount, host path
+#                              /addon_configs/<slug>_hermes_agent/
+#   /config/.hermes          — HERMES_HOME (sessions, .env, config.yaml)
+#   /opt/hermes              — upstream install (HERMES_INSTALL_DIR)
+#   /opt/hermes-ha-ui        — our ingress proxy (server.py)
+#   /opt/hermes-ha-scripts   — build-time + runtime helper scripts
+#
+# All option-driven file rendering is done by scripts/configure.py — keeping
+# this script a thin orchestrator (env exports, source .env, fork ttyd /
+# UI / dashboard, exec gateway).
 set -euo pipefail
 
 export CONFIG_PATH=/data/options.json
-# v0.11.0+: /config is the add-on's PRIVATE config dir via `addon_config:rw`.
-# Host path is /addon_configs/<slug>_hermes_agent/ (HA 2023.11+ standard
-# per-addon config layout, isolated from the main /homeassistant/ tree).
-# Do NOT re-nest into /config/addons_data/hermes-agent/ — that pattern was
-# only needed when we were mounted under homeassistant_config and had to
-# avoid polluting the user's main config directory.
 export ADDON_STATE_ROOT=/config
 export HERMES_HOME="${ADDON_STATE_ROOT}/.hermes"
 export HOME="${ADDON_STATE_ROOT}"
@@ -21,253 +28,24 @@ export HERMES_PANEL_PORT="${HERMES_PANEL_PORT:-9119}"
 
 mkdir -p /data "${ADDON_STATE_ROOT}" "${HERMES_HOME}"
 
-python3 - <<'PY'
-import json
-import os
-import secrets
-from pathlib import Path
-
-import yaml
-
-
-def env_quote(value: str) -> str:
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
-
-
-config_path = Path("/data/options.json")
-options = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
-
-addon_state_root = Path(os.environ["ADDON_STATE_ROOT"])
-hermes_home = Path(os.environ["HERMES_HOME"])
-install_dir = Path(os.environ["HERMES_INSTALL_DIR"])
-
-# v0.11.0: layout flattened — /config itself IS our per-addon config dir
-# (addon_config:rw), so defaults live directly under it. No more
-# /config/addons_data/hermes-agent/ nesting, no more addon-state/auth
-# sub-tier. Option overrides from config.yaml still take precedence.
-default_workspace = addon_state_root / "workspace"
-default_auth_root = addon_state_root / "auth"
-
-# One-shot migration from the v0.10.x layout. If a user rebuilds with the
-# same addon_config volume after somehow seeding it with the old nested
-# layout (e.g. manually copied from /homeassistant/addons_data/hermes-agent/),
-# lift the contents of addons_data/hermes-agent/* up to /config/*.
-# No-op for fresh installs.
-legacy_root = addon_state_root / "addons_data" / "hermes-agent"
-if legacy_root.is_dir():
-    for entry in legacy_root.iterdir():
-        dest = addon_state_root / entry.name
-        if dest.exists():
-            continue  # Respect anything the new layout already created.
-        entry.rename(dest)
-    try:
-        legacy_root.rmdir()
-        (addon_state_root / "addons_data").rmdir()
-    except OSError:
-        pass  # Non-empty (user placed unrelated files); leave alone.
-
-messaging_cwd = Path(options.get("messaging_cwd") or str(default_workspace))
-auth_storage_path = Path(options.get("auth_storage_path") or str(default_auth_root))
-auth_mode = str(options.get("auth_mode") or "api_key")
-auth_provider = "openai_web"  # hardcoded; was a config option until v0.13.0
-llm_model = str(options.get("llm_model") or "gpt-5.4")
-# OAuth fields removed from config UI in v0.13.0 (power-user settings with
-# sensible defaults that rarely need changing). Hardcoded here.
-openai_oauth_client_id = ""
-openai_oauth_redirect_uri = "http://127.0.0.1:1455/auth/callback"
-openai_oauth_scopes = "openid profile email offline_access"
-watch_domains = [str(item) for item in (options.get("watch_domains") or [])]
-watch_entities = [str(item) for item in (options.get("watch_entities") or [])]
-ignore_entities = [str(item) for item in (options.get("ignore_entities") or [])]
-watch_all = bool(options.get("watch_all", False))
-cooldown_seconds = int(options.get("cooldown_seconds", 30))
-
-addon_state_root.mkdir(parents=True, exist_ok=True)
-hermes_home.mkdir(parents=True, exist_ok=True)
-messaging_cwd.mkdir(parents=True, exist_ok=True)
-auth_storage_path.mkdir(parents=True, exist_ok=True)
-
-for dirname in ("cron", "sessions", "logs", "memories", "skills", "hooks", "skins", "plans"):
-    (hermes_home / dirname).mkdir(parents=True, exist_ok=True)
-
-for source_name, target_name in ((".env.example", ".env"), ("cli-config.yaml.example", "config.yaml")):
-    source = install_dir / source_name
-    target = hermes_home / target_name
-    if source.exists() and not target.exists():
-        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-
-soul_source = install_dir / "docker" / "SOUL.md"
-soul_target = hermes_home / "SOUL.md"
-if soul_source.exists() and not soul_target.exists():
-    soul_target.write_text(soul_source.read_text(encoding="utf-8"), encoding="utf-8")
-
-env_map: dict[str, str] = {}
-env_path = hermes_home / ".env"
-if env_path.exists():
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        env_map[key] = value.strip().strip('"')
-
-env_map["HASS_URL"] = "http://supervisor/core"
-env_map["SUPERVISOR_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
-env_map["HASS_TOKEN"] = os.environ.get("SUPERVISOR_TOKEN", "")
-env_map["HERMES_HOME"] = str(hermes_home)
-env_map["HERMES_STATE_ROOT"] = str(addon_state_root)
-# NOTE: MESSAGING_CWD is deprecated in Hermes v0.10.0.  The gateway now
-# expects `terminal.cwd` in config.yaml (written further down) and scans
-# both `.env` AND os.environ for the legacy name, printing a warning
-# whenever it finds a match.  We:
-#   1. Pop it from env_map here so the regenerated .env never has it.
-#   2. `unset MESSAGING_CWD` in the bash parent (after sourcing .env)
-#      so it doesn't live in the process environment either.
-#   3. Communicate the workspace path to ttyd via a distinct variable
-#      name (TTYD_CWD) written to ${HERMES_HOME}/.addon-runtime and read
-#      as a LOCAL bash variable — never exported.
-# See UPGRADE_LOG §v0.10.4 for the full backstory.
-env_map.pop("MESSAGING_CWD", None)
-env_map["AUTH_MODE"] = auth_mode
-env_map["AUTH_PROVIDER"] = auth_provider
-env_map["AUTH_STORAGE_PATH"] = str(auth_storage_path)
-env_map["OPENAI_OAUTH_CLIENT_ID"] = openai_oauth_client_id
-env_map["OPENAI_OAUTH_REDIRECT_URI"] = openai_oauth_redirect_uri
-env_map["OPENAI_OAUTH_SCOPES"] = openai_oauth_scopes
-env_map["API_SERVER_ENABLED"] = "true"
-env_map["API_SERVER_HOST"] = "127.0.0.1"
-env_map["API_SERVER_PORT"] = "8642"
-env_map["API_SERVER_KEY"] = str(options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24))
-env_map["API_SERVER_MODEL_NAME"] = llm_model
-env_map["OPENAI_SHIM_MODEL"] = llm_model
-env_map["HERMES_TTYD_PORT"] = os.environ.get("HERMES_TTYD_PORT", "7681")
-env_map["GATEWAY_ALLOW_ALL_USERS"] = "true"
-
-for option_key, env_key in (
-    ("openrouter_api_key", "OPENROUTER_API_KEY"),
-    ("openai_base_url", "OPENAI_BASE_URL"),
-    ("openai_api_key", "OPENAI_API_KEY"),
-):
-    value = options.get(option_key)
-    if value not in (None, ""):
-        env_map[env_key] = str(value)
-
-env_map.pop("LLM_MODEL", None)
-
-openrouter_key = str(options.get("openrouter_api_key") or "")
-openai_base_url = str(options.get("openai_base_url") or "")
-
-if auth_mode == "web_login" and auth_provider == "openai_web":
-    env_map["OPENAI_BASE_URL"] = "http://127.0.0.1:8099/shim/v1"
-    env_map["OPENAI_API_KEY"] = env_map.get("OPENAI_API_KEY") or "web-login-session"
-
-env_lines = ["# Managed by the Home Assistant add-on wrapper."]
-for key in sorted(env_map):
-    env_lines.append(f"{key}={env_quote(env_map[key])}")
-env_path.write_text("\n".join(env_lines) + "\n", encoding="utf-8")
-
-session_path = auth_storage_path / "session.json"
-auth_state = {}
-if session_path.exists():
-    try:
-        loaded = json.loads(session_path.read_text(encoding="utf-8"))
-        if isinstance(loaded, dict):
-            auth_state = loaded
-    except json.JSONDecodeError:
-        auth_state = {}
-
-auth_state["mode"] = auth_mode
-auth_state["provider"] = auth_provider
-auth_state.setdefault("updated_at", None)
-auth_state.setdefault("session", None)
-auth_state.setdefault("pending_login", None)
-auth_state["status"] = "not_required" if auth_mode == "api_key" else ("authenticated" if auth_state.get("session") else "needs_login")
-session_path.write_text(json.dumps(auth_state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-runtime_config_path = hermes_home / "config.yaml"
-runtime_config: dict = {}
-if runtime_config_path.exists():
-    loaded = yaml.safe_load(runtime_config_path.read_text(encoding="utf-8"))
-    if isinstance(loaded, dict):
-        runtime_config = loaded
-
-model_cfg = runtime_config.get("model")
-if not isinstance(model_cfg, dict):
-    model_cfg = {}
-model_cfg["default"] = llm_model or model_cfg.get("default") or "gpt-5.4"
-if auth_mode == "web_login" and auth_provider == "openai_web":
-    model_cfg.setdefault("provider", "openai-codex")
-    model_cfg.setdefault("base_url", "https://chatgpt.com/backend-api/codex")
-elif openrouter_key:
-    model_cfg.setdefault("provider", "openrouter")
-elif openai_base_url:
-    model_cfg["base_url"] = openai_base_url
-runtime_config["model"] = model_cfg
-
-terminal_cfg = runtime_config.get("terminal")
-if not isinstance(terminal_cfg, dict):
-    terminal_cfg = {}
-terminal_cfg["backend"] = str(options.get("terminal_backend") or "local")
-terminal_cfg["cwd"] = str(messaging_cwd)
-runtime_config["terminal"] = terminal_cfg
-
-platforms = runtime_config.get("platforms")
-if not isinstance(platforms, dict):
-    platforms = {}
-runtime_config["platforms"] = platforms
-
-ha_platform = platforms.get("homeassistant")
-if not isinstance(ha_platform, dict):
-    ha_platform = {}
-ha_platform["enabled"] = True
-extra = ha_platform.get("extra")
-if not isinstance(extra, dict):
-    extra = {}
-extra["watch_all"] = watch_all
-extra["cooldown_seconds"] = cooldown_seconds
-extra["watch_domains"] = watch_domains
-extra["watch_entities"] = watch_entities
-extra["ignore_entities"] = ignore_entities
-ha_platform["extra"] = extra
-platforms["homeassistant"] = ha_platform
-
-runtime_config_path.write_text(
-    yaml.safe_dump(runtime_config, sort_keys=False, allow_unicode=True),
-    encoding="utf-8",
-)
-
-# Emit the resolved messaging cwd to a side file for bash to pick up.  This
-# MUST NOT use `export` — Hermes v0.10.0's deprecation check scans the
-# process environment (not just .env), so any variable named MESSAGING_CWD
-# in os.environ will trigger the "deprecated in .env" warning even when
-# .env itself is clean.  We write a plain VAR=value line and read it
-# in bash via a non-exporting read, so ttyd gets the path it needs
-# without polluting the Hermes gateway's environment.
-addon_runtime_path = hermes_home / ".addon-runtime"
-addon_runtime_path.write_text(
-    f'TTYD_CWD={env_quote(str(messaging_cwd))}\n',
-    encoding="utf-8",
-)
-PY
+# Render .env / config.yaml / .addon-runtime / auth/session.json.
+# See scripts/configure.py for everything this writes.
+python3 /opt/hermes-ha-scripts/configure.py
 
 set -a
 . "${HERMES_HOME}/.env"
 set +a
 
-# Belt-and-suspenders: make absolutely sure MESSAGING_CWD is not in the
-# process environment before we hand off to ttyd / Hermes.  An older build
-# (v0.10.1 / v0.10.2) exported MESSAGING_CWD via .addon-runtime which made
-# Hermes v0.10.0 flag it as deprecated even though .env was clean.  Clear
-# it unconditionally — the new side file uses TTYD_CWD instead.
+# Belt-and-suspenders: MESSAGING_CWD is deprecated in upstream and the
+# gateway scans os.environ for it (not just .env).  configure.py strips
+# it from .env, this clears the inherited process environment too.
 unset MESSAGING_CWD
 
-# Read TTYD_CWD from the side file without exporting it to the rest of the
-# environment.  `sh -c 'eval ...'` would also work; a bare `read` over a
-# here-doc is simpler and avoids any quoting surprises.
+# Read TTYD_CWD from the side file as a bash LOCAL (no `export`).  An
+# exported MESSAGING_CWD-style variable would re-trigger the deprecation
+# warning even under a renamed key, so we keep this strictly local.
 TTYD_CWD=""
 if [ -f "${HERMES_HOME}/.addon-runtime" ]; then
-  # Matches `TTYD_CWD="..."` and extracts the quoted value.
   TTYD_CWD="$(sed -n 's/^TTYD_CWD="\(.*\)"$/\1/p' "${HERMES_HOME}/.addon-runtime")"
 fi
 : "${TTYD_CWD:=${ADDON_STATE_ROOT}/workspace}"
@@ -284,12 +62,10 @@ fi
 python3 "${HERMES_UI_DIR}/server.py" &
 
 # Launch upstream `hermes dashboard` on loopback; server.py reverse-proxies
-# /panel/** to this host:port.  The diagnostic block below was originally
-# added in v0.9.11 to catch the common first-boot failure mode where
-# `hermes dashboard` tries to `npm install && npm run build` the web UI
-# and exits non-zero (missing node, network-blocked registry, permission
-# issues on the writable layer, etc.).  Lost in the v0.10.0 rewrite,
-# restored in v0.11.1 after the same symptom resurfaced in the wild.
+# /panel/** to this host:port.  The 0.5s sanity check below catches the
+# common first-boot failure mode where dashboard tries to npm install/build
+# the web UI and exits non-zero (missing node, blocked registry, write-layer
+# permission errors).  Restored in v0.11.1 after regressing in v0.10.0.
 if hermes dashboard --help >/dev/null 2>&1; then
   echo "[run.sh] Starting hermes dashboard on ${HERMES_PANEL_HOST}:${HERMES_PANEL_PORT}..."
   hermes dashboard \
@@ -297,12 +73,6 @@ if hermes dashboard --help >/dev/null 2>&1; then
     --port "${HERMES_PANEL_PORT}" \
     --no-open &
   DASH_PID=$!
-  # Give dashboard a moment to either bind or crash.  0.5s is enough to
-  # catch immediate exits (missing command, bad args, npm failure before
-  # the build even starts); the first-boot npm build itself takes 30-60s
-  # and will not be caught here — but that case manifests as a live PID
-  # that hasn't yet bound 9119, which is a different (and more patient)
-  # failure mode.
   sleep 0.5
   if ! kill -0 "${DASH_PID}" 2>/dev/null; then
     echo "[run.sh] WARNING: hermes dashboard exited immediately — /panel/ will be unavailable" >&2
