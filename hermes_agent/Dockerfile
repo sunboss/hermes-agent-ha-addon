@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.4.24.9"
+ARG BUILD_VERSION="2026.4.24.10"
 # BUILD_FROM is injected by HA Supervisor as --build-arg at build time
 # (arch-specific, e.g. linux/arm64 on aarch64 hosts).  The default here
 # is used when building outside of HA (e.g. local docker build).
@@ -30,31 +30,15 @@ LABEL \
   io.hass.type="app" \
   io.hass.arch="aarch64|amd64"
 
-RUN set -eux; \
-    case "$(uname -m)" in \
-      aarch64|arm64) TTYD_ARCH="aarch64" ;; \
-      x86_64|amd64)  TTYD_ARCH="x86_64"  ;; \
-      *) echo "[Dockerfile] Unsupported arch" >&2; exit 1 ;; \
-    esac; \
-    if command -v ttyd >/dev/null 2>&1; then \
-      echo "[Dockerfile] ttyd already in base image: $(ttyd --version 2>&1 | head -1)"; \
-    else \
-      TTYD_URL="https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${TTYD_ARCH}"; \
-      python3 - <<PYEOF
-import urllib.request, ssl, os
-ctx = ssl._create_unverified_context()
-url = "${TTYD_URL}"
-print("[ttyd] downloading:", url)
-req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-with urllib.request.urlopen(req, context=ctx) as r:
-    data = r.read()
-with open("/usr/local/bin/ttyd", "wb") as f:
-    f.write(data)
-os.chmod("/usr/local/bin/ttyd", 0o755)
-print("[ttyd] installed, size:", os.path.getsize("/usr/local/bin/ttyd"))
-PYEOF
-      ttyd --version; \
-    fi
+# Build-time helper scripts.  Kept as standalone files (rather than
+# Dockerfile RUN heredocs) so BuildKit's content-addressed cache keys on
+# the script bytes — any edit here invalidates this layer and everything
+# below, eliminating the "git updated but old script still runs" class of
+# bugs we hit repeatedly with inline heredocs.  See scripts/install-ttyd.sh
+# for the full rationale.
+COPY scripts/ /opt/hermes-ha-scripts/
+RUN chmod +x /opt/hermes-ha-scripts/install-ttyd.sh \
+ && /opt/hermes-ha-scripts/install-ttyd.sh
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
@@ -99,24 +83,10 @@ RUN set -eux; \
 COPY run.sh /run.sh
 COPY hermes_ui/ /opt/hermes-ha-ui/
 
-# Bake the version string from version.json into index.html at build time.
-# Runtime substitution via server.py proved unreliable when HA doesn't pass
-# --build-arg correctly.  Reading version.json here is the single source of
-# truth and needs no ENV variable chain.
-RUN python3 - <<'PYEOF'
-import json, pathlib, sys
-ui = pathlib.Path('/opt/hermes-ha-ui')
-vf = ui / 'version.json'
-if not vf.exists():
-    print('[Dockerfile] version.json not found — skipping substitution', file=sys.stderr)
-    sys.exit(0)
-v = json.loads(vf.read_text())
-html = (ui / 'index.html').read_text()
-html = html.replace('{{ADDON_VERSION}}', 'v' + str(v.get('version', 'unknown')))
-html = html.replace('{{HERMES_UPSTREAM}}', str(v.get('upstream', 'upstream')))
-(ui / 'index.html').write_text(html)
-print('[Dockerfile] version substituted:', v)
-PYEOF
+# Bake the version string from version.json into index.html.  Standalone
+# script (see scripts/bake-version.py) for the cache-keying reasons
+# documented above.
+RUN python3 /opt/hermes-ha-scripts/bake-version.py
 
 RUN chmod a+x /run.sh
 

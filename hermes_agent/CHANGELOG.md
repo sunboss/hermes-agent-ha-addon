@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.4.24.10
+
+- **彻底修复构建反复失败 / 旧脚本被缓存**
+  - 根因 1：Dockerfile 里把 ttyd 安装写成 `RUN ... \` 多行续行 + 嵌套 heredoc（`python3 - <<PYEOF`），HA Supervisor 的 BuildKit 对这种结构解析不稳定，ARG/`${TTYD_URL}` 在续行 heredoc 中扩展时机不可控
+  - 根因 2：BuildKit cache key 是按 RUN 字符串字面值计算的，对 heredoc body 的小改动经常无法让 cache 失效，导致 git 已经拉到新版本 Dockerfile 但实际跑的还是上一版的 RUN 层（"重建后版本不变"的真正原因）
+  - 修法：把 ttyd 下载、HTTPS 抓取、版本注入三段全部抽成独立脚本（`scripts/install-ttyd.sh`、`scripts/_fetch.py`、`scripts/bake-version.py`），通过 `COPY scripts/` 进镜像后再执行；脚本字节变化 → COPY 层 cache miss → 下游层必然重建，从机制上消除"老脚本残留"的可能
+  - 收益：Dockerfile 极简（无 heredoc、无 `\` 续行陷阱）；脚本独立可读、可本地测试；上游再升级时不会再踩同一个坑
+
 ## 2026.4.24.8
 
 - **修复 ttyd 安装 apt exit code 100**
