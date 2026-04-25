@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.4.25.1"
+ARG BUILD_VERSION="2026.4.25.2"
 # BUILD_FROM is injected by HA Supervisor as --build-arg at build time
 # (arch-specific, e.g. linux/arm64 on aarch64 hosts).  The default here
 # is used when building outside of HA (e.g. local docker build).
@@ -14,8 +14,17 @@ ARG BUILD_FROM="nousresearch/hermes-agent:v2026.4.23"
 
 FROM ${BUILD_FROM}
 
+# ARGs declared above FROM go out of scope after FROM unless re-declared.
+# Re-declaring inherits the value passed via --build-arg (or the default).
+ARG BUILD_FROM
 ARG BUILD_VERSION
 ARG BUILD_ARCH
+
+# Upstream :v2026.4.23+ ships with USER set to a non-root account, which
+# breaks our chmod / install-into-/usr/local/bin steps.  Switch to root for
+# the install layers; run.sh starts as root anyway (mkdir /etc/profile.d
+# etc.) so the runtime user is unaffected.
+USER root
 
 # Print build context for log verification.
 RUN printf '[Dockerfile] BUILD_FROM=%s  BUILD_ARCH=%s  HOST_ARCH=%s\n' \
@@ -43,9 +52,11 @@ LABEL \
 # below, eliminating the "git updated but old script still runs" class of
 # bugs we hit repeatedly with inline heredocs.  See scripts/install-ttyd.sh
 # for the full rationale.
-COPY scripts/ /opt/hermes-ha-scripts/
-RUN chmod +x /opt/hermes-ha-scripts/install-ttyd.sh \
- && /opt/hermes-ha-scripts/install-ttyd.sh
+# --chmod sets executable bit during COPY itself, so no separate `chmod`
+# step is needed (which previously failed with "Operation not permitted"
+# when the upstream image's USER didn't own the destination).
+COPY --chmod=0755 scripts/ /opt/hermes-ha-scripts/
+RUN /opt/hermes-ha-scripts/install-ttyd.sh
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
