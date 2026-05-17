@@ -136,7 +136,19 @@ Current patches:
 
 ---
 
-## 7. Common pitfalls checklist (read before every upgrade)
+## 7. Home Assistant 2026.x build compatibility
+
+- Supervisor 2026.04.0+ no longer provides `BUILD_FROM` by default.  Keep the
+  pinned upstream Hermes image in `Dockerfile` (`ARG BUILD_FROM=...`) and do
+  not rely on a missing `build.yaml`.
+- `build.yaml` is intentionally absent; Dockerfile labels must carry the HA
+  app metadata (`io.hass.*`) required by the modern BuildKit path.
+- `config.yaml` exposes `/health` through `watchdog` so Supervisor can detect
+  an ingress wrapper that failed to start.
+
+---
+
+## 8. Common pitfalls checklist (read before every upgrade)
 
 - [ ] Does the new upstream image still have `hermes dashboard`?
       (`hermes dashboard --help` in a test container)

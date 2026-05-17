@@ -43,6 +43,35 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.5.17.0 — Bump upstream image to `v2026.5.7`
+
+Shipped: pending. Upstream `v2026.5.7 / Hermes Agent v0.13.0`.
+
+**Scope.** Version-only upgrade from `nousresearch/hermes-agent:v2026.4.23`
+to `nousresearch/hermes-agent:v2026.5.7`, with the add-on version bumped to
+`2026.5.17.0`.
+
+**Why not `latest`.** On 2026-05-17, GitHub listed `v2026.5.16` as the latest
+Hermes release, but Docker Hub's visible stable calendar tag was still
+`v2026.5.7`. The Dockerfile intentionally pins a calendar tag for
+reproducible Home Assistant rebuilds, so this upgrade does not follow the
+floating `latest` tag.
+
+**Compatibility notes to verify in HA build.**
+
+- `hermes dashboard --help` still exists and accepts `--host`, `--port`, and
+  `--no-open`.
+- `hermes gateway run` still works with `HERMES_HOME=/config/.hermes`
+  without calling upstream `/opt/hermes/docker/entrypoint.sh`.
+- `ha_ws_url.py` remains idempotent if upstream already fixed the Supervisor
+  WebSocket path.
+- Supervisor 2026.04.0+ no longer injects `BUILD_FROM` by default. This repo
+  now treats Dockerfile `ARG BUILD_FROM=...` as the source of truth and keeps
+  `build.yaml` absent.
+- Modern BuildKit-based HA app builds do not infer the legacy metadata labels,
+  so the Dockerfile explicitly sets `io.hass.name`, `io.hass.description`, and
+  `io.hass.url` alongside the existing version/type/arch labels.
+
 ### v0.11.0 — Normalize storage layout to `addon_config:rw`
 
 Shipped: 2026-04-23. Same upstream as v0.10.x.

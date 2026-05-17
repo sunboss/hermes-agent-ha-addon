@@ -6,13 +6,13 @@ This add-on wraps the official Hermes Agent image and wires it into Home Assista
 
 It updates:
 
-- `/data/.env` for secrets and environment variables
-- `/data/config.yaml` for Hermes runtime settings
-- `/data/auth/session.json` for browser-login bridge state
+- `/config/.hermes/.env` for secrets and environment variables
+- `/config/.hermes/config.yaml` for Hermes runtime settings
+- `/config/auth/session.json` for browser-login bridge state
 
 It starts two processes:
 
-- the official Hermes Docker entrypoint running `hermes gateway`
+- the add-on wrapper running `hermes gateway run`
 - a lightweight ingress-only web server on port `8099` that serves the built-in chat UI, exposes auth bridge state endpoints, and proxies the internal Hermes API server
 
 The Hermes API server is enabled automatically on loopback so the ingress UI can talk to it without exposing an extra public port.
@@ -81,7 +81,7 @@ Llama base, Mistral base, Qwen base, any non-tool-calling model.
 
 The add-on now includes a real session bridge for `auth_mode=web_login` + `auth_provider=openai_web`:
 
-- persistent auth state under `/data/auth`
+- persistent auth state under `/config/auth`
 - `GET /auth/status` to inspect current bridge state
 - `GET /auth/start` to generate a PKCE browser login URL
 - `POST /auth/exchange` to submit the callback URL or authorization code
@@ -98,14 +98,14 @@ Current limitation:
 Since v0.9.9 the upgrade procedure is documented in full in
 [`../docs/UPGRADE_LOG.md`](../docs/UPGRADE_LOG.md). The short version:
 
-1. Update `HERMES_IMAGE_DIGEST` (sha256) and `BUILD_VERSION` in `Dockerfile`
+1. Update the pinned `BUILD_FROM` image tag and `BUILD_VERSION` in `Dockerfile`
 2. Bump `version` in `config.yaml`
 3. Run through the pitfalls checklist in
-   [`../docs/ARCHITECTURE.md` §7](../docs/ARCHITECTURE.md#7-common-pitfalls-checklist-for-future-upgrades)
+   [`../docs/ARCHITECTURE.md` §8](../docs/ARCHITECTURE.md#8-common-pitfalls-checklist-read-before-every-upgrade)
 4. Add a changelog entry **and** a root-cause entry in `UPGRADE_LOG.md`
 5. Rebuild, recreate the container (not just restart — state bugs only
    surface when the writable layer is wiped), and test
-6. Publish only after verifying Hermes can start, `HERMES_HOME=/data` inside
+6. Publish only after verifying Hermes can start, `HERMES_HOME=/config/.hermes` inside
    the gateway process, the ingress UI loads, `/config-model` returns the
    right model, ttyd works, and the Hermes API proxy handles chat requests
 
@@ -120,4 +120,3 @@ for the full root-cause writeup.
 - No automatic upstream image tracking by design
 - The Web UI depends on the built-in Hermes OpenAI-compatible API server running inside the container
 - `auth_mode=web_login` now stores, refreshes, and routes through a browser-session-backed provider shim, but it is still the newer path and should be treated as more experimental
-
