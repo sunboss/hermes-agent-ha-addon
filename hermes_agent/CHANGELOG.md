@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026.5.17.0
+
+- **升级上游 Hermes 镜像到 `v2026.5.7`**（Hermes Agent v0.13.0 / Tenacity Release）
+  - 上游重点：Kanban 多代理任务板、`/goal` 长任务循环、gateway 重启后会话恢复、`no_agent` cron、Google Chat 平台、Provider 插件化、Dashboard 插件/Profiles 页面
+  - 保持 Dockerfile 既有策略：固定日期 tag，不使用浮动 `latest`
+  - 未直接切到 GitHub 最新 release `v2026.5.16`：截至本次升级检查，Docker Hub 可见稳定日期 tag 仍为 `v2026.5.7`，`latest`/sha tag 虽更新但不满足可复现构建要求
+- **对齐 Home Assistant / Supervisor 2026.04+ add-on 构建规范**
+  - Dockerfile 不再描述 `BUILD_FROM` 由 Supervisor 注入；该值现在由 Dockerfile 内固定 tag 显式提供
+  - 补齐现代 BuildKit 路径需要的 `io.hass.name` / `io.hass.description` / `io.hass.url` labels
+  - 新增 `/health` watchdog，便于 Supervisor 发现 ingress wrapper 启动异常
+
 ## 2026.4.24.10
 
 - **彻底修复构建反复失败 / 旧脚本被缓存**

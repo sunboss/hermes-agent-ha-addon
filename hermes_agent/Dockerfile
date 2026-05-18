@@ -1,7 +1,7 @@
-ARG BUILD_VERSION="2026.4.25.2"
-# BUILD_FROM is injected by HA Supervisor as --build-arg at build time
-# (arch-specific, e.g. linux/arm64 on aarch64 hosts).  The default here
-# is used when building outside of HA (e.g. local docker build).
+ARG BUILD_VERSION="2026.5.17.0"
+# Supervisor 2026.04.0+ no longer injects BUILD_FROM by default; keep this
+# explicit Dockerfile ARG as the single source of truth for local and HA builds.
+# It can still be overridden manually with --build-arg when testing.
 #
 # Pinned to a calendar tag (NOT :latest) so:
 #   - upstream ship-day doesn't auto-pull an untested image
@@ -10,7 +10,7 @@ ARG BUILD_VERSION="2026.4.25.2"
 # To upgrade: pick a newer tag from
 # https://hub.docker.com/r/nousresearch/hermes-agent/tags and bump
 # BUILD_VERSION below in lockstep.
-ARG BUILD_FROM="nousresearch/hermes-agent:v2026.4.23"
+ARG BUILD_FROM="nousresearch/hermes-agent:v2026.5.7"
 
 FROM ${BUILD_FROM}
 
@@ -44,6 +44,9 @@ ENV HERMES_PANEL_PORT=9119
 LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
+  io.hass.name="Hermes Agent" \
+  io.hass.description="Home Assistant app for Hermes Agent with Ingress UI, dashboard proxy, and ttyd terminal." \
+  io.hass.url="https://github.com/sunboss/hermes-agent-ha-addon" \
   io.hass.arch="aarch64|amd64"
 
 # Build-time helper scripts.  Kept as standalone files (rather than
