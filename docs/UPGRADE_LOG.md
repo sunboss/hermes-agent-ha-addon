@@ -43,6 +43,66 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.5.19.0 — Bump upstream image to `v2026.5.16`
+
+Shipped: pending. Upstream `v2026.5.16 / Hermes Agent v0.14.0`.
+
+**Scope.** Upgrade from `nousresearch/hermes-agent:v2026.5.7` to
+`nousresearch/hermes-agent:v2026.5.16`, with the add-on version bumped to
+`2026.5.19.0`.
+
+**Why this tag is now safe to pin.** On 2026-05-19, Docker Hub listed
+`v2026.5.16` as an explicit tag, not only `latest` or `sha-*` tags. The
+Dockerfile can therefore keep the reproducible calendar-tag strategy while
+following the latest upstream release.
+
+**Root cause found during upgrade audit.** Hermes v0.14.0 added a guard that
+refuses to run `hermes gateway` as root inside the official Docker image:
+`hermes_cli/gateway.py` checks for UID 0, `/opt/hermes`, and
+`docker/entrypoint.sh`, then exits unless `HERMES_ALLOW_ROOT_GATEWAY=1` is
+set. This add-on intentionally bypasses upstream `docker/entrypoint.sh`
+because that script still defaults `HERMES_HOME` to `/opt/data`, but our
+previous wrapper also executed the gateway as root. Upgrading without a
+wrapper change would make the add-on fail at gateway startup.
+
+**Fix.** `run.sh` now performs only the root-required setup as root, then
+re-execs itself with `gosu hermes`:
+
+1. Create `/data`, `/config`, and `/config/.hermes`.
+2. `chown -R hermes:hermes /config` best-effort.
+3. Set `HERMES_ADDON_PRIVILEGE_DROPPED=1`.
+4. `exec gosu hermes "$0" "$@"`.
+5. Render `.env` / `config.yaml` and launch gateway/dashboard/ttyd/UI as the
+   unprivileged `hermes` user.
+
+The Dockerfile also now uses `ENTRYPOINT ["/usr/bin/tini", "-g", "--",
+"/run.sh"]`, preserving the upstream official image's PID 1 child-reaping
+behavior while still avoiding its HA-incompatible entrypoint script.
+
+**Invariants.**
+
+- Still do **not** call upstream `/opt/hermes/docker/entrypoint.sh`; it remains
+  unsafe for this add-on because it owns the generic Docker layout, not the
+  HA `addon_config` layout.
+- Keep `/usr/bin/tini` in front of `/run.sh` as long as the upstream image
+  ships it; removing it can reintroduce zombie child processes from dashboard,
+  terminal, MCP, or shell subprocesses.
+- Do **not** paper over the root guard with `HERMES_ALLOW_ROOT_GATEWAY=1`
+  except as a temporary emergency debug step. That would recreate root-owned
+  persistent files and can break later boots.
+- On every future upstream bump, grep for root/entrypoint changes in
+  `hermes_cli/gateway.py`, `docker/entrypoint.sh`, and the upstream Dockerfile.
+
+**Compatibility notes to verify in HA build.**
+
+- `/config` files are owned by `hermes:hermes` after first boot.
+- `hermes gateway run` no longer prints the root refusal message.
+- `hermes dashboard --host 127.0.0.1 --port 9119 --no-open` still starts.
+- `ha_ws_url.py` still patches `gateway/platforms/homeassistant.py`, because
+  upstream v2026.5.16 still hardcodes `/api/websocket`.
+- The UI `/health`, `/panel/`, `/ttyd/`, and `/config-model` routes still work
+  after the privilege drop.
+
 ### v2026.5.17.0 — Bump upstream image to `v2026.5.7`
 
 Shipped: pending. Upstream `v2026.5.7 / Hermes Agent v0.13.0`.

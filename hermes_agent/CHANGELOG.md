@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026.5.19.0
+
+- **升级上游 Hermes 镜像到 `v2026.5.16`**（Hermes Agent v0.14.0 / Foundation Release）
+  - Docker Hub 现在已经发布可复现日期 tag `nousresearch/hermes-agent:v2026.5.16`，因此从 `v2026.5.7` 推进到该固定 tag
+  - 上游重点：PyPI wheel、lazy-deps、供应链检查、OpenAI-compatible local proxy、LINE/SimpleX、Microsoft Graph/Teams 基础、`/handoff`、`x_search`、LSP diagnostics、`video_generate`、computer-use 后端等
+- **修复 v2026.5.16 root gateway 硬失败**
+  - 上游官方镜像新增 root guard：在 `/opt/hermes` 官方镜像内以 root 启动 `hermes gateway` 会直接退出
+  - `run.sh` 现在先以 root 创建目录并修正 `/config` 所有权，然后用镜像内置 `gosu hermes` 重新执行自身
+  - `hermes gateway`、`hermes dashboard`、`ttyd`、Ingress UI 现在都以 `hermes` 用户运行，避免持久目录产生 root-owned 文件
+  - Docker ENTRYPOINT 改为经上游镜像内置 `tini` 启动 `/run.sh`，保留官方镜像的子进程回收行为
+- **补齐维护存档入口**
+  - 新增 `docs/OPERATIONS_ARCHIVE.md` 作为升级、验证、推送、回滚、密钥存档索引
+  - 新增 `.ops/secrets.local.md.example` 作为本地敏感信息模板；真实 `.ops/secrets.local.md` 已加入 `.gitignore`，不得提交
+
 ## 2026.5.17.0
 
 - **升级上游 Hermes 镜像到 `v2026.5.7`**（Hermes Agent v0.13.0 / Tenacity Release）

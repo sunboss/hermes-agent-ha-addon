@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.5.17.0"
+ARG BUILD_VERSION="2026.5.19.0"
 # Supervisor 2026.04.0+ no longer injects BUILD_FROM by default; keep this
 # explicit Dockerfile ARG as the single source of truth for local and HA builds.
 # It can still be overridden manually with --build-arg when testing.
@@ -10,7 +10,7 @@ ARG BUILD_VERSION="2026.5.17.0"
 # To upgrade: pick a newer tag from
 # https://hub.docker.com/r/nousresearch/hermes-agent/tags and bump
 # BUILD_VERSION below in lockstep.
-ARG BUILD_FROM="nousresearch/hermes-agent:v2026.5.7"
+ARG BUILD_FROM="nousresearch/hermes-agent:v2026.5.16"
 
 FROM ${BUILD_FROM}
 
@@ -115,4 +115,4 @@ RUN python3 /opt/hermes-ha-scripts/bake-version.py
 
 RUN chmod a+x /run.sh
 
-ENTRYPOINT ["/run.sh"]
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/run.sh"]

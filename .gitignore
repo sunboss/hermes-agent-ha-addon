@@ -2,3 +2,7 @@ Docker Desktop Installer.exe
 plink.exe
 *.log
 *.tmp
+.pycache-check/
+.ops/secrets.local.md
+.ops/*.secret.*
+.ops/*.token.*

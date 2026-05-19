@@ -19,8 +19,8 @@
 
 当前版本：
 
-- add-on: `2026.5.17.0`
-- upstream Hermes: `v2026.5.7`
+- add-on: `2026.5.19.0`
+- upstream Hermes: `v2026.5.16`
 
 ## 安装
 
@@ -32,12 +32,12 @@
 
 ## 这版重点
 
-- 升级到 Hermes 官方日期镜像 `v2026.5.7`
+- 升级到 Hermes 官方日期镜像 `v2026.5.16`
 - `Dockerfile` 固定上游日期镜像 tag，避免跟随 `latest`
 - 规范化存储布局到 HA 2023.11+ 标准 `addon_config:rw`：宿主机 `/addon_configs/<slug>_hermes_agent/`，每个 add-on 独立隔离目录，不再污染主 `/homeassistant/` 配置
 - 扁平化容器内路径：`/config/.hermes`、`/config/workspace`、`/config/auth`（不再嵌套 `addons_data/hermes-agent/`）
 - Ingress 首页保留两个原生入口：`Hermes Dashboard` 与 `Hermes Terminal`
-- 版本号 `2026.5.17.0`
+- 版本号 `2026.5.19.0`
 
 ## 数据目录
 
@@ -59,4 +59,5 @@
 - 安装说明：[INSTALL.md](./INSTALL.md)
 - add-on 文档：[hermes_agent/DOCS.md](./hermes_agent/DOCS.md)
 - 架构说明：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- 运维存档：[docs/OPERATIONS_ARCHIVE.md](./docs/OPERATIONS_ARCHIVE.md)
 - 官方 Hermes 文档：[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)
