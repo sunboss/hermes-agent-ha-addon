@@ -43,6 +43,38 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.5.20.0 — Render HA options before privilege drop
+
+Shipped: pending. Same upstream image as v2026.5.19.0:
+`nousresearch/hermes-agent:v2026.5.16`.
+
+**Symptom.** The add-on starts, prints:
+
+```text
+[run.sh] Dropping root privileges to hermes (HERMES_HOME=/config/.hermes)...
+PermissionError: [Errno 13] Permission denied: '/data/options.json'
+```
+
+**Root cause.** v2026.5.19.0 fixed upstream's new root gateway guard by
+re-executing `run.sh` as the unprivileged `hermes` user before rendering
+runtime config. On HAOS, Supervisor's `/data/options.json` can be readable
+only by root. That means `configure.py` could no longer read add-on options
+after the privilege drop.
+
+**Fix.** `run.sh` now does the root-readable work before dropping privileges:
+
+1. Create `/data`, `/config`, and `/config/.hermes`.
+2. Run `python3 /opt/hermes-ha-scripts/configure.py` as root so
+   `/data/options.json` is readable.
+3. `chown -R hermes:hermes /config` best-effort.
+4. Set `HERMES_ADDON_CONFIGURED=1` and `HERMES_ADDON_PRIVILEGE_DROPPED=1`.
+5. Re-exec with `gosu hermes`.
+6. Skip the second configure pass and launch services as `hermes`.
+
+**Invariant.** Future changes must keep `/data/options.json` reads before the
+privilege drop unless HAOS mount permissions are explicitly proven otherwise.
+Do not set `HERMES_ALLOW_ROOT_GATEWAY=1` as a permanent fix.
+
 ### v2026.5.19.0 — Bump upstream image to `v2026.5.16`
 
 Shipped: pending. Upstream `v2026.5.16 / Hermes Agent v0.14.0`.

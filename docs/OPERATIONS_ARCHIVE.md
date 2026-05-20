@@ -7,7 +7,7 @@ file `.ops/secrets.local.md`.
 ## Current Release State
 
 - Repository: `https://github.com/sunboss/hermes-agent-ha-addon`
-- Add-on version: `2026.5.19.0`
+- Add-on version: `2026.5.20.0`
 - Upstream image: `nousresearch/hermes-agent:v2026.5.16`
 - Upstream release: Hermes Agent `v0.14.0`, release date `2026-05-16`
 - Local checkout: `/Users/sunboss/Documents/hermes/hermes-agent-ha-addon`
@@ -64,7 +64,7 @@ chmod 600 .ops/secrets.local.md
 git status --short
 git diff --check
 git add .
-git commit -m "Bump Hermes Agent add-on to 2026.5.19.0"
+git commit -m "Bump Hermes Agent add-on to 2026.5.20.0"
 git push origin main
 ```
 

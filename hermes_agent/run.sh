@@ -29,24 +29,29 @@ export HERMES_PANEL_PORT="${HERMES_PANEL_PORT:-9119}"
 mkdir -p /data "${ADDON_STATE_ROOT}" "${HERMES_HOME}"
 
 # Upstream v2026.5.16 refuses to run `hermes gateway` as root inside the
-# official Docker image. Keep the root-only setup here, then re-exec this
-# wrapper as the image's unprivileged `hermes` user so gateway, dashboard,
-# ttyd, and our ingress UI all share the same file ownership.
+# official Docker image. HA Supervisor's /data/options.json is root-readable
+# in some installs, so render config before dropping privileges; then re-exec
+# this wrapper as the image's unprivileged `hermes` user so gateway,
+# dashboard, ttyd, and our ingress UI share the same file ownership.
 if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; then
   if ! command -v gosu >/dev/null 2>&1; then
     echo "[run.sh] ERROR: gosu is required to drop from root to the hermes user." >&2
     exit 1
   fi
+  python3 /opt/hermes-ha-scripts/configure.py
   chown -R hermes:hermes "${ADDON_STATE_ROOT}" 2>/dev/null || \
     echo "[run.sh] WARNING: chown ${ADDON_STATE_ROOT} failed; continuing" >&2
   export HERMES_ADDON_PRIVILEGE_DROPPED=1
+  export HERMES_ADDON_CONFIGURED=1
   echo "[run.sh] Dropping root privileges to hermes (HERMES_HOME=${HERMES_HOME})..."
   exec gosu hermes "$0" "$@"
 fi
 
 # Render .env / config.yaml / .addon-runtime / auth/session.json.
 # See scripts/configure.py for everything this writes.
-python3 /opt/hermes-ha-scripts/configure.py
+if [ "${HERMES_ADDON_CONFIGURED:-}" != "1" ]; then
+  python3 /opt/hermes-ha-scripts/configure.py
+fi
 
 set -a
 . "${HERMES_HOME}/.env"

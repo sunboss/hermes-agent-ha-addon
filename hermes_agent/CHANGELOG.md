@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.5.20.0
+
+- **修复降权后无法读取 `/data/options.json`**
+  - v2026.5.19.0 为适配上游 root gateway guard，把 `run.sh` 提前切到 `hermes` 用户
+  - HA Supervisor 的 `/data/options.json` 在部分 HAOS 环境里只有 root 可读，导致 `configure.py` 降权后 `PermissionError`
+  - 现在 `run.sh` 先以 root 渲染 `.env` / `config.yaml` / auth state，再 `chown /config`，最后降权运行 dashboard、ttyd、Ingress UI 和 gateway
+
 ## 2026.5.19.0
 
 - **升级上游 Hermes 镜像到 `v2026.5.16`**（Hermes Agent v0.14.0 / Foundation Release）
