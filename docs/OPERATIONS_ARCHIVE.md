@@ -147,3 +147,42 @@ resolved.
 3. Root: `chown -R hermes:hermes /config`.
 4. `gosu hermes`.
 5. Hermes user: start ttyd, Ingress UI, dashboard, skills sync, and gateway.
+
+### 2026-05-20 — Dashboard traffic and gateway restart verification
+
+**Observed traffic.** HAOS logs showed repeated successful dashboard and
+terminal checks:
+
+```text
+[Hermes UI] 172.30.32.2 - "GET /health HTTP/1.1" 200 -
+[Hermes UI] 172.30.32.2 - "GET /panel/api/sessions?limit=50&offset=0 HTTP/1.1" 200 -
+[Hermes UI] 172.30.32.2 - "GET /panel/api/status HTTP/1.1" 200 -
+[Hermes UI] 172.30.32.2 - "HEAD /panel/ HTTP/1.1" 200 -
+[Hermes UI] 172.30.32.2 - "HEAD /ttyd/ HTTP/1.1" 200 -
+```
+
+**Interpretation.** These are healthy Dashboard/Ingress polling requests, not
+an error loop. `200` on `/health`, `/panel/api/status`, `/panel/api/sessions`,
+`/panel/`, and `/ttyd/` means the UI wrapper, upstream dashboard proxy, and
+terminal route are reachable.
+
+**Gateway restart.** The dashboard sent:
+
+```text
+POST /panel/api/gateway/restart HTTP/1.1" 200
+WARNING gateway.run: Shutdown context: signal=SIGTERM under_systemd=yes parent_pid=1 parent_name=tini
+```
+
+This is expected when the Dashboard asks the gateway to restart. The
+`parent_name=tini` value confirms the add-on's `tini` entrypoint is active.
+
+**Caution.** The Dashboard also exposes:
+
+```text
+POST /panel/api/hermes/update
+```
+
+Avoid using this as the normal HA add-on update path. HA add-ons should be
+updated by bumping this repository, pushing to `main`, and using HAOS
+Update/Rebuild so Dockerfile patches, add-on metadata, and wrapper scripts stay
+in sync.

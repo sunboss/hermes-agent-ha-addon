@@ -56,6 +56,8 @@
 
 ## 文档
 
+- AI 维护交接：[docs/AI_MAINTENANCE.md](./docs/AI_MAINTENANCE.md)
+- 运维文档包：[docs/maintenance_bundle/README.md](./docs/maintenance_bundle/README.md)
 - 安装说明：[INSTALL.md](./INSTALL.md)
 - add-on 文档：[hermes_agent/DOCS.md](./hermes_agent/DOCS.md)
 - 架构说明：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
