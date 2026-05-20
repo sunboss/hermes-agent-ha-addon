@@ -57,6 +57,9 @@
 ## 文档
 
 - AI 维护交接：[docs/AI_MAINTENANCE.md](./docs/AI_MAINTENANCE.md)
+- HAOS 运维手册：[docs/HAOS_RUNBOOK.md](./docs/HAOS_RUNBOOK.md)
+- 故障排查：[docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
+- 发布流程：[docs/RELEASE_PROCESS.md](./docs/RELEASE_PROCESS.md)
 - 运维文档包：[docs/maintenance_bundle/README.md](./docs/maintenance_bundle/README.md)
 - 安装说明：[INSTALL.md](./INSTALL.md)
 - add-on 文档：[hermes_agent/DOCS.md](./hermes_agent/DOCS.md)

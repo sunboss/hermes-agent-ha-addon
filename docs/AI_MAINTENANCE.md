@@ -21,9 +21,12 @@ Read these in order:
 2. `docs/OPERATIONS_ARCHIVE.md` — operator log, release state, push/rollback flow.
 3. `docs/UPGRADE_LOG.md` — root causes behind shipped fixes.
 4. `docs/ARCHITECTURE.md` — process layout, storage, routing, pitfalls.
-5. `docs/STORAGE.md` — HAOS storage layout and migration notes.
-6. `hermes_agent/CHANGELOG.md` — user-facing release notes.
-7. `hermes_agent/run.sh`, `hermes_agent/Dockerfile`, `hermes_agent/scripts/configure.py`.
+5. `docs/HAOS_RUNBOOK.md` — HAOS update/rebuild/verification commands.
+6. `docs/TROUBLESHOOTING.md` — symptom-to-cause lookup.
+7. `docs/RELEASE_PROCESS.md` — release, push, Actions, rollback flow.
+8. `docs/STORAGE.md` — HAOS storage layout and migration notes.
+9. `hermes_agent/CHANGELOG.md` — user-facing release notes.
+10. `hermes_agent/run.sh`, `hermes_agent/Dockerfile`, `hermes_agent/scripts/configure.py`.
 
 ## Critical Invariants
 
@@ -119,3 +122,18 @@ Regenerate it after documentation changes with:
 ```
 
 The bundle intentionally excludes `.ops/` and all local secrets.
+
+## Current Documentation Map
+
+```text
+docs/
+├── AI_MAINTENANCE.md      # first-read handoff
+├── HAOS_RUNBOOK.md        # HAOS operator commands and healthy signals
+├── TROUBLESHOOTING.md     # symptom-to-fix lookup
+├── RELEASE_PROCESS.md     # repeatable release checklist
+├── OPERATIONS_ARCHIVE.md  # dated operations log
+├── UPGRADE_LOG.md         # root-cause fix register
+├── ARCHITECTURE.md        # system layout and invariants
+├── STORAGE.md             # persistent storage/migration
+└── maintenance_bundle/    # portable docs archive
+```

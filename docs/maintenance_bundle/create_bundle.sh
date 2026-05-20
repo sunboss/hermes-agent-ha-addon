@@ -18,6 +18,9 @@ INSTALL.md
 repository.yaml
 .github/workflows/lint.yml
 docs/AI_MAINTENANCE.md
+docs/HAOS_RUNBOOK.md
+docs/TROUBLESHOOTING.md
+docs/RELEASE_PROCESS.md
 docs/OPERATIONS_ARCHIVE.md
 docs/UPGRADE_LOG.md
 docs/ARCHITECTURE.md
