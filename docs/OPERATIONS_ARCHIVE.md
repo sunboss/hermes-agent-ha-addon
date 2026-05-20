@@ -85,3 +85,65 @@ If `v2026.5.16` fails on a Home Assistant host:
    direct cause. It is compatible with the official image layout and prevents
    root-owned persistent files.
 4. Rebuild the add-on from the HA UI.
+
+## Operation Log
+
+### 2026-05-20 — HAOS startup verification for `2026.5.20.0`
+
+**Context.** `2026.5.19.0` upgraded the add-on to upstream
+`nousresearch/hermes-agent:v2026.5.16` and introduced privilege dropping to
+avoid upstream's official-image root gateway guard. HAOS logs showed two
+distinct failures before the final fix landed:
+
+1. Before privilege dropping:
+
+   ```text
+   [run.sh] Starting Hermes Agent gateway (HERMES_HOME=/config/.hermes)...
+   Hermes Web UI -> http://127.0.0.1:9119
+   Refusing to run the Hermes gateway as root inside the official Docker image.
+   ```
+
+2. After dropping privileges too early:
+
+   ```text
+   [run.sh] Dropping root privileges to hermes (HERMES_HOME=/config/.hermes)...
+   PermissionError: [Errno 13] Permission denied: '/data/options.json'
+   ```
+
+**Fix shipped in `2026.5.20.0`.** `run.sh` now renders config from
+`/data/options.json` as root, then `chown`s `/config`, then re-execs itself as
+`hermes`. The second pass skips configuration rendering with
+`HERMES_ADDON_CONFIGURED=1`.
+
+**Successful HAOS signal.** The verified startup log now contains:
+
+```text
+[run.sh] Dropping root privileges to hermes (HERMES_HOME=/config/.hermes)...
+[Hermes UI] Listening on http://0.0.0.0:8099
+[run.sh] Starting hermes dashboard on 127.0.0.1:9119...
+[run.sh] hermes dashboard started
+Syncing bundled skills into ~/.hermes/skills/ ...
+Done: 2 new, 77 updated, 8 unchanged, 4 cleaned from manifest. 87 total bundled.
+[run.sh] Starting Hermes Agent gateway (HERMES_HOME=/config/.hermes)...
+Hermes Gateway Starting...
+```
+
+This confirms the root refusal and `/data/options.json` permission failure are
+resolved.
+
+**Non-fatal warnings observed.**
+
+- `No watch_domains, watch_entities, or watch_all configured`: expected when
+  no HA entity filters are configured. Set `watch_all: true` or configure
+  `watch_domains` / `watch_entities` if Hermes should react to HA state
+  changes.
+- `WEIXIN_GROUP_POLICY=open...`: upstream Hermes warning about iLink WeChat
+  group delivery limitations. It does not affect HA add-on startup.
+
+**Maintenance note.** Keep this order in future `run.sh` changes:
+
+1. Root: create `/config` dirs.
+2. Root: run `configure.py` while `/data/options.json` is readable.
+3. Root: `chown -R hermes:hermes /config`.
+4. `gosu hermes`.
+5. Hermes user: start ttyd, Ingress UI, dashboard, skills sync, and gateway.

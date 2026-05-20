@@ -75,6 +75,21 @@ after the privilege drop.
 privilege drop unless HAOS mount permissions are explicitly proven otherwise.
 Do not set `HERMES_ALLOW_ROOT_GATEWAY=1` as a permanent fix.
 
+**HAOS verification log.** After updating to `2026.5.20.0`, the live HAOS log
+showed the intended order:
+
+```text
+[run.sh] Dropping root privileges to hermes (HERMES_HOME=/config/.hermes)...
+[Hermes UI] Listening on http://0.0.0.0:8099
+[run.sh] Starting hermes dashboard on 127.0.0.1:9119...
+[run.sh] hermes dashboard started
+[run.sh] Starting Hermes Agent gateway (HERMES_HOME=/config/.hermes)...
+Hermes Gateway Starting...
+```
+
+The remaining warnings about empty HA watch filters and Weixin group delivery
+are non-fatal and unrelated to add-on boot.
+
 ### v2026.5.19.0 — Bump upstream image to `v2026.5.16`
 
 Shipped: pending. Upstream `v2026.5.16 / Hermes Agent v0.14.0`.
