@@ -7,9 +7,9 @@ file `.ops/secrets.local.md`.
 ## Current Release State
 
 - Repository: `https://github.com/sunboss/hermes-agent-ha-addon`
-- Add-on version: `2026.5.20.0`
-- Upstream image: `nousresearch/hermes-agent:v2026.5.16`
-- Upstream release: Hermes Agent `v0.14.0`, release date `2026-05-16`
+- Add-on version: `2026.6.20.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.6.19`
+- Upstream release: Hermes Agent `v0.17.0`, release date `2026-06-19`
 - Local checkout: `/Users/sunboss/Documents/hermes/hermes-agent-ha-addon`
 
 ## Local Secret Archive
@@ -64,7 +64,7 @@ chmod 600 .ops/secrets.local.md
 git status --short
 git diff --check
 git add .
-git commit -m "Bump Hermes Agent add-on to 2026.5.20.0"
+git commit -m "Bump Hermes Agent add-on to 2026.6.20.0"
 git push origin main
 ```
 
@@ -76,10 +76,10 @@ git status --short --ignored .ops
 
 ## Rollback Notes
 
-If `v2026.5.16` fails on a Home Assistant host:
+If `v2026.6.19` fails on a Home Assistant host:
 
 1. Revert `BUILD_FROM` in `hermes_agent/Dockerfile` to
-   `nousresearch/hermes-agent:v2026.5.7`.
+   `nousresearch/hermes-agent:v2026.5.16`.
 2. Revert add-on version metadata to the last working release.
 3. Keep the `gosu hermes` privilege-drop fix unless it is proven to be the
    direct cause. It is compatible with the official image layout and prevents
@@ -87,6 +87,27 @@ If `v2026.5.16` fails on a Home Assistant host:
 4. Rebuild the add-on from the HA UI.
 
 ## Operation Log
+
+### 2026-06-20 — Prepared upstream `v2026.6.19` upgrade
+
+**Context.** Upstream GitHub latest release is Hermes Agent `v0.17.0`
+(`v2026.6.19`, release date 2026-06-19). Docker Hub exposes an explicit
+multi-architecture `nousresearch/hermes-agent:v2026.6.19` tag, so this release
+can keep the repository's fixed calendar-tag policy.
+
+**Prepared add-on release.**
+
+- Add-on version: `2026.6.20.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.6.19`
+- Prior known-good rollback image: `nousresearch/hermes-agent:v2026.5.16`
+
+**Risk focus for HAOS verification.**
+
+- Preserve the `2026.5.20.0` root-then-drop ordering around
+  `/data/options.json`.
+- Verify upstream still includes `tini`, `gosu`, and `hermes dashboard`.
+- Verify the Ingress wrapper, Dashboard proxy, ttyd, and gateway all start
+  after HAOS rebuild.
 
 ### 2026-05-20 — HAOS startup verification for `2026.5.20.0`
 

@@ -3,11 +3,14 @@
 This file is the first thing future AI maintainers should read after cloning
 `sunboss/hermes-agent-ha-addon`.
 
-## Current Known-Good State
+## Current Target State
 
-- Add-on version: `2026.5.20.0`
-- Upstream image: `nousresearch/hermes-agent:v2026.5.16`
-- Upstream Hermes release: `v0.14.0`
+- Add-on version: `2026.6.20.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.6.19`
+- Upstream Hermes release: `v0.17.0`
+- HAOS verification: pending
+- Prior known-good add-on version: `2026.5.20.0`
+- Prior known-good upstream image: `nousresearch/hermes-agent:v2026.5.16`
 - Main branch latest required fixes:
   - `a4a2ab2` — render HAOS `/data/options.json` before dropping privileges.
   - `77c91f5` — record HAOS startup verification.

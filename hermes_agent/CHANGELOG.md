@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.6.20.0
+
+- **升级上游 Hermes 镜像到 `v2026.6.19`**（Hermes Agent v0.17.0 / Reach Release）
+  - Docker Hub 已发布可复现日期 tag `nousresearch/hermes-agent:v2026.6.19`，同时包含 amd64 / arm64 镜像
+  - 上游重点：iMessage Photon 平台、Raft agent network、后台 subagents、image edit、automation blueprints、Dashboard profile builder、Skills Hub 重构、memory 批量操作、Dashboard 安全登录强化、WhatsApp Business Cloud API、Telegram rich messages
+  - 保持现有 HAOS wrapper 行为：仍先以 root 读取 `/data/options.json` 并渲染配置，再降权到 `hermes` 运行 gateway/dashboard/ttyd/UI
+
 ## 2026.5.20.0
 
 - **修复降权后无法读取 `/data/options.json`**

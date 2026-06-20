@@ -11,17 +11,21 @@ Add-on repository URL:
 https://github.com/sunboss/hermes-agent-ha-addon
 ```
 
-Current known-good add-on version:
+Current target add-on version, pending HAOS verification:
 
 ```text
-2026.5.20.0
+2026.6.20.0
 ```
 
-Current upstream image:
+Current target upstream image:
 
 ```text
-nousresearch/hermes-agent:v2026.5.16
+nousresearch/hermes-agent:v2026.6.19
 ```
+
+Last known-good add-on version: `2026.5.20.0`
+
+Last known-good upstream image: `nousresearch/hermes-agent:v2026.5.16`
 
 ## Install Or Refresh Repository
 

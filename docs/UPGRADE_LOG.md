@@ -43,6 +43,37 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.6.20.0 — Bump upstream image to `v2026.6.19`
+
+Shipped: pending. Upstream `v2026.6.19 / Hermes Agent v0.17.0`.
+
+**Scope.** Upgrade from `nousresearch/hermes-agent:v2026.5.16` to
+`nousresearch/hermes-agent:v2026.6.19`, with the add-on version bumped to
+`2026.6.20.0`.
+
+**Why this tag is safe to pin.** On 2026-06-20, Docker Hub listed
+`v2026.6.19` as an explicit multi-architecture tag with amd64 and arm64
+images. The Dockerfile can therefore keep the reproducible calendar-tag
+strategy and avoid `latest` / `main`.
+
+**Upstream release scope.** This jumps from the add-on's prior upstream
+`v0.14.0` baseline to Hermes Agent `v0.17.0`. The upstream release notes call
+out new messaging/platform surfaces (iMessage via Photon, Raft, WhatsApp
+Business Cloud API, Telegram rich text), background subagents, image editing,
+automation blueprints, Dashboard profile/security work, Skills Hub changes,
+and memory batch operations.
+
+**Compatibility notes to verify in HAOS.**
+
+- Keep the `2026.5.20.0` privilege order: root reads `/data/options.json` and
+  renders config before `gosu hermes`.
+- Confirm upstream still ships `/usr/bin/tini`, `gosu`, `hermes dashboard`,
+  and `/opt/hermes/.venv/bin/python3`.
+- Confirm `ha_ws_url.py` remains idempotent if upstream already fixed the
+  Supervisor WebSocket path.
+- Rebuild in HAOS and verify `/health`, `/panel/`, `/panel/api/status`, and
+  `/ttyd/` after Supervisor store reload.
+
 ### v2026.5.20.0 — Render HA options before privilege drop
 
 Shipped: pending. Same upstream image as v2026.5.19.0:
