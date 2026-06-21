@@ -43,6 +43,35 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.6.21.1 — Use s6 privilege-drop fallback when `gosu` is absent
+
+Shipped: pending. Same upstream image as v2026.6.21.0:
+`nousresearch/hermes-agent:v2026.6.19`.
+
+**Symptom.** After the entrypoint fix let `/run.sh` start, HAOS failed with:
+
+```text
+[run.sh] ERROR: gosu is required to drop from root to the hermes user.
+```
+
+**Cause.** The add-on hard-coded `gosu hermes "$0" "$@"` for the root-to-user
+re-exec path. Upstream `v2026.6.19` moved to s6-overlay and does not expose
+`gosu` in the image, so the guard failed before Hermes services started.
+
+**Fix.** `run.sh` now keeps the old `gosu` path when available and falls back
+to s6-overlay's `s6-setuidgid`:
+
+```bash
+if command -v gosu >/dev/null 2>&1; then
+  exec gosu hermes "$0" "$@"
+fi
+if command -v s6-setuidgid >/dev/null 2>&1; then
+  exec s6-setuidgid hermes "$0" "$@"
+fi
+```
+
+The root phase still renders `/data/options.json` before dropping privileges.
+
 ### v2026.6.21.0 — Bypass upstream s6 `/usr/bin/tini` shim
 
 Shipped: pending. Same upstream image as v2026.6.20.0:

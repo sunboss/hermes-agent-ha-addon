@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.6.21.1
+
+- **修复上游 `v2026.6.19` 镜像缺少 `gosu` 时无法降权启动**
+  - `run.sh` 继续优先使用 `gosu hermes`，但如果镜像内没有 `gosu`，会改用 s6-overlay 提供的 `s6-setuidgid hermes`
+  - 解决日志里的 `[run.sh] ERROR: gosu is required to drop from root to the hermes user.`
+  - 上游镜像仍固定为 `nousresearch/hermes-agent:v2026.6.19`
+
 ## 2026.6.21.0
 
 - **修复 `v2026.6.19` 上游镜像启动后循环退出**

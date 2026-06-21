@@ -14,7 +14,7 @@ https://github.com/sunboss/hermes-agent-ha-addon
 Current target add-on version, pending HAOS verification:
 
 ```text
-2026.6.21.0
+2026.6.21.1
 ```
 
 Current target upstream image:

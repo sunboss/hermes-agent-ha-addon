@@ -5,7 +5,7 @@ This file is the first thing future AI maintainers should read after cloning
 
 ## Current Target State
 
-- Add-on version: `2026.6.21.0`
+- Add-on version: `2026.6.21.1`
 - Upstream image: `nousresearch/hermes-agent:v2026.6.19`
 - Upstream Hermes release: `v0.17.0`
 - HAOS verification: pending
@@ -45,6 +45,8 @@ Read these in order:
   5. `hermes` user starts ttyd, Ingress UI, dashboard, skills sync, gateway.
 - Do not use `/usr/bin/tini` on upstream `v2026.6.19+`; it is an s6 `/init`
   symlink and exits with `-g: not found` if given legacy tini flags.
+- Keep `run.sh` privilege drop compatible with both `gosu` and
+  `s6-setuidgid`; upstream `v2026.6.19` may not ship `gosu`.
 - Keep the upstream image pinned to an explicit calendar tag, not `latest` or
   `main`, unless the user explicitly asks for a risky test build.
 - Keep `ha_ws_url.py` until upstream no longer hardcodes `/api/websocket` for

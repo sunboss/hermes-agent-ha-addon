@@ -7,7 +7,7 @@ file `.ops/secrets.local.md`.
 ## Current Release State
 
 - Repository: `https://github.com/sunboss/hermes-agent-ha-addon`
-- Add-on version: `2026.6.21.0`
+- Add-on version: `2026.6.21.1`
 - Upstream image: `nousresearch/hermes-agent:v2026.6.19`
 - Upstream release: Hermes Agent `v0.17.0`, release date `2026-06-19`
 - Local checkout: `/Users/sunboss/Documents/hermes/hermes-agent-ha-addon`
@@ -64,7 +64,7 @@ chmod 600 .ops/secrets.local.md
 git status --short
 git diff --check
 git add .
-git commit -m "Fix v2026.6.19 s6 entrypoint startup"
+git commit -m "Use s6-setuidgid fallback for Hermes privilege drop"
 git push origin main
 ```
 
@@ -87,6 +87,25 @@ If `v2026.6.19` fails on a Home Assistant host:
 4. Rebuild the add-on from the HA UI.
 
 ## Operation Log
+
+### 2026-06-21 — Added `s6-setuidgid` fallback for privilege drop
+
+**Context.** After `2026.6.21.0` fixed the s6 entrypoint argument loop, HAOS
+reached `/run.sh` and failed at the next startup guard:
+
+```text
+[run.sh] ERROR: gosu is required to drop from root to the hermes user.
+```
+
+**Cause.** Upstream `v2026.6.19` does not expose `gosu`, but it does include
+s6-overlay. The add-on was hard-coded to require `gosu` for the root-to-hermes
+re-exec path.
+
+**Fix prepared in `2026.6.21.1`.**
+
+- Keep `gosu hermes` when available.
+- Fall back to `s6-setuidgid hermes` on s6-based upstream images.
+- Keep rendering `/data/options.json` as root before privilege drop.
 
 ### 2026-06-21 — Fixed `v2026.6.19` s6 entrypoint loop
 
