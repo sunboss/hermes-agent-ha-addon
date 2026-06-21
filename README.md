@@ -19,7 +19,7 @@
 
 当前版本：
 
-- add-on: `2026.6.21.1`
+- add-on: `2026.6.21.2`
 - upstream Hermes: `v2026.6.19`
 
 ## 安装
@@ -37,7 +37,7 @@
 - 规范化存储布局到 HA 2023.11+ 标准 `addon_config:rw`：宿主机 `/addon_configs/<slug>_hermes_agent/`，每个 add-on 独立隔离目录，不再污染主 `/homeassistant/` 配置
 - 扁平化容器内路径：`/config/.hermes`、`/config/workspace`、`/config/auth`（不再嵌套 `addons_data/hermes-agent/`）
 - Ingress 首页保留两个原生入口：`Hermes Dashboard` 与 `Hermes Terminal`
-- 版本号 `2026.6.21.1`
+- 版本号 `2026.6.21.2`
 
 ## 数据目录
 

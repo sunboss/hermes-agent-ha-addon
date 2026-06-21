@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.6.21.2
+
+- **修复 s6 降权工具不在默认 PATH 时仍无法启动**
+  - `run.sh` 现在除 `command -v s6-setuidgid` 外，还会显式查找 `/command/s6-setuidgid`、`/usr/bin/s6-setuidgid`、`/bin/s6-setuidgid`
+  - 解决日志里的 `[run.sh] ERROR: gosu or s6-setuidgid is required to drop from root to the hermes user.`
+
 ## 2026.6.21.1
 
 - **修复上游 `v2026.6.19` 镜像缺少 `gosu` 时无法降权启动**

@@ -43,6 +43,36 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.6.21.2 — Locate s6 privilege-drop helper outside `PATH`
+
+Shipped: pending. Same upstream image as v2026.6.21.1:
+`nousresearch/hermes-agent:v2026.6.19`.
+
+**Symptom.** `2026.6.21.1` added an s6 fallback, but HAOS still failed:
+
+```text
+[run.sh] ERROR: gosu or s6-setuidgid is required to drop from root to the hermes user.
+```
+
+**Cause.** s6-overlay helper binaries are commonly installed in `/command`,
+and that directory is not guaranteed to be present in the add-on wrapper's
+`PATH`.
+
+**Fix.** `run.sh` now resolves the helper by both `PATH` and explicit common
+s6 locations:
+
+```bash
+S6_SETUIDGID="$(command -v s6-setuidgid 2>/dev/null || true)"
+if [ -z "${S6_SETUIDGID}" ]; then
+  for candidate in /command/s6-setuidgid /usr/bin/s6-setuidgid /bin/s6-setuidgid; do
+    if [ -x "${candidate}" ]; then
+      S6_SETUIDGID="${candidate}"
+      break
+    fi
+  done
+fi
+```
+
 ### v2026.6.21.1 — Use s6 privilege-drop fallback when `gosu` is absent
 
 Shipped: pending. Same upstream image as v2026.6.21.0:

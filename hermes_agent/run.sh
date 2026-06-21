@@ -43,10 +43,19 @@ if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; the
   if command -v gosu >/dev/null 2>&1; then
     exec gosu hermes "$0" "$@"
   fi
-  if command -v s6-setuidgid >/dev/null 2>&1; then
-    exec s6-setuidgid hermes "$0" "$@"
+  S6_SETUIDGID="$(command -v s6-setuidgid 2>/dev/null || true)"
+  if [ -z "${S6_SETUIDGID}" ]; then
+    for candidate in /command/s6-setuidgid /usr/bin/s6-setuidgid /bin/s6-setuidgid; do
+      if [ -x "${candidate}" ]; then
+        S6_SETUIDGID="${candidate}"
+        break
+      fi
+    done
   fi
-  echo "[run.sh] ERROR: gosu or s6-setuidgid is required to drop from root to the hermes user." >&2
+  if [ -n "${S6_SETUIDGID}" ]; then
+    exec "${S6_SETUIDGID}" hermes "$0" "$@"
+  fi
+  echo "[run.sh] ERROR: gosu or /command/s6-setuidgid is required to drop from root to the hermes user." >&2
   exit 1
 fi
 

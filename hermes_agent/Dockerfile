@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.6.21.1"
+ARG BUILD_VERSION="2026.6.21.2"
 # Supervisor 2026.04.0+ no longer injects BUILD_FROM by default; keep this
 # explicit Dockerfile ARG as the single source of truth for local and HA builds.
 # It can still be overridden manually with --build-arg when testing.

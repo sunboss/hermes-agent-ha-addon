@@ -7,7 +7,7 @@ file `.ops/secrets.local.md`.
 ## Current Release State
 
 - Repository: `https://github.com/sunboss/hermes-agent-ha-addon`
-- Add-on version: `2026.6.21.1`
+- Add-on version: `2026.6.21.2`
 - Upstream image: `nousresearch/hermes-agent:v2026.6.19`
 - Upstream release: Hermes Agent `v0.17.0`, release date `2026-06-19`
 - Local checkout: `/Users/sunboss/Documents/hermes/hermes-agent-ha-addon`
@@ -64,7 +64,7 @@ chmod 600 .ops/secrets.local.md
 git status --short
 git diff --check
 git add .
-git commit -m "Use s6-setuidgid fallback for Hermes privilege drop"
+git commit -m "Find s6-setuidgid outside PATH"
 git push origin main
 ```
 
@@ -87,6 +87,25 @@ If `v2026.6.19` fails on a Home Assistant host:
 4. Rebuild the add-on from the HA UI.
 
 ## Operation Log
+
+### 2026-06-21 — Find `s6-setuidgid` outside PATH
+
+**Context.** HAOS installed `2026.6.21.1`, reached the fallback privilege-drop
+path, but still failed:
+
+```text
+[run.sh] ERROR: gosu or s6-setuidgid is required to drop from root to the hermes user.
+```
+
+**Cause.** s6-overlay tools are commonly installed under `/command`, which is
+not guaranteed to be in the add-on wrapper's `PATH`.
+
+**Fix prepared in `2026.6.21.2`.**
+
+- Continue to use `gosu` if present.
+- Try `command -v s6-setuidgid`.
+- Explicitly probe `/command/s6-setuidgid`, `/usr/bin/s6-setuidgid`, and
+  `/bin/s6-setuidgid`.
 
 ### 2026-06-21 — Added `s6-setuidgid` fallback for privilege drop
 
