@@ -153,6 +153,8 @@ Current patches:
 - [ ] Does the new upstream image still have `hermes dashboard`?
       (`hermes dashboard --help` in a test container)
 - [ ] Does `hermes gateway run` still work without calling entrypoint.sh?
+- [ ] Does the Dockerfile entrypoint still avoid upstream s6 `/init` flags?
+      (`/usr/bin/tini` is not safe on `v2026.6.19+`)
 - [ ] Does the HA WebSocket URL still need the `/api/websocket` patch?
       (grep `api/websocket` in upstream homeassistant.py)
 - [ ] Do the Dockerfile ENV paths match run.sh exports?

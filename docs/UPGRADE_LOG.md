@@ -43,6 +43,44 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.6.21.0 — Bypass upstream s6 `/usr/bin/tini` shim
+
+Shipped: pending. Same upstream image as v2026.6.20.0:
+`nousresearch/hermes-agent:v2026.6.19`.
+
+**Symptom.** After HAOS rebuilt the add-on, startup completed the upstream
+s6 cont-init phase and briefly started services, then exited and restarted in
+a loop with:
+
+```text
+/run/s6/basedir/scripts/rc.init: 91: -g: not found
+```
+
+**Cause.** Upstream `v2026.6.19` changed the official image entrypoint stack:
+`/usr/bin/tini` is now a symlink to s6 `/init`, not the standalone `tini`
+binary used by earlier images. The add-on still used:
+
+```Dockerfile
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/run.sh"]
+```
+
+So the container actually launched s6 `/init` with legacy `tini` arguments.
+s6 then tried to execute `-g` as the command and terminated the container.
+
+**Fix.** The add-on entrypoint now runs `/run.sh` directly:
+
+```Dockerfile
+ENTRYPOINT ["/run.sh"]
+```
+
+This keeps the add-on's HA-specific startup order intact: render
+`/data/options.json` while root can read it, drop to `hermes`, start ttyd, the
+Ingress UI, Dashboard proxy target, and finally `hermes gateway run`.
+
+**Maintenance note.** Do not reintroduce `/usr/bin/tini -g -- /run.sh` while
+the upstream image keeps `/usr/bin/tini -> /init`. If a future upstream restores
+a real `tini` binary, verify it inside the built image before changing this.
+
 ### v2026.6.20.0 — Bump upstream image to `v2026.6.19`
 
 Shipped: pending. Upstream `v2026.6.19 / Hermes Agent v0.17.0`.
@@ -67,8 +105,9 @@ and memory batch operations.
 
 - Keep the `2026.5.20.0` privilege order: root reads `/data/options.json` and
   renders config before `gosu hermes`.
-- Confirm upstream still ships `/usr/bin/tini`, `gosu`, `hermes dashboard`,
-  and `/opt/hermes/.venv/bin/python3`.
+- Confirm upstream still ships `gosu`, `hermes dashboard`, and
+  `/opt/hermes/.venv/bin/python3`. Do not rely on `/usr/bin/tini` on
+  `v2026.6.19+`; it is an s6 `/init` symlink.
 - Confirm `ha_ws_url.py` remains idempotent if upstream already fixed the
   Supervisor WebSocket path.
 - Rebuild in HAOS and verify `/health`, `/panel/`, `/panel/api/status`, and
@@ -153,18 +192,19 @@ re-execs itself with `gosu hermes`:
 5. Render `.env` / `config.yaml` and launch gateway/dashboard/ttyd/UI as the
    unprivileged `hermes` user.
 
-The Dockerfile also now uses `ENTRYPOINT ["/usr/bin/tini", "-g", "--",
-"/run.sh"]`, preserving the upstream official image's PID 1 child-reaping
-behavior while still avoiding its HA-incompatible entrypoint script.
+The Dockerfile also used `ENTRYPOINT ["/usr/bin/tini", "-g", "--",
+"/run.sh"]`, preserving the then-current upstream official image's PID 1
+child-reaping behavior while still avoiding its HA-incompatible entrypoint
+script. This was superseded in v2026.6.21.0 after upstream changed
+`/usr/bin/tini` to an s6 `/init` symlink.
 
 **Invariants.**
 
 - Still do **not** call upstream `/opt/hermes/docker/entrypoint.sh`; it remains
   unsafe for this add-on because it owns the generic Docker layout, not the
   HA `addon_config` layout.
-- Keep `/usr/bin/tini` in front of `/run.sh` as long as the upstream image
-  ships it; removing it can reintroduce zombie child processes from dashboard,
-  terminal, MCP, or shell subprocesses.
+- Keep `/usr/bin/tini` in front of `/run.sh` only for upstream images that
+  ship a real standalone `tini` binary. Do not use it on `v2026.6.19+`.
 - Do **not** paper over the root guard with `HERMES_ALLOW_ROOT_GATEWAY=1`
   except as a temporary emergency debug step. That would recreate root-owned
   persistent files and can break later boots.

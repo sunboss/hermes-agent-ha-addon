@@ -7,7 +7,7 @@ file `.ops/secrets.local.md`.
 ## Current Release State
 
 - Repository: `https://github.com/sunboss/hermes-agent-ha-addon`
-- Add-on version: `2026.6.20.0`
+- Add-on version: `2026.6.21.0`
 - Upstream image: `nousresearch/hermes-agent:v2026.6.19`
 - Upstream release: Hermes Agent `v0.17.0`, release date `2026-06-19`
 - Local checkout: `/Users/sunboss/Documents/hermes/hermes-agent-ha-addon`
@@ -64,7 +64,7 @@ chmod 600 .ops/secrets.local.md
 git status --short
 git diff --check
 git add .
-git commit -m "Bump Hermes Agent add-on to 2026.6.20.0"
+git commit -m "Fix v2026.6.19 s6 entrypoint startup"
 git push origin main
 ```
 
@@ -88,6 +88,27 @@ If `v2026.6.19` fails on a Home Assistant host:
 
 ## Operation Log
 
+### 2026-06-21 — Fixed `v2026.6.19` s6 entrypoint loop
+
+**Context.** HAOS rebuilt the `2026.6.20.0` add-on and the container entered a
+restart loop after upstream s6 cont-init completed. The decisive log line was:
+
+```text
+/run/s6/basedir/scripts/rc.init: 91: -g: not found
+```
+
+**Cause.** Upstream `v2026.6.19` ships `/usr/bin/tini` as a symlink to s6
+`/init`. The add-on's old `ENTRYPOINT ["/usr/bin/tini", "-g", "--",
+"/run.sh"]` therefore passed legacy tini flags into s6. s6 then tried to run
+`-g` as a command.
+
+**Fix prepared in `2026.6.21.0`.**
+
+- Keep upstream image pinned to `nousresearch/hermes-agent:v2026.6.19`.
+- Change Docker ENTRYPOINT to direct `/run.sh`.
+- Keep the existing root config render, `gosu hermes`, Dashboard/UI/ttyd, and
+  gateway startup order.
+
 ### 2026-06-20 — Prepared upstream `v2026.6.19` upgrade
 
 **Context.** Upstream GitHub latest release is Hermes Agent `v0.17.0`
@@ -105,7 +126,8 @@ can keep the repository's fixed calendar-tag policy.
 
 - Preserve the `2026.5.20.0` root-then-drop ordering around
   `/data/options.json`.
-- Verify upstream still includes `tini`, `gosu`, and `hermes dashboard`.
+- Verify upstream still includes `gosu` and `hermes dashboard`; do not use
+  `/usr/bin/tini` on `v2026.6.19+` because it is an s6 `/init` symlink.
 - Verify the Ingress wrapper, Dashboard proxy, ttyd, and gateway all start
   after HAOS rebuild.
 
@@ -195,7 +217,8 @@ WARNING gateway.run: Shutdown context: signal=SIGTERM under_systemd=yes parent_p
 ```
 
 This is expected when the Dashboard asks the gateway to restart. The
-`parent_name=tini` value confirms the add-on's `tini` entrypoint is active.
+This was valid for the pre-s6 upstream images. On `v2026.6.19+`, do not expect
+`parent_name=tini`; `/run.sh` should be the direct entrypoint.
 
 **Caution.** The Dashboard also exposes:
 

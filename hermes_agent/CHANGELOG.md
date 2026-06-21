@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.6.21.0
+
+- **修复 `v2026.6.19` 上游镜像启动后循环退出**
+  - 上游从这一版开始把 `/usr/bin/tini` 做成 s6 `/init` 软链接，旧入口 `tini -g -- /run.sh` 会被 s6 解析成执行 `-g`，日志出现 `/run/s6/basedir/scripts/rc.init: 91: -g: not found`
+  - Docker ENTRYPOINT 改为直接执行 `/run.sh`，保留 HA add-on 自己的配置渲染、降权、Dashboard/UI/ttyd/gateway 启动流程
+  - 上游镜像仍固定为 `nousresearch/hermes-agent:v2026.6.19`
+
 ## 2026.6.20.0
 
 - **升级上游 Hermes 镜像到 `v2026.6.19`**（Hermes Agent v0.17.0 / Reach Release）

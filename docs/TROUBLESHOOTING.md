@@ -84,7 +84,9 @@ WARNING gateway.run: Shutdown context: signal=SIGTERM ... parent_name=tini
 
 Cause:
 
-Dashboard requested a gateway restart. This is normal.
+Dashboard requested a gateway restart. This is normal. On `v2026.6.19+`, the
+parent name may no longer be `tini` because the add-on runs `/run.sh`
+directly to avoid the upstream s6 `/init` shim.
 
 Fix:
 

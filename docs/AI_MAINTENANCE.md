@@ -5,7 +5,7 @@ This file is the first thing future AI maintainers should read after cloning
 
 ## Current Target State
 
-- Add-on version: `2026.6.20.0`
+- Add-on version: `2026.6.21.0`
 - Upstream image: `nousresearch/hermes-agent:v2026.6.19`
 - Upstream Hermes release: `v0.17.0`
 - HAOS verification: pending
@@ -43,8 +43,8 @@ Read these in order:
   3. root `chown -R hermes:hermes /config`.
   4. `gosu hermes`.
   5. `hermes` user starts ttyd, Ingress UI, dashboard, skills sync, gateway.
-- Keep Docker `ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/run.sh"]` while
-  upstream ships `tini`.
+- Do not use `/usr/bin/tini` on upstream `v2026.6.19+`; it is an s6 `/init`
+  symlink and exits with `-g: not found` if given legacy tini flags.
 - Keep the upstream image pinned to an explicit calendar tag, not `latest` or
   `main`, unless the user explicitly asks for a risky test build.
 - Keep `ha_ws_url.py` until upstream no longer hardcodes `/api/websocket` for
@@ -73,8 +73,9 @@ Healthy request logs include repeated `200` responses for:
 /ttyd/
 ```
 
-`signal=SIGTERM parent_name=tini` after `POST /panel/api/gateway/restart` is
-normal. It means the dashboard requested a gateway restart and `tini` is PID 1.
+`signal=SIGTERM` after `POST /panel/api/gateway/restart` can be normal. It
+means the dashboard requested a gateway restart; on upstream `v2026.6.19+`,
+do not require `parent_name=tini` because `/run.sh` is the direct entrypoint.
 
 ## Known Non-Fatal Warnings
 

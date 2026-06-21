@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.6.20.0"
+ARG BUILD_VERSION="2026.6.21.0"
 # Supervisor 2026.04.0+ no longer injects BUILD_FROM by default; keep this
 # explicit Dockerfile ARG as the single source of truth for local and HA builds.
 # It can still be overridden manually with --build-arg when testing.
@@ -115,4 +115,7 @@ RUN python3 /opt/hermes-ha-scripts/bake-version.py
 
 RUN chmod a+x /run.sh
 
-ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/run.sh"]
+# Upstream v2026.6.19 replaces /usr/bin/tini with an s6 /init symlink.
+# Passing tini flags to that shim makes s6 try to execute "-g" and exit.
+# Run the add-on wrapper directly so HA Supervisor owns container lifecycle.
+ENTRYPOINT ["/run.sh"]
