@@ -5,9 +5,9 @@ This file is the first thing future AI maintainers should read after cloning
 
 ## Current Target State
 
-- Add-on version: `2026.6.21.2`
-- Upstream image: `nousresearch/hermes-agent:v2026.6.19`
-- Upstream Hermes release: `v0.17.0`
+- Add-on version: `2026.8.7.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.8.3`
+- Upstream Hermes release: `v0.20.0`
 - HAOS verification: pending
 - Prior known-good add-on version: `2026.5.20.0`
 - Prior known-good upstream image: `nousresearch/hermes-agent:v2026.5.16`
@@ -46,7 +46,7 @@ Read these in order:
 - Do not use `/usr/bin/tini` on upstream `v2026.6.19+`; it is an s6 `/init`
   symlink and exits with `-g: not found` if given legacy tini flags.
 - Keep `run.sh` privilege drop compatible with both `gosu` and
-  `/command/s6-setuidgid`; upstream `v2026.6.19` may not ship `gosu`, and s6
+  `/command/s6-setuidgid`; upstream `v2026.6.19+` may not ship `gosu`, and s6
   tools may not be on `PATH`.
 - Keep the upstream image pinned to an explicit calendar tag, not `latest` or
   `main`, unless the user explicitly asks for a risky test build.

@@ -7,9 +7,9 @@ file `.ops/secrets.local.md`.
 ## Current Release State
 
 - Repository: `https://github.com/sunboss/hermes-agent-ha-addon`
-- Add-on version: `2026.6.21.2`
-- Upstream image: `nousresearch/hermes-agent:v2026.6.19`
-- Upstream release: Hermes Agent `v0.17.0`, release date `2026-06-19`
+- Add-on version: `2026.8.7.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.8.3`
+- Upstream release: Hermes Agent `v0.20.0`, release date `2026-08-03`
 - Local checkout: `/Users/sunboss/Documents/hermes/hermes-agent-ha-addon`
 
 ## Local Secret Archive
@@ -76,7 +76,7 @@ git status --short --ignored .ops
 
 ## Rollback Notes
 
-If `v2026.6.19` fails on a Home Assistant host:
+If `v2026.8.3` fails on a Home Assistant host:
 
 1. Revert `BUILD_FROM` in `hermes_agent/Dockerfile` to
    `nousresearch/hermes-agent:v2026.5.16`.
@@ -87,6 +87,29 @@ If `v2026.6.19` fails on a Home Assistant host:
 4. Rebuild the add-on from the HA UI.
 
 ## Operation Log
+
+### 2026-08-07 — Prepared upstream `v2026.8.3` upgrade
+
+**Context.** Upstream GitHub latest release is Hermes Agent `v0.20.0`
+(`v2026.8.3`, release date 2026-08-03). Docker Hub lists an explicit
+`nousresearch/hermes-agent:v2026.8.3` tag with amd64 and arm64 images, so this
+release can keep the repository's fixed calendar-tag policy.
+
+**Prepared add-on release.**
+
+- Add-on version: `2026.8.7.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.8.3`
+- Prior target add-on version: `2026.6.21.2`
+
+**Risk focus for HAOS verification.**
+
+- Preserve the direct `/run.sh` entrypoint; do not pass `tini -g` flags to
+  upstream s6 `/init`.
+- Preserve the root config render before privilege drop.
+- Preserve `gosu` plus `/command/s6-setuidgid` fallback for upstream images
+  that do not expose `gosu`.
+- Verify `/health`, `/panel/api/status`, `/panel/`, `/ttyd/`, and
+  `hermes gateway run` after HAOS rebuild.
 
 ### 2026-06-21 — Find `s6-setuidgid` outside PATH
 

@@ -43,6 +43,37 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.8.7.0 — Bump upstream image to `v2026.8.3`
+
+Shipped: pending. Upstream `v2026.8.3 / Hermes Agent v0.20.0`.
+
+**Scope.** Upgrade from `nousresearch/hermes-agent:v2026.6.19` to
+`nousresearch/hermes-agent:v2026.8.3`, with the add-on version bumped to
+`2026.8.7.0`.
+
+**Why this tag is safe to pin.** On 2026-08-07, GitHub latest release is
+`v2026.8.3` and Docker Hub lists `v2026.8.3` as an explicit tag with amd64 and
+arm64 images. The Dockerfile can keep the reproducible calendar-tag strategy
+and avoid `latest` / `main`.
+
+**Upstream release scope.** This jumps from the add-on's prior upstream
+`v0.17.0` baseline to Hermes Agent `v0.20.0`. Upstream highlights include
+streaming conversational voice with barge-in, wake words, voice support across
+gateway platforms, grounded citations, signed outbound webhooks, A2A v1.0,
+desktop artifacts and plugin SDK, CLI power commands, mid-turn redirects,
+self-recovering tools, compression improvements, smart approvals, performance
+work, and new gateway/backend surfaces.
+
+**Compatibility notes to verify in HAOS.**
+
+- Keep direct `ENTRYPOINT ["/run.sh"]`; do not call upstream `/init` through
+  `tini -g --`.
+- Keep the root phase before privilege drop so `/data/options.json` is readable.
+- Keep `gosu` plus `/command/s6-setuidgid` fallback for upstream images that do
+  not expose `gosu` or do not place s6 tools on `PATH`.
+- Rebuild in HAOS and verify `/health`, `/panel/`, `/panel/api/status`,
+  `/ttyd/`, and gateway chat after Supervisor store reload.
+
 ### v2026.6.21.2 — Locate s6 privilege-drop helper outside `PATH`
 
 Shipped: pending. Same upstream image as v2026.6.21.1:
