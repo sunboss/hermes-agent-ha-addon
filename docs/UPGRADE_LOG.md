@@ -43,21 +43,21 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
-### v2026.8.7.0 — Bump upstream image to `v2026.8.3`
+### v2026.8.31.0 — Bump upstream image to `v2026.8.27`
 
-Shipped: pending. Upstream `v2026.8.3 / Hermes Agent v0.20.0`.
+Shipped: pending. Upstream `v2026.8.27 / Hermes Agent v0.20.6`.
 
 **Scope.** Upgrade from `nousresearch/hermes-agent:v2026.6.19` to
-`nousresearch/hermes-agent:v2026.8.3`, with the add-on version bumped to
-`2026.8.7.0`.
+`nousresearch/hermes-agent:v2026.8.27`, with the add-on version bumped to
+`2026.8.31.0`.
 
-**Why this tag is safe to pin.** On 2026-08-07, GitHub latest release is
-`v2026.8.3` and Docker Hub lists `v2026.8.3` as an explicit tag with amd64 and
+**Why this tag is safe to pin.** On 2026-08-31, GitHub latest release is
+`v2026.8.27` and Docker Hub lists `v2026.8.27` as an explicit tag with amd64 and
 arm64 images. The Dockerfile can keep the reproducible calendar-tag strategy
 and avoid `latest` / `main`.
 
 **Upstream release scope.** This jumps from the add-on's prior upstream
-`v0.17.0` baseline to Hermes Agent `v0.20.0`. Upstream highlights include
+`v0.17.0` baseline to Hermes Agent `v0.20.6`. Upstream highlights include
 streaming conversational voice with barge-in, wake words, voice support across
 gateway platforms, grounded citations, signed outbound webhooks, A2A v1.0,
 desktop artifacts and plugin SDK, CLI power commands, mid-turn redirects,

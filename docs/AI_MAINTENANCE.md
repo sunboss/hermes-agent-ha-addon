@@ -5,9 +5,9 @@ This file is the first thing future AI maintainers should read after cloning
 
 ## Current Target State
 
-- Add-on version: `2026.8.7.0`
-- Upstream image: `nousresearch/hermes-agent:v2026.8.3`
-- Upstream Hermes release: `v0.20.0`
+- Add-on version: `2026.8.31.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.8.27`
+- Upstream Hermes release: `v0.20.6`
 - HAOS verification: pending
 - Prior known-good add-on version: `2026.5.20.0`
 - Prior known-good upstream image: `nousresearch/hermes-agent:v2026.5.16`

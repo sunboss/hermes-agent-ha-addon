@@ -1,10 +1,10 @@
 # Changelog
 
-## 2026.8.7.0
+## 2026.8.31.0
 
-- **升级上游 Hermes 镜像到 `v2026.8.3`**（Hermes Agent v0.20.0 / Herald Release）
+- **升级上游 Hermes 镜像到 `v2026.8.27`**（Hermes Agent v0.20.6 / Herald Release）
   - 上游重点：实时语音对话与 barge-in、on-device wake words、平台语音收发、grounded citations、signed outbound webhooks、A2A v1.0、Artifacts/desktop plugin SDK、CLI `!` shell mode、`/init`、`/diff`、`/context`、mid-turn redirects、自恢复工具、压缩与性能优化
-  - 继续固定官方日期 tag `nousresearch/hermes-agent:v2026.8.3`，不使用 `latest` / `main`
+  - 继续固定官方日期 tag `nousresearch/hermes-agent:v2026.8.27`，不使用 `latest` / `main`
   - 保持 HAOS wrapper 修复：直接 `/run.sh` 入口、root 读取 `/data/options.json` 后降权、`gosu` / `/command/s6-setuidgid` 双路径兼容
 
 ## 2026.6.21.2

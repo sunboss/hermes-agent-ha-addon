@@ -7,9 +7,9 @@ file `.ops/secrets.local.md`.
 ## Current Release State
 
 - Repository: `https://github.com/sunboss/hermes-agent-ha-addon`
-- Add-on version: `2026.8.7.0`
-- Upstream image: `nousresearch/hermes-agent:v2026.8.3`
-- Upstream release: Hermes Agent `v0.20.0`, release date `2026-08-03`
+- Add-on version: `2026.8.31.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.8.27`
+- Upstream release: Hermes Agent `v0.20.6`, release date `2026-08-27`
 - Local checkout: `/Users/sunboss/Documents/hermes/hermes-agent-ha-addon`
 
 ## Local Secret Archive
@@ -76,7 +76,7 @@ git status --short --ignored .ops
 
 ## Rollback Notes
 
-If `v2026.8.3` fails on a Home Assistant host:
+If `v2026.8.27` fails on a Home Assistant host:
 
 1. Revert `BUILD_FROM` in `hermes_agent/Dockerfile` to
    `nousresearch/hermes-agent:v2026.5.16`.
@@ -88,17 +88,17 @@ If `v2026.8.3` fails on a Home Assistant host:
 
 ## Operation Log
 
-### 2026-08-07 — Prepared upstream `v2026.8.3` upgrade
+### 2026-08-31 — Prepared upstream `v2026.8.27` upgrade
 
-**Context.** Upstream GitHub latest release is Hermes Agent `v0.20.0`
-(`v2026.8.3`, release date 2026-08-03). Docker Hub lists an explicit
-`nousresearch/hermes-agent:v2026.8.3` tag with amd64 and arm64 images, so this
+**Context.** Upstream GitHub latest release is Hermes Agent `v0.20.6`
+(`v2026.8.27`, release date 2026-08-27). Docker Hub lists an explicit
+`nousresearch/hermes-agent:v2026.8.27` tag with amd64 and arm64 images, so this
 release can keep the repository's fixed calendar-tag policy.
 
 **Prepared add-on release.**
 
-- Add-on version: `2026.8.7.0`
-- Upstream image: `nousresearch/hermes-agent:v2026.8.3`
+- Add-on version: `2026.8.31.0`
+- Upstream image: `nousresearch/hermes-agent:v2026.8.27`
 - Prior target add-on version: `2026.6.21.2`
 
 **Risk focus for HAOS verification.**
