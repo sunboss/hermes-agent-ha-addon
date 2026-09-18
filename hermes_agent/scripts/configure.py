@@ -265,7 +265,7 @@ def main() -> int:
     env_map["OPENAI_OAUTH_REDIRECT_URI"] = openai_oauth_redirect_uri
     env_map["OPENAI_OAUTH_SCOPES"] = openai_oauth_scopes
     env_map["API_SERVER_ENABLED"] = "true"
-    env_map["API_SERVER_HOST"] = "127.0.0.1"
+    env_map["API_SERVER_HOST"] = "0.0.0.0"
     env_map["API_SERVER_PORT"] = "8642"
     env_map["API_SERVER_KEY"] = str(
         options.get("api_server_key") or env_map.get("API_SERVER_KEY") or secrets.token_urlsafe(24)

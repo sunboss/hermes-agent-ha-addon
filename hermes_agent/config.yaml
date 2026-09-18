@@ -16,6 +16,10 @@ arch:
   - aarch64
   - amd64
 url: "https://github.com/sunboss/hermes-agent-ha-addon"
+ports:
+  8642/tcp: 8642
+ports_description:
+  8642/tcp: "Hermes OpenAI-compatible API server port (for Open WebUI and external clients)"
 map:
   - addon_config:rw
 options:

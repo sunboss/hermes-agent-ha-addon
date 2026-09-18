@@ -20,7 +20,7 @@ ports_description:
 map:
   - addon_config:rw
 options:
-  openai_api_base_url: "http://192.168.1.170:11434/v1"
+  openai_api_base_url: "http://hermes_agent:8642/v1"
   openai_api_key: ""
   ollama_base_url: ""
   webui_auth: false
