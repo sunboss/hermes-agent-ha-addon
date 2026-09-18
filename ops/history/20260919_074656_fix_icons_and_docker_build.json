@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-09-19T07:46:56.761474",
+  "agent": "Hermes Agent",
+  "action_type": "modify",
+  "summary": "Updated official high-res icons for LobeChat and NextChat, and solved Docker build failure (apk/apt not found) by switching to zero-dependency Node.js entrypoints.",
+  "commands": [
+    "git commit -m 'fix(addons): replace placeholder icons with official logos & fix Docker build on distroless/minimal images'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "remote_head": "5e23590244",
+    "workflow_run_id": 35406956227,
+    "ci_conclusion": "success",
+    "fixed_issues": [
+      "duplicate Hermes icon fallback",
+      "Docker build exit code 127: apk/apt not found"
+    ]
+  },
+  "rollback_point": "git reset --hard 1d6fa90beff99cba4cae096417fae7870933fa12",
+  "next_steps": "In Home Assistant Add-on Store, refresh repositories and reinstall LobeChat."
+}

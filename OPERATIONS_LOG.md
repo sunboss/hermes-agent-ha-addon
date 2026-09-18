@@ -45,3 +45,17 @@
 - **验证证据**：远端 HEAD 推进至 `6af118494f`，GitHub Actions CI 流水线 (Run ID: 35405932738) **全绿通过 (success)**
 - **关联归档**：`ops/history/20260919_073118_replace_webui_with_lobe_and_nextchat.json`
 - **回滚点**：`git reset --hard b01ca19a05df82c9f518a385208f2d529815c46e`
+
+
+## [2026-09-19T07:46:56.761474] fix: 修复 LobeChat 与 NextChat 官方原版图标及 Docker 构建失败问题
+- **执行 Agent**：Hermes Agent
+- **操作目标**：
+  1. 替换原有的占位符图标为原版官方高清图标（解决 HA 商店中图标重复退化为“H”的问题）
+  2. 修复 HAOS 安装时 Docker 构建报错 `apk: not found` / `apt-get: not found`（代码 127）
+- **核心修复**：
+  1. **原版高清图标更新**：下载并替换了 LobeChat（460x460 RGBA）和 NextChat（512x512 RGBA）的原版官方品牌 Logo 与触摸图标
+  2. **容器启动器零依赖化**：LobeChat 与 NextChat 官方镜像基于 Distroless 极简 Node 镜像（无 apk/apt/bash 包管理器）。已全面改用纯 Node.js 编写的 `entrypoint.js`，无须调用 apt/apk，彻底根治构建报错
+  3. 版本号提升至 `2026.9.18.1`
+- **验证证据**：远端 HEAD 推进至 `5e23590244`，GitHub Actions CI (Run ID: 35406956227) **全绿通过 (success)**
+- **关联归档**：`ops/history/20260919_074656_fix_icons_and_docker_build.json`
+- **回滚点**：`git reset --hard 1d6fa90beff99cba4cae096417fae7870933fa12`
