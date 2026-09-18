@@ -10,3 +10,15 @@
 - **验证证据**：远端 HEAD 已推进至 `491ba0db70`，经 GitHub API 验证成功
 - **关联归档**：`ops/history/20260919_050234_upgrade_haos_addon.json`
 - **回滚点**：`git reset --hard 13765239ed778330ca0489aa597a7eb8df01e858`
+
+
+## [2026-09-19T06:24:51.440963] feat: 新增 Open WebUI Home Assistant 官方加载项 (Add-on)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：在仓库 `sunboss/hermes-agent-ha-addon` 新增开箱即用的 `open_webui` 插件
+- **核心功能**：
+  1. 支持 Home Assistant 原生 Ingress（嵌入 HA 侧边栏，安全便捷）与宿主机独立端口 `8080/tcp`
+  2. 对话历史、配置与模型数据完整持久化存储于 `/config/open-webui`
+  3. 支持动态连接外部 OpenAI API 或本地 Ollama 实例
+- **验证证据**：远端 HEAD 推进至 `af34436eb4`，GitHub Actions CI 流水线 (Run ID: 35401379124) **全绿通过 (success)**
+- **关联归档**：`ops/history/20260919_062451_add_open_webui.json`
+- **回滚点**：`git reset --hard e396fd10821b066cf8dfddb8f58b09f4dd715db1`
