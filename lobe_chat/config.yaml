@@ -1,6 +1,6 @@
 name: "LobeChat"
 description: "Modern, open-source AI chat framework with plugin system, TTS, and multi-modal support for Home Assistant."
-version: "2026.9.18.0"
+version: "2026.9.18.1"
 slug: "lobe_chat"
 init: false
 startup: "application"
