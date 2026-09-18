@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-09-19T06:35:56.421300",
+  "agent": "Hermes Agent",
+  "action_type": "modify",
+  "summary": "Exposed API server port 8642 on hermes_agent, bound host to 0.0.0.0, and configured open_webui default upstream to http://hermes_agent:8642/v1.",
+  "commands": [
+    "git add hermes_agent/config.yaml hermes_agent/scripts/configure.py open_webui/config.yaml",
+    "git commit -m 'feat: expose API server port 8642 on hermes_agent and set open_webui internal default'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "remote_head": "ea2c064723",
+    "workflow_run_id": 35402183644,
+    "ci_conclusion": "success"
+  },
+  "rollback_point": "git reset --hard 33b32cb5e4e8992ad34e2c34614ff797bebe5521",
+  "next_steps": "Update hermes_agent and install open_webui in HAOS Add-on Store."
+}

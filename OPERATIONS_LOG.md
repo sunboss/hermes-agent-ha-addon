@@ -22,3 +22,15 @@
 - **验证证据**：远端 HEAD 推进至 `af34436eb4`，GitHub Actions CI 流水线 (Run ID: 35401379124) **全绿通过 (success)**
 - **关联归档**：`ops/history/20260919_062451_add_open_webui.json`
 - **回滚点**：`git reset --hard e396fd10821b066cf8dfddb8f58b09f4dd715db1`
+
+
+## [2026-09-19T06:35:56.421300] feat: 开放 Hermes API 8642 端口并预设 Open WebUI 内部直连
+- **执行 Agent**：Hermes Agent
+- **操作目标**：打通 HAOS 内部 `open_webui` 与 `hermes_agent` 两个插件的无缝互联
+- **核心变更**：
+  1. `hermes_agent/config.yaml`：开放 `8642/tcp: 8642` 端口映射
+  2. `hermes_agent/scripts/configure.py`：将 `API_SERVER_HOST` 从 `127.0.0.1` 调整为 `0.0.0.0`，允许跨容器与局域网调用
+  3. `open_webui/config.yaml`：默认 `openai_api_base_url` 直接预设为 `http://hermes_agent:8642/v1`，实现开箱即用直接互通
+- **验证证据**：远端 HEAD 推进至 `ea2c064723`，GitHub Actions CI (Run ID: 35402183644) **通过 (success)**
+- **关联归档**：`ops/history/20260919_063556_expose_api_port_8642.json`
+- **回滚点**：`git reset --hard 33b32cb5e4e8992ad34e2c34614ff797bebe5521`
