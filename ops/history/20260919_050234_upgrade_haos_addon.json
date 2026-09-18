@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-09-19T05:02:34.903626",
+  "agent": "Hermes Agent",
+  "action_type": "deploy",
+  "summary": "Upgraded upstream Hermes base image to v2026.9.14 and refactored ha_ws_url patch for latest HAOS compatibility.",
+  "commands": [
+    "git add hermes_agent/",
+    "git commit -m 'feat: upgrade upstream Hermes base to v2026.9.14 & optimize for latest HAOS'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "remote_head": "491ba0db70",
+    "addon_version": "2026.9.18.0",
+    "upstream_base": "nousresearch/hermes-agent:v2026.9.14",
+    "patch_target": "plugins/platforms/homeassistant/adapter.py"
+  },
+  "rollback_point": "git reset --hard 13765239ed778330ca0489aa597a7eb8df01e858",
+  "next_steps": "In Home Assistant Supervisor, refresh Add-on store repositories to see version 2026.9.18.0 and click update."
+}
