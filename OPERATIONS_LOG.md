@@ -34,3 +34,14 @@
 - **验证证据**：远端 HEAD 推进至 `ea2c064723`，GitHub Actions CI (Run ID: 35402183644) **通过 (success)**
 - **关联归档**：`ops/history/20260919_063556_expose_api_port_8642.json`
 - **回滚点**：`git reset --hard 33b32cb5e4e8992ad34e2c34614ff797bebe5521`
+
+
+## [2026-09-19T07:31:18.961994] feat: 替换 open_webui，新增 LobeChat 与 NextChat 专属加载项
+- **执行 Agent**：Hermes Agent
+- **操作目标**：移除 `open_webui` 插件，新增更现代易用的 `lobe_chat` (LobeChat) 与轻量快速的 `next_chat` (NextChat) 插件
+- **核心特性**：
+  1. **LobeChat**：多模态、插件市场、TTS 语音支持，HA Ingress 侧边栏无缝嵌入，默认直连 `http://hermes_agent:8642/v1`
+  2. **NextChat**：极简超轻量，毫秒级响应，HA Ingress 侧边栏无缝嵌入，默认直连 `http://hermes_agent:8642/v1`
+- **验证证据**：远端 HEAD 推进至 `6af118494f`，GitHub Actions CI 流水线 (Run ID: 35405932738) **全绿通过 (success)**
+- **关联归档**：`ops/history/20260919_073118_replace_webui_with_lobe_and_nextchat.json`
+- **回滚点**：`git reset --hard b01ca19a05df82c9f518a385208f2d529815c46e`

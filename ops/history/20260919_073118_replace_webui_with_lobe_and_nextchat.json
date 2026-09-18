@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-09-19T07:31:18.961994",
+  "agent": "Hermes Agent",
+  "action_type": "modify",
+  "summary": "Replaced open_webui with LobeChat (port 3210) and NextChat (port 3000) add-ons, both pre-configured to connect directly to internal Hermes Agent.",
+  "commands": [
+    "git rm -r open_webui",
+    "git add lobe_chat/ next_chat/ README.md",
+    "git commit -m 'feat(addons): replace open_webui with LobeChat and NextChat add-ons'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "remote_head": "6af118494f",
+    "workflow_run_id": 35405932738,
+    "ci_conclusion": "success",
+    "added_addons": [
+      "lobe_chat",
+      "next_chat"
+    ]
+  },
+  "rollback_point": "git reset --hard b01ca19a05df82c9f518a385208f2d529815c46e",
+  "next_steps": "In Home Assistant Add-on Store, refresh repositories and install LobeChat or NextChat."
+}
