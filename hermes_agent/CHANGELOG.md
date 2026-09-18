@@ -1,3 +1,10 @@
+# 2026.9.18.0
+
+- Upstream Hermes base image upgraded to `v2026.9.14` (built against latest upstream core).
+- Support new upstream plugin platform architecture (`plugins/platforms/homeassistant/adapter.py`).
+- Adaptive WebSocket patch dynamically handles supervisor proxy routing for HAOS 2024.x/2026.x.
+- Keep full compatibility with modern HA `addon_config:rw` isolation layout.
+
 # Changelog
 
 ## 2026.8.31.0
