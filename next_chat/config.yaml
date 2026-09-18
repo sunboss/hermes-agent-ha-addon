@@ -1,0 +1,31 @@
+name: "NextChat"
+description: "Lightweight, cross-platform ChatGPT/LLM UI with Ingress and Hermes Agent direct integration."
+version: "2026.9.18.0"
+slug: "next_chat"
+init: false
+startup: "application"
+stage: "stable"
+ingress: true
+ingress_port: 3000
+panel_title: "NextChat"
+panel_icon: "mdi:message-text-fast-outline"
+arch:
+  - aarch64
+  - amd64
+url: "https://github.com/sunboss/hermes-agent-ha-addon"
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: "Direct NextChat Web port (optional when Ingress is used)"
+map:
+  - addon_config:rw
+options:
+  base_url: "http://hermes_agent:8642/v1"
+  api_key: ""
+  access_code: ""
+  custom_models: ""
+schema:
+  base_url: "str?"
+  api_key: "password?"
+  access_code: "password?"
+  custom_models: "str?"
