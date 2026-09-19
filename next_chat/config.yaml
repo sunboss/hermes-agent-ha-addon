@@ -1,6 +1,6 @@
 name: "NextChat"
 description: "Lightweight, cross-platform ChatGPT/LLM UI with Ingress and Hermes Agent direct integration."
-version: "2026.9.18.1"
+version: "2026.9.18.2"
 slug: "next_chat"
 init: false
 startup: "application"

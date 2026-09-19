@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.9.18.1"
+ARG BUILD_VERSION="2026.9.18.2"
 ARG BUILD_FROM="lobehub/lobe-chat:latest"
 
 FROM ${BUILD_FROM}
@@ -7,7 +7,9 @@ ARG BUILD_FROM
 ARG BUILD_VERSION
 ARG BUILD_ARCH
 
-# lobehub/lobe-chat is based on distroless / minimal node; do not install apk/apt
+# Explicitly use root so the add-on can read /data/options.json written by HA Supervisor
+USER root
+
 COPY entrypoint.js /app/ha_entrypoint.js
 
 EXPOSE 3210
