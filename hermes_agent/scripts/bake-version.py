@@ -19,11 +19,15 @@ def main() -> int:
 
     v = json.loads(vf.read_text())
     index = ui / "index.html"
-    html = index.read_text()
-    html = html.replace("{{ADDON_VERSION}}", "v" + str(v.get("version", v.get("addon_version", "unknown"))))
-    html = html.replace("{{HERMES_UPSTREAM}}", str(v.get("upstream", v.get("hermes_upstream", "upstream"))))
-    index.write_text(html)
-    print(f"[bake-version] substituted: {v}")
+    if index.exists():
+        html = index.read_text()
+        html = html.replace("{{ADDON_VERSION}}", "v" + str(v.get("version", v.get("addon_version", "unknown"))))
+        html = html.replace("{{HERMES_UPSTREAM}}", str(v.get("upstream", v.get("hermes_upstream", "upstream"))))
+        index.write_text(html)
+        print(f"[bake-version] substituted index.html: {v}")
+    else:
+        print(f"[bake-version] index.html not found — skipping substitution: {v}")
+        
     return 0
 
 

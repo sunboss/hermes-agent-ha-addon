@@ -1,5 +1,11 @@
 # Changelog / 更新日志
 
+## [2026.9.22.17] - 2026-09-23
+
+### Fixed / 修复
+- **修复 bake-version.py 找不到 index.html 报错崩溃**：增加文件存在性容错判断，不再在启动时抛出 `FileNotFoundError: /opt/hermes-ha-ui/index.html`。
+- **完善 nginx 权限与日志**：确立非 root 权限下的临时缓存目录与日志路径全部在 `/tmp/`，确保启动无阻塞。
+
 ## [2026.9.22.16] - 2026-09-23
 
 ### Fixed / 修复
