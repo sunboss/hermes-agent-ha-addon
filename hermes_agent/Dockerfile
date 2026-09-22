@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.9.22.18"
+ARG BUILD_VERSION="2026.9.22.19"
 ARG BUILD_FROM="nousresearch/hermes-agent:v2026.9.21"
 
 FROM ${BUILD_FROM}
@@ -61,8 +61,9 @@ COPY rootfs/etc/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
-# 烘焙版本号
+# 烘焙版本号与补丁前端静态资源
 COPY hermes_ui/version.json /opt/hermes-ha-ui/version.json
 RUN python3 /opt/hermes-ha-scripts/bake-version.py || true
+RUN python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html || true
 
 ENTRYPOINT ["/run.sh"]

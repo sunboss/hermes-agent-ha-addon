@@ -34,6 +34,10 @@ if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; the
     python3 /opt/hermes-ha-scripts/bake-version.py || true
   fi
 
+  if [ -f /opt/hermes-ha-scripts/patch-web-dist.py ]; then
+    python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html || true
+  fi
+
   chown -R hermes:hermes "${ADDON_STATE_ROOT}" /tmp/nginx_* 2>/dev/null || \
     echo "[run.sh] WARNING: chown failed; continuing" >&2
 
