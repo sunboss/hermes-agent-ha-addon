@@ -115,3 +115,9 @@
 - **验证证据**: 远程 Commit `ff33310`，YAML 校验通过。
 - **关联存档**: `ops/history/20260922_105200_zh_hans_and_auto_models.json`
 - **回滚点**: `d214cf2`
+
+### [2026-09-22 19:23:55] 开放原生端口 9119 与 Dashboard 直连
+- **目标**：彻底解决 Ingress 路由跳出导致 `/chat` 报 404 的问题，提供原生 9119 端口直连与控制台自动更新能力。
+- **操作**：配置 9119 端口映射，`run.sh` 绑定 0.0.0.0，版本升级至 `2026.9.22.4`。
+- **验证证据**：远程提交 `265c04f` 成功推送到 GitHub `main` 分支。
+- **关联归档**：`/Users/sunboss/Desktop/hermes-agent-ha-addon/ops/history/20260922_192355_native_9119_port.json`

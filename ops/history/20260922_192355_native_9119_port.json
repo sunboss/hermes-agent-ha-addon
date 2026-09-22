@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-09-22T11:23:55.874030+00:00",
+  "agent": "Hermes",
+  "action_type": "deploy",
+  "summary": "Expose native port 9119 for Hermes Dashboard, bind to 0.0.0.0, enable direct LAN UI access without Ingress 404, and bump to version 2026.9.22.4.",
+  "commands": [
+    "update hermes_agent/config.yaml (expose 9119/tcp, bump to 2026.9.22.4)",
+    "update hermes_agent/run.sh (bind HERMES_PANEL_HOST to 0.0.0.0)",
+    "git commit -m 'feat(port): expose native 9119 port for direct access, bind dashboard to 0.0.0.0, and bump to 2026.9.22.4'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "GitHub commit 265c04f pushed to https://github.com/sunboss/hermes-agent-ha-addon.git main branch successfully.",
+  "rollback_point": "git reset --hard a21d65d",
+  "next_steps": "Go to Home Assistant Add-on Store -> Check for updates -> Update Hermes Agent to 2026.9.22.4, then access http://192.168.1.114:9119 directly."
+}
