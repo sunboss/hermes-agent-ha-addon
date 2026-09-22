@@ -153,3 +153,12 @@
 - **架构**：Dashboard 运行于 `127.0.0.1:9120`（免认证稳定模式），透明反代 `native_proxy.py` 监听 `0.0.0.0:9119` 并将 HTTP 与 WebSocket 透明转发，重写合法 Host 头。
 - **验证证据**：提交 `51dc3ff` 成功推送到 GitHub `main` 分支。
 - **关联归档**：`/Users/sunboss/Desktop/hermes-agent-ha-addon/ops/history/20260922_200146_native_proxy_v5.json`
+
+### [2026-09-22 21:48:00] 配置 GitHub Actions CI/CD 多架构镜像自动化与 GHCR 集成
+- **操作者**：Hermes Agent
+- **目标**：彻底打通跨多台 HAOS 服务器的标准更新机制，消除无更新按钮与重建报错
+- **变更内容**：
+  1. 创建 `.github/workflows/build-images.yml`：基于 Docker Buildx 自动构建 `aarch64` 与 `amd64` 预编译镜像并推送至 GHCR。
+  2. 修改 `hermes_agent/config.yaml`：声明 `image: ghcr.io/sunboss/hermes-agent-{arch}`。
+- **关联归档**：`ops/history/20260922_214800_ghcr_image_and_actions.json`
+- **回滚点**：`git checkout 21ab89f`

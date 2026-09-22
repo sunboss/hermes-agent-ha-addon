@@ -15,6 +15,7 @@ panel_icon: "mdi:robot-excited-outline"
 arch:
   - aarch64
   - amd64
+image: "ghcr.io/sunboss/hermes-agent-{arch}"
 url: "https://github.com/sunboss/hermes-agent-ha-addon"
 ports:
   8642/tcp: 8642
