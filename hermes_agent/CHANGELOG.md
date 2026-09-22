@@ -1,5 +1,10 @@
 # Changelog / 更新日志
 
+## [2026.9.22.12] - 2026-09-22
+
+### Changed / 变更
+- **完全对齐 Node-RED 标准规范**：移除 `panel_title`，保留 `panel_icon: mdi:robot-excited-outline`，让 Home Assistant 侧边栏与应用路由精准匹配为官方标准的 `/app/主机名`（`/app/1037d332_hermes_agent`）。
+
 ## [2026.9.22.11] - 2026-09-22
 
 ### Fixed / 修复
