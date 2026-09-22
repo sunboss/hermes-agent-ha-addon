@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-09-22T10:33:00+08:00",
+  "agent": "hermes-agent",
+  "action_type": "deploy",
+  "summary": "修复 config.yaml schema 中字段类型错误并升级版本号至 2026.9.22.1 彻底清除 Supervisor 旧镜像缓存",
+  "commands": [
+    "change schema type from raw url string to 'url' in hermes_agent, lobe_chat, next_chat",
+    "bump version from 2026.9.22.0 to 2026.9.22.1 in config.yaml and Dockerfile",
+    "git commit & push to main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "Commit 93faefd pushed to main; verified all yaml files pass yaml.safe_load",
+  "rollback_point": "git reset --hard 21d4a15",
+  "next_steps": "In HAOS Store: click 'Check for updates' -> Install 2026.9.22.1"
+}

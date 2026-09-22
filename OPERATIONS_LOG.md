@@ -83,3 +83,13 @@
 - **验证证据**: 远程 Commit `ae3a93c`，本地 YAML 全语法自检通过。
 - **关联存档**: `ops/history/20260922_102500_default_api_1234r.json`
 - **回滚点**: `f1de10a`
+
+### [2026-09-22 10:33:00] 修复 Schema 类型定义错误并发布 2026.9.22.1
+- **执行 Agent**: hermes-agent
+- **操作目标**: 解决 HA Supervisor 读取 `config.yaml` 报 schema 正则不匹配错误，升级版本号强刷 HAOS 缓存
+- **关键变更**:
+  1. 修复 `schema` 校验定义：`options` 里填默认值 `https://api.1234r.com/v1`，`schema` 必须声明类型为 `"url"`，修复了 `Can't read config.yaml` 导致加载项被临时移除的问题；
+  2. 版本号统一升级为 **`2026.9.22.1`**，彻底废弃 Supervisor 本地记录的旧 `ghcr.io` 标签缓存，避免安装时再次尝试从 ghcr.io 拉取而报 `denied`。
+- **验证证据**: 远程 Commit `93faefd`，YAML 校验通过。
+- **关联存档**: `ops/history/20260922_103300_fix_schema_and_bump_version.json`
+- **回滚点**: `21d4a15`
