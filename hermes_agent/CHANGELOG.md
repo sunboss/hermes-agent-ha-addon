@@ -1,5 +1,13 @@
 # Changelog / 更新日志
 
+## [2026.9.22.20] - 2026-09-23
+
+### Fixed / 修复
+- **使用 `<base href>` + `Object.defineProperty` 双保险方案根治 Ingress 白屏**：
+  1. 在 `<head>` 最顶部动态注入 `<base href>` 标签，让 Vite 的所有 chunk 资源自动相对当前 Ingress 路径加载；
+  2. 用 `Object.defineProperty` 永久锁定 `window.__HERMES_BASE_PATH__`，防止 upstream dashboard 注入的 `=""` 覆盖正确值；
+  3. 补丁在构建阶段（Dockerfile `RUN` 步骤）与运行时（root 权限阶段）双重执行，不再依赖后续任何调用时机。
+
 ## [2026.9.22.19] - 2026-09-23
 
 ### Fixed / 修复
