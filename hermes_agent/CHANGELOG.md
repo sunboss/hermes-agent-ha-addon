@@ -1,5 +1,14 @@
 # Changelog / 更新日志
 
+## [2026.9.22.13] - 2026-09-22
+
+### Changed / 架构重构
+- **彻底对齐 Node-RED 官方 Ingress 架构**：用 nginx 反向代理完全替换自研 Python `server.py` 与 `native_proxy.py`，永久根治 WebSocket 403 黑屏与 SSE 阻断问题：
+  - nginx `proxy_set_header Origin http://127.0.0.1:9120` 让 hermes dashboard 无条件放行所有握手；
+  - `proxy_buffering off` 保障 SSE 实时流式推送；
+  - Ingress 端口 8099 仅允许 `172.30.32.2`（HA Supervisor），LAN 端口 9119 全局放开直连；
+  - 完全去除中间 Python 代理层，架构与官方加载项一致，不再有原创缺陷。
+
 ## [2026.9.22.12] - 2026-09-22
 
 ### Changed / 变更

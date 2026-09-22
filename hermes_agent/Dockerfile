@@ -1,32 +1,14 @@
-ARG BUILD_VERSION="2026.9.22.12"
-# Supervisor 2026.04.0+ no longer injects BUILD_FROM by default; keep this
-# explicit Dockerfile ARG as the single source of truth for local and HA builds.
-# It can still be overridden manually with --build-arg when testing.
-#
-# Pinned to a calendar tag (NOT :latest) so:
-#   - upstream ship-day doesn't auto-pull an untested image
-#   - rebuilds reuse the same Docker layer cache (1.78GB base layer)
-#   - upgrades are an explicit, reviewable Dockerfile edit
-# To upgrade: pick a newer tag from
-# https://hub.docker.com/r/nousresearch/hermes-agent/tags and bump
-# BUILD_VERSION below in lockstep.
+ARG BUILD_VERSION="2026.9.22.13"
 ARG BUILD_FROM="nousresearch/hermes-agent:v2026.9.21"
 
 FROM ${BUILD_FROM}
 
-# ARGs declared above FROM go out of scope after FROM unless re-declared.
-# Re-declaring inherits the value passed via --build-arg (or the default).
 ARG BUILD_FROM
 ARG BUILD_VERSION
 ARG BUILD_ARCH
 
-# Upstream :v2026.4.23+ ships with USER set to a non-root account, which
-# breaks our chmod / install-into-/usr/local/bin steps.  Switch to root for
-# the install layers; run.sh starts as root anyway (mkdir /etc/profile.d
-# etc.) so the runtime user is unaffected.
 USER root
 
-# Print build context for log verification.
 RUN printf '[Dockerfile] BUILD_FROM=%s  BUILD_ARCH=%s  HOST_ARCH=%s\n' \
       "${BUILD_FROM}" "${BUILD_ARCH}" "$(uname -m)"
 
@@ -35,21 +17,20 @@ ENV HERMES_STATE_ROOT=/config
 ENV HERMES_HOME=/config/.hermes
 ENV HOME=/config
 ENV PATH=/opt/hermes/.venv/bin:$PATH
-ENV HERMES_UI_PORT=8099
-ENV HERMES_UI_DIR=/opt/hermes-ha-ui
 ENV HERMES_PANEL_HOST=127.0.0.1
-ENV HERMES_PANEL_PORT=9119
+ENV HERMES_PANEL_PORT=9120
 
 LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.name="Hermes Agent" \
-  io.hass.description="Home Assistant app for Hermes Agent with Ingress UI and direct dashboard access." \
+  io.hass.description="Home Assistant app for Hermes Agent — nginx Ingress proxy + direct LAN access." \
   io.hass.url="https://github.com/sunboss/hermes-agent-ha-addon" \
   io.hass.arch="aarch64|amd64"
 
-# Build-time helper scripts.
-COPY --chmod=0755 scripts/ /opt/hermes-ha-scripts/
+# 安装 nginx（对齐 Node-RED 架构）
+RUN apt-get update && apt-get install -y --no-install-recommends nginx && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
@@ -66,43 +47,22 @@ RUN set -eux; \
       >/etc/profile.d/hermes.sh; \
     chmod 644 /etc/profile.d/hermes.sh
 
-# NOTE: an explicit `pip install fastapi uvicorn` step lived here through
-# v2026.4.24.10.  The upstream v0.11.0 image (a) renamed/relocated its
-# venv so the .venv/bin/pip path no longer existed, making the step a
-# silent no-op (`|| true`), and (b) already bundles fastapi+uvicorn for
-# `hermes dashboard`, so reinstalling them was redundant even when the
-# path was correct.  Removed in v2026.4.25.1.
+# 拷贝辅助脚本
+COPY --chmod=0755 scripts/ /opt/hermes-ha-scripts/
 
-# Patch upstream HA platform so the WebSocket URL uses the Supervisor proxy
-# endpoint (/core/websocket) instead of the hard-coded /core/api/websocket
-# that v0.10.0 emits.  See patches/ha_ws_url.py for the full rationale —
-# symptom is a tight reconnection loop with "502 Invalid response status"
-# in the gateway logs.  Idempotent; safe on rebuild.
+# 拷贝 WebSocket URL 补丁
 COPY patches/ /opt/hermes-ha-patches/
 RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ha_ws_url.py
 
-# Pre-build the Hermes web UI at image build time so that `hermes dashboard`
-# starts immediately on first boot without re-running npm install/build inside
-# the container.  Without this, the build runs inside the container writable
-# layer and is lost on every Rebuild — forcing a 30-60s delay plus a manual
-# `npm install` workaround on the first request to /panel/.
-# If the web/ directory or npm are absent in a future upstream image, the
-# `|| true` makes this step non-fatal.
-# Upstream image already bundles the pre-built web assets for dashboard.
-# No need to run slow npm install & npm build on the HAOS host.
-RUN echo "[Dockerfile] Skipping redundant npm build"
+# 拷贝 nginx 配置（对齐 Node-RED 标准反代架构）
+COPY rootfs/etc/nginx/nginx.conf /etc/nginx/nginx.conf
 
+# 拷贝启动脚本（不再需要 hermes_ui/server.py 和 native_proxy.py）
 COPY run.sh /run.sh
-COPY hermes_ui/ /opt/hermes-ha-ui/
-
-# Bake the version string from version.json into index.html.  Standalone
-# script (see scripts/bake-version.py) for the cache-keying reasons
-# documented above.
-RUN python3 /opt/hermes-ha-scripts/bake-version.py
-
 RUN chmod a+x /run.sh
 
-# Upstream v2026.6.19+ replaces /usr/bin/tini with an s6 /init symlink.
-# Passing tini flags to that shim makes s6 try to execute "-g" and exit.
-# Run the add-on wrapper directly so HA Supervisor owns container lifecycle.
+# 烘焙版本号
+COPY hermes_ui/version.json /opt/hermes-ha-ui/version.json
+RUN python3 /opt/hermes-ha-scripts/bake-version.py || true
+
 ENTRYPOINT ["/run.sh"]
