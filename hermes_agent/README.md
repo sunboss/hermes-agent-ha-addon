@@ -1,29 +1,35 @@
-﻿# Hermes Agent Add-on
+﻿# Hermes Agent Home Assistant Add-on / 插件目录说明
 
-This folder contains the Home Assistant add-on definition for Hermes Agent.
+[中文说明](#中文说明) | [English Overview](#english-overview)
 
-## Files
+---
 
-- `config.yaml`: add-on metadata, ingress settings, and user options
-- `build.yaml`: pinned upstream Hermes image tag
-- `Dockerfile`: thin wrapper over the official Hermes image plus the built-in UI assets
-- `run.sh`: startup wrapper that writes Hermes config, bootstraps auth bridge state, enables the internal API server, starts the ingress UI server, and launches the gateway
-- `hermes_ui/`: the bundled chat-first Web UI, auth bridge helpers, and local API proxy
+## 中文说明
 
-## First run checklist
+本目录包含适用于 Home Assistant 的 Hermes Agent 加载项定义。
 
-1. Set `llm_model`
-2. Set `auth_mode`
-3. If `auth_mode=api_key`, set model credentials such as `openrouter_api_key` or `openai_base_url` + `openai_api_key`
-4. If `auth_mode=web_login`, set the OpenAI OAuth fields you need for the PKCE bridge
-5. Keep `terminal_backend` on `local` for the first run
-6. Start with focused `watch_domains`
-7. Start the add-on and review logs for successful gateway and Web UI startup
-8. Open `OPEN WEB UI` from the add-on page
-9. If testing `web_login`, validate `/auth/status`, `/auth/start`, `/auth/exchange`, and `/auth/refresh`
+### 目录与文件清单
+- **`config.yaml`**：插件元数据、选项配置架构（Schema）、端口映射（`9119/tcp` 与 `8642/tcp`）及 Ingress 声明。
+- **`Dockerfile`**：构建精简容器镜像，设置 root 初始化与非 root 运行时安全降权，注入自适应补丁。
+- **`run.sh`**：容器启动主编排脚本，负责配置参数解析、权限切换、Dashboard 与 Native Proxy 启动及网关执行。
+- **`hermes_ui/`**：
+  - `server.py`：Ingress 代理服务，实现请求转发、透明 WebSocket 握手伪装（重写 Origin 杜绝 403 阻断）及根路径直达官方 Dashboard。
+  - `native_proxy.py`：局域网 `9119` 直连轻量代理，实现 `0.0.0.0` 安全绑定与全屏对话加速。
+- **`scripts/`**：构建时与运行时辅助工具（配置转换、版本注入）。
+- **`patches/`**：针对 Home Assistant Supervisor WebSocket 代理的动态兼容补丁。
 
-## Current browser-login scope
+---
 
-The browser-login bridge now handles session setup and lifecycle for `openai_web`, but it is not yet the active model execution path for Hermes chat completions.
-Use `auth_mode=api_key` for actual chatting today, and `auth_mode=web_login` when you want to validate the browser session flow.
+## English Overview
 
+This folder contains the Home Assistant add-on implementation for Hermes Agent.
+
+### Files and Directory Layout
+- **`config.yaml`**: Add-on metadata, schema options, port declarations (`9119/tcp` and `8642/tcp`), and Ingress specification.
+- **`Dockerfile`**: Lightweight container build instructions with privilege dropping and automated runtime patching.
+- **`run.sh`**: Primary entrypoint orchestrating configuration rendering, privilege management, proxy initialization, and gateway launch.
+- **`hermes_ui/`**:
+  - `server.py`: Ingress proxy providing route translation, transparent WebSocket Origin spoofing (preventing 403 Forbidden handshakes), and direct Dashboard navigation.
+  - `native_proxy.py`: LAN port `9119` direct lightweight proxy providing safe non-loopback binding and low-latency chat streaming.
+- **`scripts/`**: Build-time and runtime automation utilities.
+- **`patches/`**: Compatibility patches for Home Assistant Supervisor WebSocket routing.

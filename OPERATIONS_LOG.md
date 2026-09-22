@@ -1,5 +1,17 @@
 # Operations Log
 
+## [2026-09-22T21:20:00+08:00] docs: 全面升级文档与更新日志为中英文双语规范
+- **执行 Agent**：Hermes Agent
+- **操作目标**：对齐 `2026.9.22.7` 实际功能架构，全面更新更新日志并以全量中英双语重构核心文档
+- **核心变更**：
+  1. `hermes_agent/CHANGELOG.md`：补全 `2026.9.22.7` 及近期关键版本的中英文双语 Changelog；
+  2. `hermes_agent/DOCS.md`：全量中英双语重构，详解 Ingress 直通、9119 直连、8642 API、模型配置与数据持久化；
+  3. `hermes_agent/README.md` & 根目录 `README.md`：升级为标准中英双语说明，版本同步对齐至 `2026.9.22.7`；
+  4. `docs/UPGRADE_LOG.md`：追加 WebSocket 403 根因与修复技术复盘。
+- **验证证据**：本地 `git diff` 验证无误；
+- **关联归档**：`ops/history/20260922_212000_bilingual_docs_and_changelog.json`
+- **回滚点**：`git reset --hard HEAD~1`
+
 ## [2026-09-22T21:05:00+08:00] feat: 彻底移除 ttyd 终端组件与多余引导页，根路径直通官方控制台，修复 Ingress WebSocket 对话黑屏
 - **执行 Agent**：Hermes Agent
 - **操作目标**：精简 HAOS 插件架构，剔除冗余命令行终端与卡片引导页，彻底打通 HA Ingress 内部对话与 WebSocket 链路

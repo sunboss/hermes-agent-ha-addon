@@ -43,6 +43,25 @@
 Each entry documents **what broke, why, and how we fixed it** so that future
 upgrades don't regress the same landmine.
 
+### v2026.9.22.7 — Streamline Architecture, Direct Ingress, and Fix WebSocket 403
+
+Shipped: 2026-09-22.
+
+**Symptom.**
+1. When opening the Chat tab under Home Assistant Ingress (`/panel/chat`), the terminal/input area remained stuck on a blank black screen.
+2. Building the add-on container downloaded `ttyd` binary from GitHub releases, causing potential build timeouts on restricted networks.
+3. Ingress displayed a redundant 4-card landing page before reaching the Dashboard.
+
+**Root cause.**
+1. Upstream Hermes Dashboard strictly validates the client's `Origin` header during WebSocket upgrades (`_ws_client_is_allowed` in `web_server_chat.py`). When proxied via Ingress, the browser's LAN `Origin` was passed upstream untouched, causing upstream to reject with `HTTP/1.1 403 Forbidden`. The React/xterm component failed initialization on rejected WebSocket handshakes, leaving a blank black container.
+2. `ttyd` was an unneeded dependency since all terminal commands, logs, and chats are managed natively via the official Dashboard WebUI.
+
+**Fix.**
+1. Patched `hermes_ui/server.py` to rewrite `Origin` to `http://127.0.0.1:9120` on all WebSocket upgrades and HTTP requests.
+2. Redirected root `/` directly to `./panel/` for immediate official Dashboard access.
+3. Completely removed `install-ttyd.sh` and ttyd background runner from `Dockerfile` and `run.sh`.
+
+
 ### v2026.8.31.0 — Bump upstream image to `v2026.8.27`
 
 Shipped: pending. Upstream `v2026.8.27 / Hermes Agent v0.20.6`.

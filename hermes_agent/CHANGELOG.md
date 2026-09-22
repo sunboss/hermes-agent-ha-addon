@@ -1,3 +1,59 @@
+# Changelog / 更新日志
+
+## [2026.9.22.7] - 2026-09-22
+
+### 中文
+- **精简架构并彻底移除命令行终端 (ttyd)**：
+  - 从 `Dockerfile` 和 `run.sh` 中完全剔除了 `ttyd` 构建下载与后台常驻进程；
+  - 消除从 GitHub 下载外部二进制的网络超时隐患，大幅加快 Docker 镜像构建速度并节约系统内存。
+- **去除多余引导页，Ingress 直达官方控制台**：
+  - 改造 Ingress 路由，彻底去除原先多余的 4 卡片引导首页；
+  - 用户在 Home Assistant 侧边栏点开 Hermes Agent，直接进入官方原生的 Dashboard 控制面板。
+- **彻底修复 Ingress 下的 WebSocket 对话黑屏 (403 Forbidden)**：
+  - 在 `server.py` 反代层中对 `/panel/**` 的 WebSocket 握手请求进行 `Origin` 透明覆写，强制将其伪装为 `http://127.0.0.1:9120`；
+  - 彻底解决了上游 Hermes 校验 Origin 失败导致连接被拒、前端对话界面卡死在纯黑空白的问题。
+- **文档全面中英双语化**：
+  - 重构 `DOCS.md`、`README.md`，提供完整规范的中英双语使用手册与排障指南。
+
+### English
+- **Streamlined Architecture & Removed ttyd Terminal**:
+  - Completely removed `ttyd` binary installation and background daemon from `Dockerfile` and `run.sh`.
+  - Eliminated external GitHub release downloads, significantly accelerating container build times and saving RAM.
+- **Removed Redundant Landing Page, Direct Ingress Access to Official Dashboard**:
+  - Streamlined Ingress routing to bypass intermediate status cards.
+  - Clicking Hermes Agent in the Home Assistant sidebar now immediately loads the official native Dashboard.
+- **Fixed Ingress WebSocket Chat Black Screen (HTTP 403 Forbidden)**:
+  - Added transparent `Origin` header rewrite in `server.py` for `/panel/**` WebSocket upgrades (rewritten to `http://127.0.0.1:9120`).
+  - Completely eliminated upstream 403 Forbidden handshakes that previously left the chat view stuck in a blank black state.
+- **Bilingual Documentation**:
+  - Comprehensive English and Simplified Chinese user guides across `DOCS.md` and `README.md`.
+
+---
+
+## [2026.9.22.6] - 2026-09-22
+
+### 中文
+- **修复直连端口 WebSocket 403 握手拒绝**：在 `native_proxy.py` 中重写 WebSocket `Origin` 请求头为回环地址，打通局域网直连对话通道。
+- **强化配置持久化说明**：在文档中明确解释了 HAOS 卸载（删除 `/data` 卷）与更新（保留卷）的差异。
+
+### English
+- **Fixed Direct Port WebSocket 403 Handshake**: Added `Origin` header spoofing in `native_proxy.py` to loopback address, unlocking LAN direct chat streaming.
+- **Data Persistence Clarification**: Clarified difference between Add-on uninstallation (destroys `/data` volume) and update (preserves data).
+
+---
+
+## [2026.9.22.5] - 2026-09-22
+
+### 中文
+- **双层代理架构防崩溃**：引入 `native_proxy.py` 监听 `0.0.0.0:9119`，Dashboard 保持在 `127.0.0.1:9120`，彻底绕过官方 `Refusing to bind dashboard to 0.0.0.0` 安全崩溃。
+- **开放原生独立端口 9119**：提供局域网秒开、无 Ingress 嵌套的全屏原生 Web 控制台入口。
+
+### English
+- **Two-Tier Proxy Architecture**: Added `native_proxy.py` listening on `0.0.0.0:9119` while Dashboard runs on `127.0.0.1:9120`, bypassing the upstream `Refusing to bind dashboard to 0.0.0.0` safety crash.
+- **Exposed Native Port 9119**: Provided direct LAN access to full-screen native WebUI without Ingress wrapping.
+
+---
+
 # 2026.9.18.0
 
 - Upstream Hermes base image upgraded to `v2026.9.14` (built against latest upstream core).
