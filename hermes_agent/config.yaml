@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI, dashboard proxy, and ttyd terminal."
-version: "2026.9.22.3"
+version: "2026.9.22.4"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -18,8 +18,10 @@ arch:
 url: "https://github.com/sunboss/hermes-agent-ha-addon"
 ports:
   8642/tcp: 8642
+  9119/tcp: 9119
 ports_description:
   8642/tcp: "Hermes OpenAI-compatible API server port (for Open WebUI and external clients)"
+  9119/tcp: "Hermes 原生 Dashboard 完整控制台与对话 WebUI (直连秒开，无需 Ingress)"
 map:
   - app_config:rw
 options:

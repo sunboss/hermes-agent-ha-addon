@@ -593,6 +593,19 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "['CONNECTING','OPEN','CLOSING','CLOSED'].forEach(function(k){WSProxy[k]=_WS[k];});"
         "window.WebSocket=WSProxy;"
         "}"
+        "document.addEventListener('click',function(e){"
+        "var a=e.target.closest?e.target.closest('a'):null;"
+        "if(a&&a.getAttribute('href')){"
+        "var h=a.getAttribute('href');"
+        "if(h.charAt(0)==='/'&&h.indexOf(BASE)!==0&&!a.getAttribute('target')){"
+        "e.preventDefault();e.stopPropagation();"
+        "if(window.history&&window.history.pushState){"
+        "window.history.pushState(null,'',rewrite(h));"
+        "window.dispatchEvent(new PopStateEvent('popstate'));"
+        "}else{window.location.href=rewrite(h);}"
+        "}"
+        "}"
+        "},true);"
         # NOTE: history.pushState / replaceState are intentionally NOT patched.
         # The SPA's client-side router uses these to navigate between routes
         # (/analytics, /sessions, etc.).  Prepending /panel to those paths
@@ -665,7 +678,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         import time as _time
 
         parsed = urllib.parse.urlsplit(self.path)
-        upstream_path = parsed.path[len("/panel"):] or "/"
+        upstream_path = parsed.path
+        if upstream_path.startswith("/panel"):
+            upstream_path = upstream_path[len("/panel"):] or "/"
         if parsed.query:
             upstream_path = f"{upstream_path}?{parsed.query}"
         upstream_url = f"http://{PANEL_HOST}:{PANEL_PORT}{upstream_path}"
@@ -804,7 +819,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
 
         try:
             parsed = urllib.parse.urlsplit(self.path)
-            upstream_path = parsed.path[len("/panel"):] or "/"
+            upstream_path = parsed.path
+            if upstream_path.startswith("/panel"):
+                upstream_path = upstream_path[len("/panel"):] or "/"
             if parsed.query:
                 upstream_path = f"{upstream_path}?{parsed.query}"
             request_lines = [f"{self.command} {upstream_path} HTTP/1.1"]
@@ -884,7 +901,10 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 pass
 
     def _is_panel_request(self, path: str) -> bool:
-        return path == "/panel" or path.startswith("/panel/")
+        if path == "/panel" or path.startswith("/panel/"):
+            return True
+        spa_routes = ("/chat", "/sessions", "/files", "/logs", "/cron", "/skills", "/plugins", "/mcp", "/channels", "/webhooks", "/pairing", "/system", "/docs", "/kanban")
+        return any(path == r or path.startswith(r + "/") for r in spa_routes)
 
     def _is_websocket_upgrade(self) -> bool:
         connection = self.headers.get("Connection", "")

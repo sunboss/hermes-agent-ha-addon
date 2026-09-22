@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.9.22.3"
+ARG BUILD_VERSION="2026.9.22.4"
 ARG BUILD_FROM="yidadaa/chatgpt-next-web:latest"
 
 FROM ${BUILD_FROM}

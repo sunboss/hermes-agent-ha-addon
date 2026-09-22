@@ -23,7 +23,7 @@ export PATH="${HERMES_INSTALL_DIR}/.venv/bin:${PATH}"
 export HERMES_UI_PORT=8099
 export HERMES_UI_DIR=/opt/hermes-ha-ui
 export HERMES_TTYD_PORT="${HERMES_TTYD_PORT:-7681}"
-export HERMES_PANEL_HOST="${HERMES_PANEL_HOST:-127.0.0.1}"
+export HERMES_PANEL_HOST="${HERMES_PANEL_HOST:-0.0.0.0}"
 export HERMES_PANEL_PORT="${HERMES_PANEL_PORT:-9119}"
 
 mkdir -p /data "${ADDON_STATE_ROOT}" "${HERMES_HOME}"
@@ -35,6 +35,12 @@ mkdir -p /data "${ADDON_STATE_ROOT}" "${HERMES_HOME}"
 # ingress UI share the same file ownership.
 if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; then
   python3 /opt/hermes-ha-scripts/configure.py
+
+# Auto-sync live version from config.yaml into UI
+if [ -f /opt/hermes-ha-scripts/bake-version.py ]; then
+  python3 /opt/hermes-ha-scripts/bake-version.py || true
+fi
+
   chown -R hermes:hermes "${ADDON_STATE_ROOT}" 2>/dev/null || \
     echo "[run.sh] WARNING: chown ${ADDON_STATE_ROOT} failed; continuing" >&2
   export HERMES_ADDON_PRIVILEGE_DROPPED=1
@@ -63,6 +69,12 @@ fi
 # See scripts/configure.py for everything this writes.
 if [ "${HERMES_ADDON_CONFIGURED:-}" != "1" ]; then
   python3 /opt/hermes-ha-scripts/configure.py
+
+# Auto-sync live version from config.yaml into UI
+if [ -f /opt/hermes-ha-scripts/bake-version.py ]; then
+  python3 /opt/hermes-ha-scripts/bake-version.py || true
+fi
+
 fi
 
 set -a
