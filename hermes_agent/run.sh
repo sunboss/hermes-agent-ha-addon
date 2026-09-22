@@ -82,13 +82,16 @@ fi
 # ── 启动 nginx（Ingress 8099 + LAN 9119）─────────────────────────────────
 echo "[run.sh] Starting nginx (Ingress :8099, LAN :9119)..."
 mkdir -p /tmp/nginx_client_body /tmp/nginx_proxy_temp /tmp/nginx_fastcgi_temp /tmp/nginx_uwsgi_temp /tmp/nginx_scgi_temp 2>/dev/null || true
+touch /tmp/nginx_error.log /tmp/nginx_access.log 2>/dev/null || true
 nginx -c /etc/nginx/nginx.conf &
 NGINX_PID=$!
 sleep 0.5
 if ! kill -0 "${NGINX_PID}" 2>/dev/null; then
-  echo "[run.sh] ERROR: nginx failed to start" >&2
+  echo "[run.sh] ERROR: nginx failed to start; error log:" >&2
+  cat /tmp/nginx_error.log >&2 || true
 else
   echo "[run.sh] nginx started (PID ${NGINX_PID})"
+  tail -F /tmp/nginx_error.log &
 fi
 
 # ── 同步技能库 ────────────────────────────────────────────────────────────

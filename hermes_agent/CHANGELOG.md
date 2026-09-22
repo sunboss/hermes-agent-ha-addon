@@ -1,5 +1,11 @@
 # Changelog / 更新日志
 
+## [2026.9.22.16] - 2026-09-23
+
+### Fixed / 修复
+- **解决 nginx 日志无权限导致启动失败**：将 `error_log` 和 `access_log` 移至 `/tmp/`，彻底根除普通非 root 用户无法写 `/proc/1/fd/1` 导致退出。
+- **强制 ingress_panel: false**：完全对齐 Node-RED 规范，确保 HAOS 分配官方标准 `/app/1037d332_hermes_agent` 路由。
+
 ## [2026.9.22.15] - 2026-09-23
 
 ### Fixed / 修复
