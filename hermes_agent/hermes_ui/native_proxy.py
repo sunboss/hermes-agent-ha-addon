@@ -133,11 +133,15 @@ class NativeProxyHandler(http.server.BaseHTTPRequestHandler):
         try:
             req_lines = [f"{self.command} {self.path} HTTP/1.1"]
             has_host = False
+            has_origin = False
             for key, value in self.headers.items():
                 lower = key.lower()
                 if lower == "host":
                     req_lines.append(f"Host: {UPSTREAM_HOST}:{UPSTREAM_PORT}")
                     has_host = True
+                elif lower == "origin":
+                    req_lines.append(f"Origin: http://{UPSTREAM_HOST}:{UPSTREAM_PORT}")
+                    has_origin = True
                 elif lower in HOP_BY_HOP and lower not in {
                     "connection",
                     "upgrade",
@@ -151,6 +155,8 @@ class NativeProxyHandler(http.server.BaseHTTPRequestHandler):
                     req_lines.append(f"{key}: {value}")
             if not has_host:
                 req_lines.append(f"Host: {UPSTREAM_HOST}:{UPSTREAM_PORT}")
+            if not has_origin:
+                req_lines.append(f"Origin: http://{UPSTREAM_HOST}:{UPSTREAM_PORT}")
             req_lines += ["", ""]
             upstream.sendall("\r\n".join(req_lines).encode("latin-1"))
 
