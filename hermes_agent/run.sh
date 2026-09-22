@@ -34,8 +34,8 @@ if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; the
     python3 /opt/hermes-ha-scripts/bake-version.py || true
   fi
 
-  chown -R hermes:hermes "${ADDON_STATE_ROOT}" 2>/dev/null || \
-    echo "[run.sh] WARNING: chown ${ADDON_STATE_ROOT} failed; continuing" >&2
+  chown -R hermes:hermes "${ADDON_STATE_ROOT}" /tmp/nginx_* 2>/dev/null || \
+    echo "[run.sh] WARNING: chown failed; continuing" >&2
 
   export HERMES_ADDON_PRIVILEGE_DROPPED=1
   export HERMES_ADDON_CONFIGURED=1
@@ -81,9 +81,10 @@ fi
 
 # ── 启动 nginx（Ingress 8099 + LAN 9119）─────────────────────────────────
 echo "[run.sh] Starting nginx (Ingress :8099, LAN :9119)..."
+mkdir -p /tmp/nginx_client_body /tmp/nginx_proxy_temp /tmp/nginx_fastcgi_temp /tmp/nginx_uwsgi_temp /tmp/nginx_scgi_temp 2>/dev/null || true
 nginx -c /etc/nginx/nginx.conf &
 NGINX_PID=$!
-sleep 0.3
+sleep 0.5
 if ! kill -0 "${NGINX_PID}" 2>/dev/null; then
   echo "[run.sh] ERROR: nginx failed to start" >&2
 else

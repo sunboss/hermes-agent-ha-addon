@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI and direct dashboard access."
-version: "2026.9.22.13"
+version: "2026.9.22.15"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -9,8 +9,8 @@ homeassistant_api: true
 ingress: true
 ingress_stream: true
 ingress_port: 8099
-watchdog: "http://[HOST]:[PORT:8099]/health"
 panel_icon: "mdi:robot-excited-outline"
+watchdog: "http://[HOST]:[PORT:8099]/health"
 arch:
   - aarch64
   - amd64
