@@ -20,8 +20,8 @@ def main() -> int:
     v = json.loads(vf.read_text())
     index = ui / "index.html"
     html = index.read_text()
-    html = html.replace("{{ADDON_VERSION}}", "v" + str(v.get("version", "unknown")))
-    html = html.replace("{{HERMES_UPSTREAM}}", str(v.get("upstream", "upstream")))
+    html = html.replace("{{ADDON_VERSION}}", "v" + str(v.get("version", v.get("addon_version", "unknown"))))
+    html = html.replace("{{HERMES_UPSTREAM}}", str(v.get("upstream", v.get("hermes_upstream", "upstream"))))
     index.write_text(html)
     print(f"[bake-version] substituted: {v}")
     return 0

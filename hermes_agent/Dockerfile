@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.9.22.5"
+ARG BUILD_VERSION="2026.9.22.7"
 # Supervisor 2026.04.0+ no longer injects BUILD_FROM by default; keep this
 # explicit Dockerfile ARG as the single source of truth for local and HA builds.
 # It can still be overridden manually with --build-arg when testing.
@@ -37,7 +37,6 @@ ENV HOME=/config
 ENV PATH=/opt/hermes/.venv/bin:$PATH
 ENV HERMES_UI_PORT=8099
 ENV HERMES_UI_DIR=/opt/hermes-ha-ui
-ENV HERMES_TTYD_PORT=7681
 ENV HERMES_PANEL_HOST=127.0.0.1
 ENV HERMES_PANEL_PORT=9119
 
@@ -45,21 +44,12 @@ LABEL \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.name="Hermes Agent" \
-  io.hass.description="Home Assistant app for Hermes Agent with Ingress UI, dashboard proxy, and ttyd terminal." \
+  io.hass.description="Home Assistant app for Hermes Agent with Ingress UI and direct dashboard access." \
   io.hass.url="https://github.com/sunboss/hermes-agent-ha-addon" \
   io.hass.arch="aarch64|amd64"
 
-# Build-time helper scripts.  Kept as standalone files (rather than
-# Dockerfile RUN heredocs) so BuildKit's content-addressed cache keys on
-# the script bytes — any edit here invalidates this layer and everything
-# below, eliminating the "git updated but old script still runs" class of
-# bugs we hit repeatedly with inline heredocs.  See scripts/install-ttyd.sh
-# for the full rationale.
-# --chmod sets executable bit during COPY itself, so no separate `chmod`
-# step is needed (which previously failed with "Operation not permitted"
-# when the upstream image's USER didn't own the destination).
+# Build-time helper scripts.
 COPY --chmod=0755 scripts/ /opt/hermes-ha-scripts/
-RUN /opt/hermes-ha-scripts/install-ttyd.sh
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \

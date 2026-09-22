@@ -88,24 +88,6 @@ set +a
 # it from .env, this clears the inherited process environment too.
 unset MESSAGING_CWD
 
-# Read TTYD_CWD from the side file as a bash LOCAL (no `export`).  An
-# exported MESSAGING_CWD-style variable would re-trigger the deprecation
-# warning even under a renamed key, so we keep this strictly local.
-TTYD_CWD=""
-if [ -f "${HERMES_HOME}/.addon-runtime" ]; then
-  TTYD_CWD="$(sed -n 's/^TTYD_CWD="\(.*\)"$/\1/p' "${HERMES_HOME}/.addon-runtime")"
-fi
-: "${TTYD_CWD:=${ADDON_STATE_ROOT}/workspace}"
-
-TTYD_BIN="$(command -v ttyd 2>/dev/null || true)"
-if [ -n "${TTYD_BIN}" ]; then
-  "${TTYD_BIN}" \
-    --port "${HERMES_TTYD_PORT}" \
-    --base-path /ttyd \
-    --writable \
-    /bin/bash -c 'cd "$1" && exec /bin/bash -il' _launch "${TTYD_CWD}" &
-fi
-
 python3 "${HERMES_UI_DIR}/server.py" &
 
 # Launch upstream `hermes dashboard` on loopback 127.0.0.1:9120

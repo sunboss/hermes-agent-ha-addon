@@ -1,5 +1,19 @@
 # Operations Log
 
+## [2026-09-22T21:05:00+08:00] feat: 彻底移除 ttyd 终端组件与多余引导页，根路径直通官方控制台，修复 Ingress WebSocket 对话黑屏
+- **执行 Agent**：Hermes Agent
+- **操作目标**：精简 HAOS 插件架构，剔除冗余命令行终端与卡片引导页，彻底打通 HA Ingress 内部对话与 WebSocket 链路
+- **核心变更**：
+  1. `Dockerfile` / `run.sh`：彻底剥离 `ttyd` 构建下载与进程启动，加快构建速度并节约系统内存；
+  2. `hermes_ui/server.py`：
+     - 根路径 `/` 访问直接 302 直通 `./panel/`（官方 Dashboard），消除多余中间引导卡片；
+     - `_proxy_panel_websocket` 强制将客户端 `Origin` 请求头重写为 `http://127.0.0.1:9120`，彻底解决 Ingress 下 WebSocket 握手报 `403 Forbidden` 导致聊天界面空白黑屏的问题；
+     - `_proxy_panel_http` 同步加上 Host 与 Origin 重写；
+  3. `config.yaml` / `version.json`：全插件版本升级至 `2026.9.22.7`。
+- **验证证据**：本地 `git diff` 审查通过，代码完成原子性替换；
+- **关联归档**：`ops/history/20260922_210500_streamline_ui_remove_ttyd_and_fix_ws.json`
+- **回滚点**：`git reset --hard HEAD~1`
+
 
 ## [2026-09-19T05:02:34.903626] feat: 升级 Hermes 上游基底至 v2026.9.14 并适配 HAOS 最新架构
 - **执行 Agent**：Hermes Agent

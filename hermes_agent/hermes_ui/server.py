@@ -700,6 +700,7 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 continue
             headers[key] = value
         headers["Host"] = f"{PANEL_HOST}:{PANEL_PORT}"
+        headers["Origin"] = f"http://{PANEL_HOST}:{PANEL_PORT}"
         headers["Accept-Encoding"] = "identity"
 
         request = urllib.request.Request(
@@ -826,11 +827,15 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                 upstream_path = f"{upstream_path}?{parsed.query}"
             request_lines = [f"{self.command} {upstream_path} HTTP/1.1"]
             has_host = False
+            has_origin = False
             for key, value in self.headers.items():
                 lower = key.lower()
                 if lower == "host":
                     request_lines.append(f"Host: {PANEL_HOST}:{PANEL_PORT}")
                     has_host = True
+                elif lower == "origin":
+                    request_lines.append(f"Origin: http://{PANEL_HOST}:{PANEL_PORT}")
+                    has_origin = True
                 elif lower in HOP_BY_HOP_HEADERS and lower not in {
                     "connection", "upgrade", "sec-websocket-key",
                     "sec-websocket-version", "sec-websocket-extensions",
@@ -841,6 +846,8 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                     request_lines.append(f"{key}: {value}")
             if not has_host:
                 request_lines.append(f"Host: {PANEL_HOST}:{PANEL_PORT}")
+            if not has_origin:
+                request_lines.append(f"Origin: http://{PANEL_HOST}:{PANEL_PORT}")
             request_lines += ["", ""]
             upstream.sendall("\r\n".join(request_lines).encode())
 
@@ -1130,6 +1137,13 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             })
             return
 
+        if path in ("/", "", "/index.html"):
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", "./panel/")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            return
+
         candidate = path.lstrip("/") or "index.html"
         target = (UI_DIR / candidate).resolve()
         try:
@@ -1143,7 +1157,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             self._serve_file(target)
             return
 
-        self._serve_index()
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "./panel/")
+        self.end_headers()
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urllib.parse.urlsplit(self.path)

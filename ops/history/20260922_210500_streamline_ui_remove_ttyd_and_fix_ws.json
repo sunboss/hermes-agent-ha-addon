@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-09-22T21:05:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "modify",
+  "summary": "彻底移除 ttyd 终端组件与多余引导页，根路径直通官方 Dashboard，补全 Ingress WebSocket Origin 伪装重写，版本升至 2026.9.22.7",
+  "commands": [
+    "patch hermes_agent/hermes_ui/server.py",
+    "patch hermes_agent/run.sh",
+    "patch hermes_agent/Dockerfile",
+    "patch hermes_agent/config.yaml",
+    "patch hermes_agent/hermes_ui/version.json",
+    "patch hermes_agent/scripts/bake-version.py"
+  ],
+  "result_status": "success",
+  "verification_evidence": "git diff confirmed: ttyd removed from Dockerfile and run.sh; server.py rewrites Origin to http://127.0.0.1:9120 for WebSocket and HTTP; root path redirects directly to ./panel/; version bumped to 2026.9.22.7",
+  "rollback_point": "git checkout HEAD~1",
+  "next_steps": "用户在 Home Assistant 加载项商店刷新并点击更新至 2026.9.22.7，在侧边栏直接进入官方控制台体验流畅对话。"
+}
