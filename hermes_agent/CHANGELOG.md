@@ -1,5 +1,12 @@
 # Changelog / 更新日志
 
+## [2026.9.22.18] - 2026-09-23
+
+### Fixed / 修复
+- **修复 Ingress 下前端白屏 (Blank Screen) 问题**：
+  - 新增 `patch-web-dist.py` 在容器启动时拦截并重写 Vite 编译的绝对路径静态资源（如 `src="/assets/..."`）为相对路径。
+  - 动态计算并注入 `window.__HERMES_BASE_PATH__`，使其自适应 HAOS 的 Ingress 动态入口路径（如 `/api/hassio_ingress/xxx`），确保所有内部路由和 JS API 调用精准定位。
+
 ## [2026.9.22.17] - 2026-09-23
 
 ### Fixed / 修复

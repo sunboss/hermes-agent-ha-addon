@@ -52,11 +52,14 @@ if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; the
   exit 1
 fi
 
-# ── 渲染配置文件（非 root 第二次进入时）──────────────────────────────────
+# ── 渲染配置文件与补丁注入 ──────────────────────────────────
 if [ "${HERMES_ADDON_CONFIGURED:-}" != "1" ]; then
   python3 /opt/hermes-ha-scripts/configure.py
   if [ -f /opt/hermes-ha-scripts/bake-version.py ]; then
     python3 /opt/hermes-ha-scripts/bake-version.py || true
+  fi
+  if [ -f /opt/hermes-ha-scripts/patch-web-dist.py ]; then
+    python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html || true
   fi
 fi
 
