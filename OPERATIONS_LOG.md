@@ -93,3 +93,14 @@
 - **验证证据**: 远程 Commit `93faefd`，YAML 校验通过。
 - **关联存档**: `ops/history/20260922_103300_fix_schema_and_bump_version.json`
 - **回滚点**: `21d4a15`
+
+### [2026-09-22 10:41:00] 修复表单默认值展示并发布 2026.9.22.2
+- **执行 Agent**: hermes-agent
+- **操作目标**: 解决 HA 选项卡中 `OpenAI-Compatible Base URL` 框内显示占位符字符串 `"url"` 的问题，正确显示 `https://api.1234r.com/v1`
+- **关键变更**:
+  1. `options` 中的端点地址正确设置为 **`https://api.1234r.com/v1`**；
+  2. `schema` 保持规则类型为 `"url"`；
+  3. 版本号递增至 **`2026.9.22.2`**。
+- **验证证据**: 远程 Commit `93d772b`。
+- **关联存档**: `ops/history/20260922_104100_fix_options_url_display.json`
+- **回滚点**: `8071aa1`

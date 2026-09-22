@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-09-22T10:41:00+08:00",
+  "agent": "hermes-agent",
+  "action_type": "deploy",
+  "summary": "修复 options 中将 url 类型关键字误填入输入框的问题，预填 https://api.1234r.com/v1，版本提升至 2026.9.22.2",
+  "commands": [
+    "set options openai_base_url, openai_proxy_url, base_url to https://api.1234r.com/v1",
+    "keep schema type definition as url",
+    "bump addon versions to 2026.9.22.2",
+    "git commit & push to main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "Commit 93d772b pushed to main",
+  "rollback_point": "git reset --hard 8071aa1",
+  "next_steps": "In HAOS: Reload addon store and update to 2026.9.22.2"
+}
