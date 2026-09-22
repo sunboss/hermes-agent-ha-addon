@@ -104,3 +104,14 @@
 - **验证证据**: 远程 Commit `93d772b`。
 - **关联存档**: `ops/history/20260922_104100_fix_options_url_display.json`
 - **回滚点**: `8071aa1`
+
+### [2026-09-22 10:52:00] 发布 2026.9.22.3：官方 zh-Hans 中文化与模型自动拉取
+- **执行 Agent**: hermes-agent
+- **操作目标**: 解决 HA 界面因为缺失标准 `zh-Hans.yaml` 导致降级显示全英文的问题，实现启动时自动从网关拉取可用模型与支持自定义覆盖
+- **关键变更**:
+  1. 为所有插件补齐官方标准简体中文 `translations/zh-Hans.yaml` 与 `zh.yaml`，表单标题与提示全面中文化（包含必填 API Key、工作目录、监听域等）；
+  2. 增强 `hermes_agent/scripts/configure.py`：新增 `resolve_default_model` 逻辑，容器启动时若模型留空，自动通过 API Key 向 `https://api.1234r.com/v1/models` 请求可用模型列表并智能优选；若用户手动输入模型名则直接使用自定义模型；
+  3. 版本号统一提升至 **`2026.9.22.3`**。
+- **验证证据**: 远程 Commit `ff33310`，YAML 校验通过。
+- **关联存档**: `ops/history/20260922_105200_zh_hans_and_auto_models.json`
+- **回滚点**: `d214cf2`

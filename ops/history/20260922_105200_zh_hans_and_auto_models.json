@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-09-22T10:52:00+08:00",
+  "agent": "hermes-agent",
+  "action_type": "deploy",
+  "summary": "增加 Home Assistant 官方标准 zh-Hans 简体中文支持，实现网关模型自动拉取与自定义覆盖逻辑，版本号提升至 2026.9.22.3",
+  "commands": [
+    "create translations/zh-Hans.yaml for all addons with clear instructions",
+    "enhance configure.py to automatically probe /v1/models from api.1234r.com with user key",
+    "support custom model override when user types a model name",
+    "bump addon versions to 2026.9.22.3 in config.yaml and Dockerfiles",
+    "git commit & push to origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "Commit ff33310 pushed to main; all yaml validated successfully",
+  "rollback_point": "git reset --hard d214cf2",
+  "next_steps": "In HAOS Store: Check for updates -> update to 2026.9.22.3"
+}
