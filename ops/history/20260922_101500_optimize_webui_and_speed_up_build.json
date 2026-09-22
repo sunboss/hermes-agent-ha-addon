@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-09-22T10:15:00+08:00",
+  "agent": "hermes-agent",
+  "action_type": "deploy",
+  "summary": "优化 WebUI 原生端口直连模式，升级基础镜像到 v2026.9.21，并剥离冗余 npm build 提速 HAOS 构建",
+  "commands": [
+    "update lobe_chat/config.yaml (webui: 3210, ingress: false)",
+    "update next_chat/config.yaml (webui: 3000, ingress: false)",
+    "add lobe_chat/translations (zh, en)",
+    "add next_chat/translations (zh, en)",
+    "bump hermes_agent base image to nousresearch/hermes-agent:v2026.9.21",
+    "remove redundant npm build in hermes_agent/Dockerfile",
+    "git commit & push to main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "Git commit 0080abc pushed to origin/main; GitHub Actions Run ID 35714491883 status=completed, conclusion=success",
+  "rollback_point": "git reset --hard 1800f74",
+  "next_steps": "In HAOS Add-on Store: Check for updates, update Hermes Agent, LobeChat, NextChat, and click Open Web UI"
+}

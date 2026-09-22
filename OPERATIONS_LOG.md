@@ -59,3 +59,15 @@
 - **验证证据**：远端 HEAD 推进至 `5e23590244`，GitHub Actions CI (Run ID: 35406956227) **全绿通过 (success)**
 - **关联归档**：`ops/history/20260919_074656_fix_icons_and_docker_build.json`
 - **回滚点**：`git reset --hard 1d6fa90beff99cba4cae096417fae7870933fa12`
+
+### [2026-09-22 10:15:00] 优化 WebUI 原生访问模式、升级基础镜像与加速构建
+- **执行 Agent**: hermes-agent
+- **操作目标**: 解决 Ingress 下 LobeChat 404 与 NextChat 卡顿问题，升级核心至 v2026.9.21，精简 Dockerfile 加速小主机拉取
+- **关键变更**:
+  1. `lobe_chat` 与 `next_chat` 关闭 `ingress`，采用标准 `webui: "http://[HOST]:[PORT]"` 原生跳转（端口 `3210` 与 `3000`）；
+  2. 基础镜像升级至官方最新多架构版 `nousresearch/hermes-agent:v2026.9.21`，版本号统一提升至 `2026.9.22.0`；
+  3. 彻底移除 Dockerfile 中冗余的 `npm install && npm run build` 本地构建指令，大幅减少工控机 CPU 负载与构建耗时；
+  4. 补充完整中英文翻译字典，默认模型对齐为 `gemini-3.8-flash-high`。
+- **验证证据**: 远程 Commit `0080abc`，GitHub Actions CI 流水线（Run ID: `35714491883`）全绿通过。
+- **关联存档**: `ops/history/20260922_101500_optimize_webui_and_speed_up_build.json`
+- **回滚点**: `1800f74`
