@@ -23,8 +23,10 @@ export PATH="${HERMES_INSTALL_DIR}/.venv/bin:${PATH}"
 export HERMES_UI_PORT=8099
 export HERMES_UI_DIR=/opt/hermes-ha-ui
 export HERMES_TTYD_PORT="${HERMES_TTYD_PORT:-7681}"
-export HERMES_PANEL_HOST="${HERMES_PANEL_HOST:-0.0.0.0}"
-export HERMES_PANEL_PORT="${HERMES_PANEL_PORT:-9119}"
+export HERMES_PANEL_HOST=127.0.0.1
+export HERMES_PANEL_PORT=9120
+export NATIVE_PROXY_HOST=0.0.0.0
+export NATIVE_PROXY_PORT=9119
 
 mkdir -p /data "${ADDON_STATE_ROOT}" "${HERMES_HOME}"
 
@@ -106,27 +108,27 @@ fi
 
 python3 "${HERMES_UI_DIR}/server.py" &
 
-# Launch upstream `hermes dashboard` on loopback; server.py reverse-proxies
-# /panel/** to this host:port.  The 0.5s sanity check below catches the
-# common first-boot failure mode where dashboard tries to npm install/build
-# the web UI and exits non-zero (missing node, blocked registry, write-layer
-# permission errors).  Restored in v0.11.1 after regressing in v0.10.0.
+# Launch upstream `hermes dashboard` on loopback 127.0.0.1:9120
+# Running on loopback prevents Hermes from failing with "Refusing to bind dashboard to 0.0.0.0"
 if hermes dashboard --help >/dev/null 2>&1; then
-  echo "[run.sh] Starting hermes dashboard on ${HERMES_PANEL_HOST}:${HERMES_PANEL_PORT}..."
+  echo "[run.sh] Starting upstream hermes dashboard on 127.0.0.1:9120..."
   hermes dashboard \
-    --host "${HERMES_PANEL_HOST}" \
-    --port "${HERMES_PANEL_PORT}" \
+    --host 127.0.0.1 \
+    --port 9120 \
     --no-open &
   DASH_PID=$!
   sleep 0.5
   if ! kill -0 "${DASH_PID}" 2>/dev/null; then
-    echo "[run.sh] WARNING: hermes dashboard exited immediately — /panel/ will be unavailable" >&2
-    echo "[run.sh]          check the lines above for the upstream error (commonly npm install / web build failures)" >&2
+    echo "[run.sh] WARNING: hermes dashboard exited immediately" >&2
   else
-    echo "[run.sh] hermes dashboard started (PID ${DASH_PID})"
+    echo "[run.sh] hermes dashboard started on 127.0.0.1:9120 (PID ${DASH_PID})"
   fi
-else
-  echo "[run.sh] NOTICE: this Hermes build has no \`hermes dashboard\` subcommand — /panel/ will return 502" >&2
+fi
+
+# Launch native_proxy on 0.0.0.0:9119 to provide zero-friction, direct LAN access
+if [ -f "${HERMES_UI_DIR}/native_proxy.py" ]; then
+  echo "[run.sh] Starting native proxy on 0.0.0.0:9119 -> 127.0.0.1:9120..."
+  python3 "${HERMES_UI_DIR}/native_proxy.py" &
 fi
 
 if [ -f "${HERMES_INSTALL_DIR}/tools/skills_sync.py" ]; then

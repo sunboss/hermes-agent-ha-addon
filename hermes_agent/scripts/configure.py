@@ -165,8 +165,21 @@ def write_runtime_config(
     elif openrouter_key:
         model_cfg.setdefault("provider", "openrouter")
     elif openai_base_url:
+        model_cfg["provider"] = "custom"
         model_cfg["base_url"] = openai_base_url
     cfg["model"] = model_cfg
+
+    # 显式配置 auxiliary 辅助任务使用用户自建网关，避免向官方 Nous 发送未授权请求
+    aux_cfg = cfg.get("auxiliary")
+    if not isinstance(aux_cfg, dict):
+        aux_cfg = {}
+    if openai_base_url:
+        aux_cfg["provider"] = "custom"
+        aux_cfg["model"] = llm_model
+        aux_cfg["base_url"] = openai_base_url
+        aux_cfg["title_generation"] = {"enabled": True, "provider": "custom", "model": llm_model}
+        aux_cfg["compression"] = {"enabled": True, "provider": "custom", "model": llm_model}
+    cfg["auxiliary"] = aux_cfg
 
     terminal_cfg = cfg.get("terminal")
     if not isinstance(terminal_cfg, dict):

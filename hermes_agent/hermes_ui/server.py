@@ -73,7 +73,7 @@ TTYD_PORT = int(os.environ.get("HERMES_TTYD_PORT", "7681"))
 # run.sh starts it on 127.0.0.1:9119; this server reverse-proxies /panel/**
 # to it so HA Ingress's single-port model can reach it.
 PANEL_HOST = os.environ.get("HERMES_PANEL_HOST", "127.0.0.1")
-PANEL_PORT = int(os.environ.get("HERMES_PANEL_PORT", "9119"))
+PANEL_PORT = int(os.environ.get("HERMES_PANEL_PORT", "9120"))
 ALLOWED_NETWORKS = [
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("::1/128"),

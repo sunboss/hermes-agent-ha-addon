@@ -1,4 +1,5 @@
 {
-  "version": "2026.9.22.4",
-  "upstream": "v2026.9.21 (official latest)"
+  "addon_version": "2026.9.22.5",
+  "hermes_upstream": "v2026.9.21",
+  "baked_at": "2026-09-22"
 }
