@@ -1,6 +1,6 @@
 name: "LobeChat"
 description: "Modern, open-source AI chat framework with plugin system, TTS, and multi-modal support for Home Assistant."
-version: "2026.9.22.1"
+version: "2026.9.22.2"
 slug: "lobe_chat"
 init: false
 startup: "application"
@@ -20,7 +20,7 @@ ports_description:
 map:
   - app_config:rw
 options:
-  openai_proxy_url: "url"
+  openai_proxy_url: "https://api.1234r.com/v1"
   openai_api_key: ""
   access_code: ""
   default_model: "gemini-3.8-flash-high"

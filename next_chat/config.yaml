@@ -1,6 +1,6 @@
 name: "NextChat"
 description: "Lightweight, cross-platform ChatGPT/LLM UI with Hermes Agent direct integration."
-version: "2026.9.22.1"
+version: "2026.9.22.2"
 slug: "next_chat"
 init: false
 startup: "application"
@@ -20,7 +20,7 @@ ports_description:
 map:
   - app_config:rw
 options:
-  base_url: "url"
+  base_url: "https://api.1234r.com/v1"
   api_key: ""
   access_code: ""
   custom_models: "gemini-3.8-flash-high"
