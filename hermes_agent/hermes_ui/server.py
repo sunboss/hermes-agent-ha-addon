@@ -540,8 +540,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         "<script>"
         "(function(){"
         "var p=window.location.pathname;"
-        "var i=p.indexOf('/panel');"
-        "var BASE=i>=0?p.slice(0,i+6):'/panel';"
+        "var BASE='/panel';"
+        "if(p.indexOf('/panel')>=0){BASE=p.slice(0,p.indexOf('/panel')+6);}"
+        "else if(p.indexOf('/app/')>=0){var m=p.match(/(\\/app\\/[^\\/]+)/);if(m){BASE=m[1];}}"
         # ── absolute-path rewrite helpers ──────────────────────────────────
         "function rewrite(u){"
         "if(typeof u!=='string')return u;"
@@ -691,6 +692,10 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         upstream_path = parsed.path
         if upstream_path.startswith("/panel"):
             upstream_path = upstream_path[len("/panel"):] or "/"
+        elif upstream_path.startswith("/app/"):
+            # HAOS style route: /app/1037d332-hermes-agent/...
+            parts = upstream_path.split("/", 3)
+            upstream_path = "/" + parts[3] if len(parts) > 3 else "/"
         if parsed.query:
             upstream_path = f"{upstream_path}?{parsed.query}"
         upstream_url = f"http://{PANEL_HOST}:{PANEL_PORT}{upstream_path}"
@@ -733,8 +738,30 @@ class HermesUiHandler(BaseHTTPRequestHandler):
         for attempt in range(_PANEL_RETRIES):
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
-                    payload = response.read()
                     content_type = response.headers.get("Content-Type", "")
+                    # Stream SSE or other event streams without buffering
+                    if "text/event-stream" in content_type or "chunked" in response.headers.get("Transfer-Encoding", "").lower():
+                        self.send_response(response.getcode())
+                        seen: set[str] = set()
+                        for key, value in response.headers.items():
+                            lower = key.lower()
+                            if lower in HOP_BY_HOP_HEADERS or lower in {"content-length", "content-encoding", "cache-control"}:
+                                continue
+                            if lower not in seen:
+                                self.send_header(key, value)
+                                seen.add(lower)
+                        self.send_header("Cache-Control", "no-cache, no-transform")
+                        self.send_header("X-Accel-Buffering", "no")
+                        self.end_headers()
+                        while True:
+                            chunk = response.read(4096)
+                            if not chunk:
+                                break
+                            self.wfile.write(chunk)
+                            self.wfile.flush()
+                        return
+
+                    payload = response.read()
                     if "text/html" in content_type:
                         payload = self._rewrite_panel_html(payload)
                     self.send_response(response.getcode())
@@ -747,8 +774,6 @@ class HermesUiHandler(BaseHTTPRequestHandler):
                             continue
                         if lower == "content-encoding":
                             continue
-                        # Strip Location-rewriting for now — upstream should
-                        # only redirect with relative paths inside its SPA.
                         if lower not in seen:
                             self.send_header(key, value)
                             seen.add(lower)
@@ -833,6 +858,9 @@ class HermesUiHandler(BaseHTTPRequestHandler):
             upstream_path = parsed.path
             if upstream_path.startswith("/panel"):
                 upstream_path = upstream_path[len("/panel"):] or "/"
+            elif upstream_path.startswith("/app/"):
+                parts = upstream_path.split("/", 3)
+                upstream_path = "/" + parts[3] if len(parts) > 3 else "/"
             if parsed.query:
                 upstream_path = f"{upstream_path}?{parsed.query}"
             request_lines = [f"{self.command} {upstream_path} HTTP/1.1"]
@@ -920,8 +948,10 @@ class HermesUiHandler(BaseHTTPRequestHandler):
     def _is_panel_request(self, path: str) -> bool:
         if path == "/panel" or path.startswith("/panel/"):
             return True
-        spa_routes = ("/chat", "/sessions", "/files", "/logs", "/cron", "/skills", "/plugins", "/mcp", "/channels", "/webhooks", "/pairing", "/system", "/docs", "/kanban")
-        return any(path == r or path.startswith(r + "/") for r in spa_routes)
+        if path.startswith("/app/"):
+            return True
+        spa_routes = ("/chat", "/sessions", "/files", "/logs", "/cron", "/skills", "/plugins", "/mcp", "/channels", "/webhooks", "/pairing", "/system", "/docs", "/kanban", "/api/events", "/api/chat", "/api/pty")
+        return any(path == r or path.startswith(r + "/") or path.startswith(r + "?") for r in spa_routes)
 
     def _is_websocket_upgrade(self) -> bool:
         connection = self.headers.get("Connection", "")

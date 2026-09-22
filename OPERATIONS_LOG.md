@@ -1,5 +1,19 @@
 # Operations Log
 
+## [2026-09-22T22:45:00+08:00] fix: 修复 Ingress 代理流式 SSE 阻塞并适配 HAOS /app/主机名 路由 (2026.9.22.9)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：彻底解决 Ingress 下对话界面黑屏卡死，实现真正的 Chunked 流式传输，并适配 `/app/主机名` 标准路由规则
+- **核心变更**：
+  1. `hermes_ui/server.py`：
+     - 重构 `_proxy_panel_http`：对 `text/event-stream` 及 chunked 响应采用无缓冲流式转发（实时 chunk 读写与 flush），彻底消除 `urllib.request.urlopen` 尝试读取完整 payload 导致 30 秒超时的缺陷；
+     - 增加对 `/app/主机名` 路径的解析与剥离（适配 HAOS 内部标准反向代理路由）；
+     - 前端 JS 注入脚本中动态适配 `/app/主机名` 作为 BASE 前缀。
+  2. `config.yaml` / `Dockerfile` / `version.json` / `CHANGELOG.md`：统一版本号升级至 `2026.9.22.9`。
+- **验证证据**：本地代码逻辑审计通过，支持无限长 SSE 事件流边接收边发送给浏览器；
+- **关联归档**：`ops/history/20260922_224500_fix_sse_streaming_and_haos_app_route.json`
+- **回滚点**：`git reset --hard 9d86451`
+
+
 ## [2026-09-22T21:20:00+08:00] docs: 全面升级文档与更新日志为中英文双语规范
 - **执行 Agent**：Hermes Agent
 - **操作目标**：对齐 `2026.9.22.7` 实际功能架构，全面更新更新日志并以全量中英双语重构核心文档

@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI and direct dashboard access."
-version: "2026.9.22.8"
+version: "2026.9.22.9"
 slug: "hermes_agent"
 init: false
 startup: "application"
@@ -24,7 +24,7 @@ ports_description:
   8642/tcp: "Hermes OpenAI-compatible API server port (for Open WebUI and external clients)"
   9119/tcp: "Hermes 原生 Dashboard 完整控制台与对话 WebUI (直连秒开，无需 Ingress)"
 map:
-  - app_config:rw
+  - addon_config:rw
 options:
   llm_model: ""
   openrouter_api_key: ""

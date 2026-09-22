@@ -1,5 +1,11 @@
 # Changelog / 更新日志
 
+## [2026.9.22.9] - 2026-09-22
+
+### Fixed / 修复
+- **真正的 Chunked 流式透传（SSE / Server-Sent Events）**：在 Ingress 代理中支持 `text/event-stream` 与分块传输流式即时下发，彻底根治此前 `response.read()` 阻塞 30 秒超时导致对话界面黑屏卡死的问题。
+- **支持 HAOS 标准路径 `/app/主机名`**：代理与注入脚本全面适配 `/app/1037d332-hermes-agent` 等标准 HAOS 加载项主机名路由前缀。
+
 ## [2026.9.22.8] - 2026-09-22
 
 ### Fixed / 修复

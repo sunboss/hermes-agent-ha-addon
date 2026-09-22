@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-09-22T22:45:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "modify",
+  "summary": "修复 Ingress 代理无法流式传输 SSE 导致的对话黑屏卡死，并全面适配 HAOS /app/主机名 标准路由",
+  "commands": [
+    "git add .",
+    "git commit -m 'fix(proxy): add chunked SSE streaming and support HAOS /app/hostname routing (2026.9.22.9)'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "server.py 已支持 chunked streaming 透传及 /app/1037d332-hermes-agent 路径解析，版本号升级至 2026.9.22.9",
+  "rollback_point": "git reset --hard 9d86451",
+  "next_steps": "推送 GitHub 触发 GitHub Actions 编译多架构镜像并推送至 GHCR"
+}
