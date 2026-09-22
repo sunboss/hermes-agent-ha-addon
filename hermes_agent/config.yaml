@@ -2,7 +2,6 @@ name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI, dashboard proxy, and ttyd terminal."
 version: "2026.9.22.0"
 slug: "hermes_agent"
-image: "ghcr.io/sunboss/{arch}-addon-hermes_agent"
 init: false
 startup: "application"
 stage: "stable"
@@ -22,11 +21,11 @@ ports:
 ports_description:
   8642/tcp: "Hermes OpenAI-compatible API server port (for Open WebUI and external clients)"
 map:
-  - addon_config:rw
+  - app_config:rw
 options:
   llm_model: "gemini-3.8-flash-high"
   openrouter_api_key: ""
-  openai_base_url: ""
+  openai_base_url: "https://api.1234r.com/v1"
   openai_api_key: ""
   auth_mode: "api_key"
   auth_storage_path: "/config/auth"
@@ -41,7 +40,7 @@ options:
 schema:
   llm_model: "str?"
   openrouter_api_key: "password?"
-  openai_base_url: "str?"
+  openai_base_url: "https://api.1234r.com/v1"
   openai_api_key: "password?"
   auth_mode: "list(api_key|web_login)"
   auth_storage_path: "str?"

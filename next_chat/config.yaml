@@ -2,7 +2,6 @@ name: "NextChat"
 description: "Lightweight, cross-platform ChatGPT/LLM UI with Hermes Agent direct integration."
 version: "2026.9.22.0"
 slug: "next_chat"
-image: "ghcr.io/sunboss/{arch}-addon-next_chat"
 init: false
 startup: "application"
 stage: "stable"
@@ -19,14 +18,14 @@ ports:
 ports_description:
   3000/tcp: "NextChat Web UI port"
 map:
-  - addon_config:rw
+  - app_config:rw
 options:
-  base_url: "http://hermes_agent:8642/v1"
+  base_url: "https://api.1234r.com/v1"
   api_key: ""
   access_code: ""
   custom_models: "gemini-3.8-flash-high"
 schema:
-  base_url: "str?"
+  base_url: "https://api.1234r.com/v1"
   api_key: "password?"
   access_code: "password?"
   custom_models: "str?"

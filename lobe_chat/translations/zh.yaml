@@ -1,13 +1,13 @@
 configuration:
   openai_proxy_url:
     name: "OpenAI 代理地址"
-    description: "Hermes Agent 或其它兼容端点的 URL 地址（默认已打通 HAOS 内部: http://hermes_agent:8642/v1）"
+    description: "默认已预设为 https://api.1234r.com/v1，无需改动"
   openai_api_key:
-    name: "API 访问密钥"
-    description: "后端 API 访问凭证（连接内部 Hermes 时若未设密码可留空）"
+    name: "API Key 密钥"
+    description: "输入你的 API Key 即可直接使用对话服务"
   access_code:
-    name: "访问密码"
-    description: "为 LobeChat Web 界面设置访问保护密码（可选，留空则免密直接进入）"
+    name: "网页访问密码"
+    description: "为 LobeChat 界面设置保护密码（可选，留空则免密进入）"
   default_model:
     name: "默认对话模型"
-    description: "LobeChat 初始预选的大语言模型名称（默认: gemini-3.8-flash-high）"
+    description: "预选的大模型（默认: gemini-3.8-flash-high）"
