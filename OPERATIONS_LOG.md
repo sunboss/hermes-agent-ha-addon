@@ -1,5 +1,18 @@
 # Operations Log
 
+## [2026-09-23T00:58:00+08:00] feat: 全面参照 Node-RED 架构对齐 Ingress，解决权限报错并恢复更新按钮 (2026.9.22.16)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：彻底解决 Ingress 下 WebSocket 403 握手拒绝、权限报错与顶级路由占用问题，找回官方更新按钮
+- **核心变更**：
+  1. **架构重构对齐 Node-RED**：采用 nginx 原生反代替代自研 Python 代理层，配置标准 WebSocket 升级与 `proxy_buffering off` 流式透传；
+  2. **解决非 root 用户写日志报错**：将 `error_log` 与 `access_log` 移至 `/tmp/`，根除 Linux 内核对 `/proc/1/fd/1` 的权限拦截；
+  3. **规范化路由与实体生成**：设置 `ingress_panel: false` 和 `panel_icon`，解除自定义原生顶级面板模式，对齐官方标准 `/app/1037d332_hermes_agent`；
+  4. **版本升级至 2026.9.22.16**：多架构镜像构建完成，HA 底层成功检测到更新（`update_available: true`）。
+- **验证证据**：
+  - `ha apps info 1037d332_hermes_agent` 真实回读：`update_available: true`, `version: 2026.9.22.15`, `version_latest: 2026.9.22.16`；
+- **关联归档**：`ops/history/20260923_005800_align_nodered_nginx_and_ingress_panel_false.json`
+- **回滚点**：`Git commit 062727d (version 2026.9.22.15)`
+
 ## [2026-09-22T22:45:00+08:00] fix: 修复 Ingress 代理流式 SSE 阻塞并适配 HAOS /app/主机名 路由 (2026.9.22.9)
 - **执行 Agent**：Hermes Agent
 - **操作目标**：彻底解决 Ingress 下对话界面黑屏卡死，实现真正的 Chunked 流式传输，并适配 `/app/主机名` 标准路由规则

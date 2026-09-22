@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-09-23T00:58:00+08:00",
+  "agent": "Hermes",
+  "action_type": "deploy",
+  "summary": "重构 Ingress 架构完全对齐 Node-RED：引入 nginx 反代，解决非 root 权限日志报错，强制 ingress_panel: false，成功发布 2026.9.22.16 并触发 HA 官方更新提示",
+  "commands": [
+    "git commit -m 'fix: move nginx logs to /tmp to fix non-root permission & set ingress_panel: false (2026.9.22.16)'",
+    "git push origin main",
+    "ha store reload",
+    "ha apps info 1037d332_hermes_agent"
+  ],
+  "result_status": "success",
+  "verification_evidence": "update_available: true, version: 2026.9.22.15, version_latest: 2026.9.22.16",
+  "rollback_point": "Git commit 062727d (version 2026.9.22.15)",
+  "next_steps": "在 HA 界面 (设置 -> 加载项 -> Hermes Agent 或 设置 -> 系统 -> 更新) 点击【更新】按钮，验证路由归正为 /app/1037d332_hermes_agent 且无 403 正常加载对话界面。"
+}
