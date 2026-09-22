@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-09-22T10:25:00+08:00",
+  "agent": "hermes-agent",
+  "action_type": "deploy",
+  "summary": "全插件默认 API 端点预设为 https://api.1234r.com/v1，升级为 app_config 并优化配置说明为仅需输入 api key",
+  "commands": [
+    "remove unbuilt ghcr image declarations from config.yaml",
+    "switch map from legacy addon_config to modern app_config",
+    "set default api endpoint to https://api.1234r.com/v1 in hermes_agent, lobe_chat, next_chat",
+    "update translation schemas with clear api key instructions",
+    "git commit & push to main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "Commit ae3a93c pushed to main; verified yaml loading without errors",
+  "rollback_point": "git reset --hard f1de10a",
+  "next_steps": "In HAOS Add-on Store: Reload & Install. Users now only need to enter their API Key."
+}

@@ -71,3 +71,15 @@
 - **验证证据**: 远程 Commit `0080abc`，GitHub Actions CI 流水线（Run ID: `35714491883`）全绿通过。
 - **关联存档**: `ops/history/20260922_101500_optimize_webui_and_speed_up_build.json`
 - **回滚点**: `1800f74`
+
+### [2026-09-22 10:25:00] 默认配置升级：预设 https://api.1234r.com/v1 端点
+- **执行 Agent**: hermes-agent
+- **操作目标**: 解决未发布 ghcr 镜像导致的 401/403 denied 报错，消除 `addon_config` 废弃警告，全插件默认预设为自建网关端点
+- **关键变更**:
+  1. 移除尚未构建推送的 `image: ghcr.io/...`，恢复极速精简本地构建；
+  2. 修复 HA Supervisor 警告：将 `addon_config:rw` 统一升级为 `app_config:rw`；
+  3. `hermes_agent`、`lobe_chat`、`next_chat` 统一预设 API 端点为 **`https://api.1234r.com/v1`**；
+  4. 优化中文说明：用户在安装后**仅需输入 API Key 即可直接使用**，无需手动填写复杂的网关地址。
+- **验证证据**: 远程 Commit `ae3a93c`，本地 YAML 全语法自检通过。
+- **关联存档**: `ops/history/20260922_102500_default_api_1234r.json`
+- **回滚点**: `f1de10a`
