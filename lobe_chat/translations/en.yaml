@@ -1,0 +1,13 @@
+configuration:
+  openai_proxy_url:
+    name: "OpenAI Proxy URL"
+    description: "Base URL for OpenAI-compatible endpoint (defaults to internal Hermes: http://hermes_agent:8642/v1)"
+  openai_api_key:
+    name: "API Key"
+    description: "Optional API Key for the backend"
+  access_code:
+    name: "Access Code"
+    description: "Optional password to protect the LobeChat web interface"
+  default_model:
+    name: "Default Model"
+    description: "Default LLM model name (defaults to gemini-3.8-flash-high)"

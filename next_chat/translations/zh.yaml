@@ -1,0 +1,13 @@
+configuration:
+  base_url:
+    name: "API 服务基础地址"
+    description: "Hermes Agent 或其它兼容端点的 URL 地址（默认已打通 HAOS 内部: http://hermes_agent:8642/v1）"
+  api_key:
+    name: "API 访问密钥"
+    description: "后端 API 访问凭据（连接内部 Hermes 时若未设密码可留空）"
+  access_code:
+    name: "访问密码"
+    description: "为 NextChat Web 界面设置访问保护密码（可选，留空则免密直接进入）"
+  custom_models:
+    name: "自定义模型列表"
+    description: "支持的模型名称（默认: gemini-3.8-flash-high）"

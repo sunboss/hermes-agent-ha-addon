@@ -1,14 +1,15 @@
 name: "LobeChat"
 description: "Modern, open-source AI chat framework with plugin system, TTS, and multi-modal support for Home Assistant."
-version: "2026.9.18.2"
+version: "2026.9.22.0"
 slug: "lobe_chat"
+image: "ghcr.io/sunboss/{arch}-addon-lobe_chat"
 init: false
 startup: "application"
 stage: "stable"
-ingress: true
-ingress_port: 3210
+ingress: false
 panel_title: "LobeChat"
 panel_icon: "mdi:robot-happy-outline"
+webui: "http://[HOST]:[PORT:3210]"
 arch:
   - aarch64
   - amd64
@@ -16,7 +17,7 @@ url: "https://github.com/sunboss/hermes-agent-ha-addon"
 ports:
   3210/tcp: 3210
 ports_description:
-  3210/tcp: "Direct LobeChat Web port (optional when Ingress is used)"
+  3210/tcp: "LobeChat Web UI port"
 map:
   - addon_config:rw
 options:

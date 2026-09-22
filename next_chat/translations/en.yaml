@@ -1,0 +1,13 @@
+configuration:
+  base_url:
+    name: "Base URL"
+    description: "Base URL for OpenAI-compatible endpoint (defaults to internal Hermes: http://hermes_agent:8642/v1)"
+  api_key:
+    name: "API Key"
+    description: "Optional API Key for the backend"
+  access_code:
+    name: "Access Code"
+    description: "Optional password to protect the NextChat web interface"
+  custom_models:
+    name: "Custom Models"
+    description: "Available custom models (defaults to gemini-3.8-flash-high)"

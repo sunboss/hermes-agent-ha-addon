@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.9.18.0"
+ARG BUILD_VERSION="2026.9.22.0"
 # Supervisor 2026.04.0+ no longer injects BUILD_FROM by default; keep this
 # explicit Dockerfile ARG as the single source of truth for local and HA builds.
 # It can still be overridden manually with --build-arg when testing.
@@ -10,7 +10,7 @@ ARG BUILD_VERSION="2026.9.18.0"
 # To upgrade: pick a newer tag from
 # https://hub.docker.com/r/nousresearch/hermes-agent/tags and bump
 # BUILD_VERSION below in lockstep.
-ARG BUILD_FROM="nousresearch/hermes-agent:v2026.9.14"
+ARG BUILD_FROM="nousresearch/hermes-agent:v2026.9.21"
 
 FROM ${BUILD_FROM}
 
@@ -98,12 +98,9 @@ RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ha_ws_url.py
 # `npm install` workaround on the first request to /panel/.
 # If the web/ directory or npm are absent in a future upstream image, the
 # `|| true` makes this step non-fatal.
-RUN set -eux; \
-    if [ -d /opt/hermes/web ] && command -v npm >/dev/null 2>&1; then \
-      cd /opt/hermes/web && npm install --prefer-offline && npm run build; \
-    else \
-      echo "[Dockerfile] web/ or npm not found — skipping pre-build (dashboard will build on first boot)"; \
-    fi || true
+# Upstream image already bundles the pre-built web assets for dashboard.
+# No need to run slow npm install & npm build on the HAOS host.
+RUN echo "[Dockerfile] Skipping redundant npm build"
 
 COPY run.sh /run.sh
 COPY hermes_ui/ /opt/hermes-ha-ui/
