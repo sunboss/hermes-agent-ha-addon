@@ -1,5 +1,10 @@
 # Changelog / 更新日志
 
+## [2026.9.22.11] - 2026-09-22
+
+### Fixed / 修复
+- **还原 `panel_title` / `panel_icon`**：今晚错误地把这两个字段删除，导致 Supervisor `hassio` integration 无法向 HA Core 注册 `update.*` 实体，详情页与更新中心的【更新】按钮随之消失。现已还原，后续每次有新版本时更新按钮将正常出现。
+
 ## [2026.9.22.10] - 2026-09-22
 
 ### Changed / 变更
