@@ -201,6 +201,42 @@ def write_runtime_config(
     )
 
 
+
+def resolve_default_model(user_model: str, base_url: str, api_key: str) -> str:
+    """Resolve model: if user explicitly sets a custom model, use it.
+    Otherwise, query the /v1/models endpoint to pick the best available model,
+    defaulting gracefully to gemini-3.8-flash-high."""
+    clean_user_model = (user_model or "").strip()
+    if clean_user_model and clean_user_model not in ("auto", "default", ""):
+        return clean_user_model
+
+    if not api_key:
+        return "gemini-3.8-flash-high"
+
+    import urllib.request
+    import json
+    endpoint = f"{base_url.rstrip('/')}/models"
+    try:
+        req = urllib.request.Request(endpoint)
+        req.add_header("Authorization", f"Bearer {api_key}")
+        req.add_header("User-Agent", "HomeAssistant-Hermes-Addon")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+            models = [m.get("id") for m in data.get("data", []) if isinstance(m, dict) and m.get("id")]
+            if models:
+                # 优先匹配稳定高性能模型
+                preferred_order = ["gemini-3.8-flash-high", "gemini-2.5-pro", "gpt-4o", "claude-3-5-sonnet", "deepseek-v3"]
+                for pref in preferred_order:
+                    if pref in models:
+                        print(f"[configure.py] Auto-detected preferred model: {pref}")
+                        return pref
+                print(f"[configure.py] Auto-selected first available model from gateway: {models[0]}")
+                return models[0]
+    except Exception as exc:
+        print(f"[configure.py] Model auto-fetch skipped or failed ({exc}), falling back to gemini-3.8-flash-high")
+    
+    return "gemini-3.8-flash-high"
+
 def main() -> int:
     options = load_options()
 
@@ -218,7 +254,10 @@ def main() -> int:
     auth_storage_path = Path(options.get("auth_storage_path") or str(default_auth_root))
     auth_mode = str(options.get("auth_mode") or "api_key")
     auth_provider = "openai_web"  # was a config option until upstream v0.13.0
-    llm_model = str(options.get("llm_model") or "gpt-5.4")
+    raw_model = str(options.get("llm_model") or "")
+    openai_key = str(options.get("openai_api_key") or "")
+    base_endpoint = str(options.get("openai_base_url") or "https://api.1234r.com/v1")
+    llm_model = resolve_default_model(raw_model, base_endpoint, openai_key)
     terminal_backend = str(options.get("terminal_backend") or "local")
 
     # OAuth fields removed from the add-on UI in v0.13.0 (sensible defaults).
