@@ -1,5 +1,11 @@
 # Changelog / 更新日志
 
+## [2026.9.22.8] - 2026-09-22
+
+### Fixed / 修复
+- **Ingress 对话区黑屏修复 (EventSource Proxy)**:
+  - 包装拦截浏览器全局 `window.EventSource`，透明重写 Ingress 路径前缀（`/panel/api/events...`），解决侧边栏直达后右侧对话区域卡死在纯黑画布的问题。
+
 ## [2026.9.22.7] - 2026-09-22
 
 ### 中文

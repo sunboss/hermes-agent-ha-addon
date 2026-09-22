@@ -162,3 +162,12 @@
   2. 修改 `hermes_agent/config.yaml`：声明 `image: ghcr.io/sunboss/hermes-agent-{arch}`。
 - **关联归档**：`ops/history/20260922_214800_ghcr_image_and_actions.json`
 - **回滚点**：`git checkout 21ab89f`
+
+### [2026-09-22 22:12:00] 修复 Ingress 对话区黑屏并发布 v2026.9.22.8
+- **操作者**：Hermes Agent
+- **目标**：解决侧边栏直达后右侧对话区域因 SSE (EventSource) 未代理导致的纯黑画布
+- **变更内容**：
+  1. `hermes_ui/server.py`：注入包装全局 `window.EventSource`，透明重写 Ingress 相对路径。
+  2. 版本升至 `2026.9.22.8`，更新 `Dockerfile`、`config.yaml`、`CHANGELOG.md`。
+- **关联归档**：`ops/history/20260922_221200_fix_eventsource_black_screen.json`
+- **回滚点**：`git checkout 0720253`

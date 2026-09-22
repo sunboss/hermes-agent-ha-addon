@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-09-22T22:12:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "modify",
+  "summary": "修复 Ingress 模式下右侧对话区域黑屏：拦截并代理 window.EventSource 保证 SSE 流连接正常建立；版本升级至 2026.9.22.8",
+  "commands": [
+    "git add hermes_agent/hermes_ui/server.py hermes_agent/config.yaml hermes_agent/Dockerfile hermes_agent/hermes_ui/version.json hermes_agent/CHANGELOG.md",
+    "git commit -m 'fix(ingress): proxy window.EventSource to fix chat black screen and bump to 2026.9.22.8'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "已在 server.py 注入 window.EventSource 代理，自动重写 /api/events 为带有 Ingress BASE 前缀的完整路径，使前端 SSE 握手成功",
+  "rollback_point": "git checkout 0720253",
+  "next_steps": "GitHub Actions 自动构建 2026.9.22.8 多架构镜像并推送 GHCR；HAOS 商店刷新后直接显示更新按钮"
+}
