@@ -1,5 +1,15 @@
 # Operations Log
 
+## [2026-09-23T23:05:00+08:00] fix: 注入 X-Forwarded-Prefix 激活 Hermes 原生 Base Path 替换，修复侧边栏黑屏与详情页 404 (2026.9.23.3)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：彻底解决 Ingress 模式下侧边栏黑屏与详情页 404 问题，同时兼顾 HA 两大官方标准地址
+- **核心变更**：
+  1. `hermes_agent/rootfs/etc/nginx/nginx.conf`：在 8099 端口代理段添加 `proxy_set_header X-Forwarded-Prefix $http_x_ingress_path;`，对接 Hermes Dashboard 原生 Base Path 解析机制；
+  2. `hermes_agent/config.yaml` / `CHANGELOG.md`：版本号自增至 `2026.9.23.3`。
+- **验证证据**：GitHub 远程仓库已成功接收 commit `9532afc`，触发自动化 Docker 多架构镜像打包；
+- **关联归档**：`ops/history/20260923_230500_fix_ingress_forwarded_prefix_2026_9_23_3.json`
+- **回滚点**：`git reset --hard 286f228`
+
 ## [2026-09-23T00:58:00+08:00] feat: 全面参照 Node-RED 架构对齐 Ingress，解决权限报错并恢复更新按钮 (2026.9.22.16)
 - **执行 Agent**：Hermes Agent
 - **操作目标**：彻底解决 Ingress 下 WebSocket 403 握手拒绝、权限报错与顶级路由占用问题，找回官方更新按钮
