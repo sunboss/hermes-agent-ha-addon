@@ -67,6 +67,10 @@ if [ "${HERMES_ADDON_CONFIGURED:-}" != "1" ]; then
   fi
 fi
 
+# ── 生成或固定持久化的 Dashboard 会话 Token ─────────────────────────────
+# 彻底解决 HA Ingress / 侧边栏环境下前端与 PTY 握手时 token_mismatch 被拒问题
+export HERMES_DASHBOARD_SESSION_TOKEN="${HERMES_DASHBOARD_SESSION_TOKEN:-hermes-ha-addon-persistent-session-token-v1}"
+
 set -a
 . "${HERMES_HOME}/.env"
 set +a

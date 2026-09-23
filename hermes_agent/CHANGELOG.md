@@ -3,6 +3,8 @@
 ## [2026.9.23.1] - 2026-09-23
 
 ### Fixed / 修复
+- **彻底根治侧边栏打开无法运行与 PTY 握手被拒 (`token_mismatch`)**：
+  在 `run.sh` 中固定导出 `HERMES_DASHBOARD_SESSION_TOKEN`，杜绝因服务重启随机生成临时 Token 导致 Ingress 前端与内部终端 WebSocket 认证不一致而反复断联崩溃的问题；
 - **彻底对齐 Home Assistant 2026.9+ 官方标准与纯净前端加载**：
   1. **清除所有前端黑魔法注入**：彻底移除 `index.html` 中的动态注入脚本与 `<base>` 标签，杜绝因 `document.write` 导致的动态路径文本泄露及 DOM 挂载崩溃；
   2. **全面采用纯净相对路径**：所有前端静态资源（JS/CSS/Fonts）统一使用纯相对路径（`assets/...`），完全对齐 Node-RED 官方标准；
