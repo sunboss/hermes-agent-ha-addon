@@ -1,5 +1,12 @@
 # Changelog / 更新日志
 
+## [2026.9.23.5] - 2026-09-23
+
+### Fixed
+- **解决侧边栏黑屏与对话彻底根治**：
+  1. 引入 `head_bootstrap_patch`，将 `bootstrap_script` 置于 `<head>` 顶端，确保 Vite/Rolldown 构建模块在执行时第一时间读取 `__HERMES_BASE_PATH__`，杜绝因基准路径丢失发往 HA Core 80 端口导致的 `http.ban` 与黑屏；
+  2. 在 `configure.py` 中将 `HERMES_DASHBOARD_SESSION_TOKEN` 写入持久化 `.env`，彻底锁定 Session Token，消除重启后的 `token_mismatch`。
+
 ## [2026.9.23.4] - 2026-09-23
 
 ### Fixed

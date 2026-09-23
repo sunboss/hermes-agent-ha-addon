@@ -343,6 +343,9 @@ def main() -> int:
         env_map["OPENAI_BASE_URL"] = "http://127.0.0.1:8099/shim/v1"
         env_map["OPENAI_API_KEY"] = env_map.get("OPENAI_API_KEY") or "web-login-session"
 
+    # 固定持久化的 Dashboard 会话 Token，杜绝 Ingress 访问时的 token_mismatch
+    env_map["HERMES_DASHBOARD_SESSION_TOKEN"] = env_map.get("HERMES_DASHBOARD_SESSION_TOKEN") or "hermes-ha-addon-persistent-session-token-v1"
+
     write_env(env_path, env_map)
     update_auth_session(auth_storage_path, auth_mode, auth_provider)
     write_runtime_config(

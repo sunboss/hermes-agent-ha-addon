@@ -34,6 +34,10 @@ if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; the
     python3 /opt/hermes-ha-patches/pty_auth_bypass.py || true
   fi
 
+  if [ -f /opt/hermes-ha-patches/head_bootstrap_patch.py ]; then
+    python3 /opt/hermes-ha-patches/head_bootstrap_patch.py || true
+  fi
+
   if [ -f /opt/hermes-ha-scripts/bake-version.py ]; then
     python3 /opt/hermes-ha-scripts/bake-version.py || true
   fi

@@ -1,5 +1,16 @@
 # Operations Log
 
+## [2026-09-23T23:32:00+08:00] fix: 前置 Head Bootstrap 脚本并持久化 Session Token 至 .env (2026.9.23.5)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：彻底消灭侧边栏黑屏与断连问题，保证 Base Path 第一优先级加载与 Token 永不重置
+- **核心变更**：
+  1. `hermes_agent/patches/head_bootstrap_patch.py`：注入前置补丁，将 `bootstrap_script` 置于 `<head>` 顶端；
+  2. `hermes_agent/scripts/configure.py`：将 `HERMES_DASHBOARD_SESSION_TOKEN` 写入 `/config/.hermes/.env`；
+  3. `Dockerfile` / `run.sh` / `config.yaml` / `CHANGELOG.md`：版本号自增至 `2026.9.23.5`。
+- **验证证据**：提交并推送至 GitHub 远程仓库，构建任务正式触发；
+- **关联归档**：`ops/history/20260923_233200_fix_head_bootstrap_and_persist_token_2026_9_23_5.json`
+- **回滚点**：`git reset --hard 04c36b4`
+
 ## [2026-09-23T23:25:00+08:00] backup: 目录持久化安全审计与下次构建计划存档
 - **执行 Agent**：Hermes Agent
 - **操作目标**：彻底核实加载项升级时用户数据（skills、config.yaml、memories、cron、sessions）的持久化安全性，为下次构建建立基线
