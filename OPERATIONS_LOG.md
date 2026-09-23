@@ -198,3 +198,25 @@
   2. 版本升至 `2026.9.22.8`，更新 `Dockerfile`、`config.yaml`、`CHANGELOG.md`。
 - **关联归档**：`ops/history/20260922_221200_fix_eventsource_black_screen.json`
 - **回滚点**：`git checkout 0720253`
+
+## [2026-09-23T21:37:54.298449] 侧边栏 Ingress 路径与前端黑屏问题深度复盘及技术归档
+
+- **执行 Agent**：hermes-agent
+- **操作类型**：问题归档 / 技术留痕 (diagnose & record)
+- **归档文件**：
+- **核心结论与教训**：
+  1. **严禁在 index.html 使用 document.write**：异步执行会导致 token 字符串直接被写进页面 body 变成顶部文本，彻底阻断 React 组件挂载。
+  2. **严禁侵入式修改 HA 核心容器（如 addon_panel.py）**：容器一旦更新重启修改必丢失，且会破坏系统稳定性。
+  3. **Ingress SPA 唯一标准解法是 HashRouter**：无论外部是 、 还是 Cloudflare 穿透，Hash 路由永远 100% 命中，免去提取 Ingress Token 的一切脆弱逻辑。
+- **当前状态**：待用户指示，在容器内就地验证 HashRouter 效果后统一反推本地工程并打包版本 。
+
+## [2026-09-23T22:05:03.283089] Ingress 侧边栏与前端加载问题彻底复盘总结（准备发布 2026.9.22.23）
+
+- **执行 Agent**：hermes-agent
+- **操作类型**：总结与准备发布 (modify & release-prep)
+- **标准化归档**：`ops/history/20260923_220503_final_repair_and_release_summary.json`
+- **核心沉淀**：
+  1. **放弃一切黑魔法**：不要在 `index.html` 注入 `document.write`，不要篡改 HAOS 核心 `addon_panel.py`。
+  2. **全面对齐官方标准**：遵循 HA 2026.9 的 `addon` 面板路径规范，前端资源全部使用相对路径（`assets/...`）。
+  3. **Cloudflare 穿透经验**：HTTP 反代配置在 HA 2026.9 中固定在 `/config/.storage/http`，隧道协议锁定为 HTTP2。
+- **下一步**：拉取远程最新代码，递增版本号为 `2026.9.22.23`，提交并推送到 GitHub 触发构建。

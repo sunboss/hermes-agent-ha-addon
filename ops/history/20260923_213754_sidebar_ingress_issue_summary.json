@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-09-23T21:37:54.298449",
+  "agent": "hermes-agent",
+  "action_type": "diagnose",
+  "summary": "Home Assistant 侧边栏 Ingress 面板路径丢失 app/ 前缀及前端 SPA 路由黑屏问题深度复盘与根治方案记录",
+  "root_causes": [
+    {
+      "issue": "侧边栏 URL 变成 /1037d332_hermes_agent 而非 /app/1037d332_hermes_agent",
+      "detail": "HA 2026.9.x 内部组件 addon_panel.py 在调用 frontend.async_register_built_in_panel 时使用了 frontend_url_path=addon，去掉了旧版统一直观的 app/ 命名空间。不应试图侵入式修改 HA 核心容器源码，需按官方标准规范适配。"
+    },
+    {
+      "issue": "页面顶部打印 Ingress Token 纯文本且主界面黑屏/空白",
+      "detail": "在 index.html 中使用 document.write(\"<base ...>\") 进行动态前缀注入，由于执行时机滞后及 React 异步 DOM 接管，导致标签被浏览器转义并作为纯文本内容直接打印在 DOM 树顶端，破坏了 React 根组件的挂载上下文。"
+    },
+    {
+      "issue": "BrowserRouter 与 Ingress 动态动态前缀天然冲突",
+      "detail": "前端采用 BrowserRouter 导致其强依赖固定的 URL Path（或动态提取的 token 前缀）。只要外部 URL（内网、外网穿透、侧边栏点击、单独页面）稍有变化，basename 匹配失败就会导致白屏/黑屏。"
+    }
+  ],
+  "permanent_solution": [
+    "彻底抛弃在 index.html 注入任何动态 JS 或 document.write 的黑魔法。",
+    "前端路由彻底迁移为 HashRouter (createHashRouter)，使路由解析完全独立于 HTTP 路径，免受 Ingress Token 与 /app 前缀影响。",
+    "静态资源引用路径统一采用相对路径 (./)，由插件内部 Nginx 标准托管。",
+    "待容器内验证无误后，统一合入插件工程源码并编译发布版本 2026.9.22.23。"
+  ],
+  "result_status": "recorded",
+  "verification_evidence": "已确认直连 9119 下功能正常；HA 侧边栏与 Ingress 路由需彻底重构成 Hash 路由根治。",
+  "rollback_point": "已备份 index.html 原始形态；已还原 HA 核心 addon_panel.py",
+  "next_steps": "先在容器内就地热修验证 Hash 路由彻底可用，再行本地工程编译发版。"
+}

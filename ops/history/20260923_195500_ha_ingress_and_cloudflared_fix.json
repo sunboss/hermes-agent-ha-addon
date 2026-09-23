@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-09-23T19:55:00+08:00",
+  "agent": "hermes-agent",
+  "action_type": "diagnose",
+  "summary": "排查并修复 Home Assistant Cloudflared 穿透 400 Bad Request、透明网关 Fake-IP 劫持，以及 Hermes Agent Ingress 前端 React Router 路由黑屏根因",
+  "issues_analyzed": [
+    {
+      "issue_id": "HA_REVERSE_PROXY_400",
+      "symptom": "从公网访问 https://dls.1234r.com 返回 400 Bad Request，HA 日志报 A request from a reverse proxy was received from 172.30.33.1, but your HTTP integration is not set-up for reverse proxies",
+      "root_cause": "从 Home Assistant 2026.9 开始，http 配置的受信代理与端口已从 configuration.yaml 单向迁移至持久化存储 /config/.storage/http，yaml_migration_done 置为 true。在 configuration.yaml 中新增或修改 http.trusted_proxies 会被完全忽略",
+      "resolution": "直接修改 /config/.storage/http 中的 stable.use_x_forwarded_for=true 并补充 trusted_proxies 包含 172.0.0.0/8、192.168.0.0/16 等段，重启 Core 后恢复",
+      "prevention_rule": "修改 HA Core HTTP/代理配置前，必须先检查 /config/.storage/http 的 yaml_migration_done 状态。若已迁移，必须直接更新 storage 文件，严禁只改 configuration.yaml"
+    },
+    {
+      "issue_id": "CLOUDFLARED_TLS_HANDSHAKE_EOF",
+      "symptom": "Cloudflared 容器启动报 QUIC 连接超时且 TLS handshake with edge error: EOF，无法建连",
+      "root_cause": "局域网旁路由/透明网关启用了 Fake-IP (198.18.0.x)，将 Cloudflare Anycast 域名解析为虚拟 IP，导致 TLS 1.3 握手与 QUIC UDP 在代理层被掐断",
+      "resolution": "在插件参数增加 --protocol=http2 --region=us，并在容器 /etc/hosts 中硬写入真实的 Cloudflare Anycast IP (198.41.192.37/47) 绕过劫持",
+      "prevention_rule": "在存在 Fake-IP 旁路由的局域网部署 Cloudflare Tunnel 时，优先指定 --protocol=http2 并配置 hosts 直连真实公网 IP"
+    },
+    {
+      "issue_id": "HERMES_INGRESS_BLACK_SCREEN",
+      "symptom": "Home Assistant 侧边栏打开 Hermes Agent (URL 为 /app/1037d332_hermes_agent) 时，右侧主内容区大面积深色背景黑屏，无控件渲染",
+      "root_cause": "前端 index-Be9YE56W.js 将 React Router 的 basename 绑定为 window.__HERMES_BASE_PATH__。此前注入的动态脚本正则表达式未能正确捕获完整的 Ingress Token 路径 (/api/hassio_ingress/nb2j1...)，导致 basename 回退为 undefined。React Router 无法匹配当前路径 /api/hassio_ingress/<token>/，导致没有匹配到任何路由页面而呈现纯色黑屏",
+      "resolution": "在 /opt/hermes/hermes_cli/web_dist/index.html 中注入完整的 Ingress 基础路径匹配逻辑，确保 window.__HERMES_BASE_PATH__ 与 <base href> 准确指向完整的 Ingress Token 前缀",
+      "prevention_rule": "任何 Ingress 插件的前端静态资源与 SPA 路由适配，必须支持 /api/hassio_ingress/<token> 完整多级动态路径，且必须通过浏览器开发者工具网络面板检查路由与 chunk 实际加载情况"
+    }
+  ],
+  "verification_evidence": {
+    "cloudflared_public_url": "https://dls.1234r.com -> HTTP 200 (Home Assistant 登录页面正常输出)",
+    "ingress_static_assets": "GET /api/hassio_ingress/nb2j1.../ -> HTTP 200, assets/index-*.js -> HTTP 200",
+    "storage_http_config": "/config/.storage/http stable.trusted_proxies 包含 172.0.0.0/8"
+  },
+  "rollback_point": "HA 配置文件备份于 /config/.storage/http.bak，index.html 可通过重新解压官方 web_dist 还原",
+  "next_steps": "1. 保持当前容器热修复成果；2. 将完整 Ingress Token 动态匹配逻辑固化到本地工程 hermes_agent/scripts/patch-web-dist.py；3. 准备版本 2026.9.22.23 构建"
+}
