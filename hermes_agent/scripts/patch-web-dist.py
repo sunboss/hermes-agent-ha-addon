@@ -22,12 +22,17 @@ def patch_index_html(index_path: Path):
     content = content.replace('href="./favicon.ico"', 'href="favicon.ico"')
 
     # 2. 注入动态 <base> 标签 + 锁定 __HERMES_BASE_PATH__
+    # 兼容两种 HA 访问模式：
+    # 模式A (详情页点开): /api/hassio_ingress/<token>/
+    # 模式B (侧边栏点击, iframe顶层): /<slug_hermes_agent>
     ingress_bootstrap = (
         '<script>'
         '(function(){'
-        '  var m = window.location.pathname.match(/(\\/api\\/hassio_ingress\\/[^\\/]+)/);'
-        '  var base = m ? (m[1] + "/") : "/";'
-        '  var ingressPrefix = m ? m[1] : "";'
+        '  var p = window.location.pathname;'
+        '  var m1 = p.match(/(\\/api\\/hassio_ingress\\/[^\\/]+)/);'
+        '  var m2 = p.match(/(\\/1037d332_hermes_agent)/);'
+        '  var ingressPrefix = m1 ? m1[1] : (m2 ? m2[1] : "");'
+        '  var base = ingressPrefix ? (ingressPrefix + "/") : "/";'
         '  document.write(\'<base href="\' + base + \'">\');'
         '  try {'
         '    Object.defineProperty(window, "__HERMES_BASE_PATH__", {'
