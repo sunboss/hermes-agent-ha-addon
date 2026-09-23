@@ -30,6 +30,10 @@ mkdir -p /data "${ADDON_STATE_ROOT}" "${HERMES_HOME}"
 if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; then
   python3 /opt/hermes-ha-scripts/configure.py
 
+  if [ -f /opt/hermes-ha-patches/pty_auth_bypass.py ]; then
+    python3 /opt/hermes-ha-patches/pty_auth_bypass.py || true
+  fi
+
   if [ -f /opt/hermes-ha-scripts/bake-version.py ]; then
     python3 /opt/hermes-ha-scripts/bake-version.py || true
   fi

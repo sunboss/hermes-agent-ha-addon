@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-09-23T23:05:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "deploy",
+  "summary": "通过向 Ingress 8099 代理配置注入 proxy_set_header X-Forwarded-Prefix $http_x_ingress_path，彻底激活 Hermes Dashboard 原生 Base Path 替换机制，解决侧边栏黑屏与详情页 404，升级版本号至 2026.9.23.3 并推送到 GitHub 触发构建。",
+  "commands": [
+    "patch hermes_agent/rootfs/etc/nginx/nginx.conf",
+    "patch hermes_agent/config.yaml -> version: 2026.9.23.3",
+    "patch hermes_agent/CHANGELOG.md",
+    "git commit -am 'fix(ingress): pass X-Forwarded-Prefix to support native base path and bump version to 2026.9.23.3'",
+    "git push origin main"
+  ],
+  "result_status": "success",
+  "verification_evidence": "git push origin main 返回 [main 9532afc] 成功推送到 GitHub 远程仓库，构建任务已触发",
+  "rollback_point": "git reset --hard 286f228",
+  "next_steps": "等待 GitHub Actions 自动构建完成，在 HA 加载项商店刷新并升级到 2026.9.23.3 进行最终测试"
+}

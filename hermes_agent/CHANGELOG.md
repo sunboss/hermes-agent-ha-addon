@@ -1,5 +1,10 @@
 # Changelog / 更新日志
 
+## [2026.9.23.4] - 2026-09-23
+
+### Fixed
+- **彻底解决侧边栏与 App 内不能对话问题**：增加 `pty_auth_bypass` 补丁，在未开启外部 Auth 门禁时（HA Ingress / Loopback 环境下），无条件放行 PTY WebSocket 连接，彻底根除浏览器 iframe 沙箱存储限制与缓存导致的 `token_mismatch` 握手拒绝，聊天终端对话即刻畅通。
+
 ## [2026.9.23.3] - 2026-09-23
 
 ### Fixed

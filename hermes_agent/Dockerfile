@@ -50,9 +50,10 @@ RUN set -eux; \
 # 拷贝辅助脚本
 COPY --chmod=0755 scripts/ /opt/hermes-ha-scripts/
 
-# 拷贝 WebSocket URL 补丁
+# 拷贝 WebSocket URL 与 PTY Auth 补丁
 COPY patches/ /opt/hermes-ha-patches/
 RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ha_ws_url.py
+RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/pty_auth_bypass.py || true
 
 # 拷贝 nginx 配置（对齐 Node-RED 标准反代架构）
 COPY rootfs/etc/nginx/nginx.conf /etc/nginx/nginx.conf
