@@ -1,5 +1,15 @@
 # Operations Log
 
+## [2026-09-23T23:25:00+08:00] backup: 目录持久化安全审计与下次构建计划存档
+- **执行 Agent**：Hermes Agent
+- **操作目标**：彻底核实加载项升级时用户数据（skills、config.yaml、memories、cron、sessions）的持久化安全性，为下次构建建立基线
+- **审计结果与证据**：
+  1. 容器内 `/config` 目录直接挂载于 HAOS 宿主机物理路径 `/mnt/data/supervisor/app_configs/1037d332_hermes_agent`；
+  2. 真实回读确认：`skills/`、`memories/`、`config.yaml`、`cron/`、`sessions/`、`state.db` 全部落盘在 `/config/.hermes/` 中，镜像销毁重建绝不丢失；
+  3. `skills_sync.py` 经核验为增量模式（`unchanged`），升级时绝不覆盖用户自定义修改。
+- **关联归档**：`ops/history/20260923_232500_persistence_audit_and_next_build_plan.json`
+- **下次编译构建动作**：将 `bootstrap_script` 移至 `<head>` 顶部的修改固化至 `patches/`，升级版本号至 `2026.9.23.5` 并推送构建。
+
 ## [2026-09-23T23:18:00+08:00] fix: 彻底解决 Ingress iframe 环境下 Session Token 授权阻断，恢复对话交互 (2026.9.23.4)
 - **执行 Agent**：Hermes Agent
 - **操作目标**：彻底根除 Home Assistant 侧边栏及 App 内因 iframe 存储隔离导致的 `token_mismatch` 握手拒绝，恢复对话交互

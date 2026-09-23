@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-09-23T23:25:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "backup",
+  "summary": "全面审计 Hermes Agent 在 Home Assistant OS 上的持久化挂载架构，确认所有 skills、memories、config.yaml、sessions 与 state.db 均存放于 /config/.hermes/，直接绑定宿主机 /mnt/data/supervisor/app_configs/1037d332_hermes_agent，插件升级镜像重建绝不丢失数据。记录下次编译推送待办项。",
+  "commands": [
+    "docker inspect --format '{{json .Mounts}}' app_1037d332_hermes_agent",
+    "docker exec app_1037d332_hermes_agent ls -la /config/.hermes/"
+  ],
+  "result_status": "success",
+  "verification_evidence": "真实回读宿主机挂载绑定：Destination /config 对应 Source /mnt/data/supervisor/app_configs/1037d332_hermes_agent，skills(14项)、memories、config.yaml(3521字节)、state.db、cron 均完好存放在持久化区",
+  "rollback_point": "无需回滚，纯审计与持久化确认",
+  "next_steps": [
+    "下次构建准备：将 bootstrap_script 前置到 <head> 顶部的补丁持久化至 hermes_agent/patches/ 目录",
+    "升级版本号至 2026.9.23.5 并推送到 GitHub 远程仓库自动化构建",
+    "确保以后每次镜像升级时，原有 skills、配置和记忆自动无缝承接"
+  ]
+}
