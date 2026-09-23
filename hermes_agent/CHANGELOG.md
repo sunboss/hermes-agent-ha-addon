@@ -1,5 +1,10 @@
 # Changelog / 更新日志
 
+## [2026.9.23.3] - 2026-09-23
+
+### Fixed
+- **Ingress 路径透传与黑屏彻底修复**：在 Ingress 8099 代理中配置 `proxy_set_header X-Forwarded-Prefix $http_x_ingress_path;`，无缝接入 Hermes Dashboard 原生反代前缀机制，自动注入 `__HERMES_BASE_PATH__`，彻底解决侧边栏与应用内打开黑屏/404 问题。
+
 ## [2026.9.23.2] - 2026-09-23
 
 ### Fixed / 修复
