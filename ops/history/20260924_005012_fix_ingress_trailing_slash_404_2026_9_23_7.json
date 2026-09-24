@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-09-24T00:50:12+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "deploy",
+  "summary": "徹底修复 HA Ingress 页面刷新/书签打开时因 React Router 剥离末尾斜杠导致 `404: Not Found` 的根因，并同步发布版本 2026.9.23.7",
+  "commands": [
+    "patch /opt/hermes/hermes_cli/web_server_dashboard.py with history.pushState/replaceState trailing-slash guard",
+    "chown -R 1000:1000 /config",
+    "git commit & push 2026.9.23.7 (6ce4f5b)"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "url": "http://192.168.1.114/app/1037d332_hermes_agent",
+    "iframe_url": "http://192.168.1.114/api/hassio_ingress/nb2j1Wh5pqdWGLhJGsMLFCnDamL4PlhVlBpZXUOqYxE/chat?profile=default",
+    "reload_test": "window.location.reload() verified HTTP 200 without 404: Not Found",
+    "xterm_mounted": true,
+    "screenshot": "/tmp/hermes_app_url_verified.png",
+    "git_commit": "6ce4f5b"
+  },
+  "rollback_point": "git revert 6ce4f5b",
+  "next_steps": [
+    "用户直接在浏览器刷新或点击左侧 Hermes Agent 即可正常使用，也可直接访问独立端口 http://192.168.1.114:9119"
+  ]
+}

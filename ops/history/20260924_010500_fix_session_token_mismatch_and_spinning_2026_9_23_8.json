@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-09-24T01:05:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "deploy",
+  "summary": "定位并解决侧边栏打开一直转圈（Loading...）与 CPU 120% 的终极根因：修正 Nginx 中的 Session Token 不匹配导致所有 API 401 挂起问题，释放僵尸进程，发布 2026.9.23.8",
+  "commands": [
+    "replace ha-addon-persistent-session-token-2026 with hermes-ha-addon-persistent-session-token-v1 in /etc/nginx/nginx.conf",
+    "nginx -s reload",
+    "git push 2026.9.23.8 (fa0f535)"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "curl_8099": "HTTP 200 in 0.036s",
+    "body_text": "Gateway Status: Running, Active Sessions: 0, v0.21.4",
+    "chat_terminal": "Nous Research · Messenger of the Digital Gods rendered",
+    "commit": "fa0f535"
+  },
+  "rollback_point": "git revert fa0f535",
+  "next_steps": [
+    "直接在 HA 侧边栏刷新即可秒级打开，转圈完全消失"
+  ]
+}

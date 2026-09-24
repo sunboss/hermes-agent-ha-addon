@@ -1,5 +1,11 @@
 # Changelog / 更新日志
 
+## [2026.9.24.1] - 2026-09-24
+- **Root-Cause Fix for Ingress API 401 & UI Spinning**:
+  1. Aligned `X-Hermes-Session-Token` in Nginx (8099 & 9119) with the actual persistent token (`hermes-ha-addon-persistent-session-token-v1`), eliminating 401 errors on `/api/sessions`, `/api/models`, and `/api/status` that caused the dashboard to hang on infinite `Loading...` spinners.
+  2. Injected `history.pushState` / `replaceState` proxy to preserve trailing slashes on Ingress navigation (`/api/hassio_ingress/<token>/?profile=default`), preventing 404 Not Found on browser refresh.
+  3. Patched Vite chunk loader `Xt()` to respect `__HERMES_BASE_PATH__`, preventing 404s on dynamic chunks like ChatPage and xterm CSS.
+
 ## [2026.9.23.7] - 2026-09-24
 - **Root-Cause Fix for Ingress Refresh 404**: Injected `history.pushState` / `replaceState` proxy to prevent React Router from stripping the trailing slash before `?profile=default` (`/api/hassio_ingress/<token>/?profile=default`), eliminating Home Assistant Ingress `404: Not Found` upon browser refresh or bookmark opening.
 
