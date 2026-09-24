@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-09-24T00:23:45+08:00",
+  "agent": "hermes-agent",
+  "action_type": "deploy",
+  "summary": "彻底解决 HA Ingress 下侧边栏黑屏与对话卡死：修复沙箱 navigator.locks 缺失死锁、Vite 动态按需加载 chunk/CSS 绝对路径 404 (Xt 函数修补)、以及 Nginx Session Token 自动注入",
+  "commands": [
+    "browser_exec (CDP headless automation login & iframe verification)",
+    "python3 patch_ingress_chunks.py (patch react-vendor Xt helper to prepend window.__HERMES_BASE_PATH__)",
+    "patch web_server_dashboard.py (inject navigator.locks polyfill & vite:preloadError preventDefault)",
+    "patch nginx.conf (proxy_set_header X-Hermes-Session-Token)",
+    "git commit & push to GitHub Actions for release 2026.9.23.6"
+  ],
+  "result_status": "success",
+  "verification_evidence": "真实无头 Chrome 浏览器登录 http://192.168.1.114/1037d332_hermes_agent，进入 Ingress iframe，成功点击 CHAT，xterm 终端实时渲染出 'Hermes Agent - Nous Research · Messenger of the Digital Gods' 及 '/config/workspace'，终端组件完整可用，无任何报错，并已截屏留存至 /tmp/hermes_verified_chat.png",
+  "rollback_point": "git checkout v2026.9.23.5",
+  "next_steps": "等待 GitHub Actions 镜像构建完成并在 HAOS Addon Store 更新"
+}

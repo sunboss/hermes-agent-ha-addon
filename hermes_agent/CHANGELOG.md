@@ -1,5 +1,13 @@
 # Changelog / 更新日志
 
+## [2026.9.23.6] - 2026-09-24
+
+### Fixed
+- **解决 HA Ingress 复杂子路径下 Vite 动态 Chunk 404 与沙箱 locks 死锁**：
+  1. **Polyfill `navigator.locks`**：HA Ingress iframe 沙箱环境下默认不提供 Web Locks API，注入兼容 shim 解决 React 挂载死锁；
+  2. **修补 Vite 动态 import 与 CSS Preload 路径 (`Xt` 函数)**：Vite 默认使用绝对根路径 `return '/' + e` 解析动态模块与样式，导致浏览器直接向 HA Core 80 发送 `GET /assets/ChatPage-*.js` 和 `GET /assets/xterm-*.css` 触发 404 并白屏。修补使其正确前置 `window.__HERMES_BASE_PATH__`；
+  3. **Nginx 8099 注入 Session Token**：在 Ingress 反向代理中自动附带 `X-Hermes-Session-Token` 请求头，确保跨域 API 请求免授权阻断。
+
 ## [2026.9.23.5] - 2026-09-23
 
 ### Fixed

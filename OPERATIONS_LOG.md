@@ -1,5 +1,17 @@
 # Operations Log
 
+## [2026-09-24T00:23:45+08:00] fix: 彻底解决 HA Ingress 下侧边栏黑屏与对话卡死 (2026.9.23.6)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：彻底解决 Ingress 环境下 React 根节点挂载死锁（Web Locks 缺失）、Vite 动态按需加载 chunk/CSS 绝对路径 404，以及跨域 Session Token 鉴权问题
+- **核心变更**：
+  1. `hermes_agent/patches/ingress_chunk_path.py`：注入补丁修补 `react-vendor` 中 Vite 的 `Xt` 函数，使其动态加载按需 chunk 与 CSS 时自动前置 `window.__HERMES_BASE_PATH__`；
+  2. `web_server_dashboard.py`：注入 `navigator.locks` polyfill 以及 `vite:preloadError` 异常拦截器；
+  3. `hermes_agent/rootfs/etc/nginx/nginx.conf`：注入 `proxy_set_header X-Hermes-Session-Token "ha-addon-persistent-session-token-2026";`；
+  4. `config.yaml` / `CHANGELOG.md`：版本号递增为 `2026.9.23.6`。
+- **验证证据**：真实 Headless Chrome 自动化登录 Home Assistant 侧边栏，进入 Ingress 页面并点击 CHAT，xterm 终端实时渲染出 `Hermes Agent - Nous Research · Messenger of the Digital Gods` 及 `/config/workspace`，对话完全畅通，并截图留存至 `/tmp/hermes_verified_chat.png`；
+- **关联归档**：`ops/history/20260924_002345_fix_ingress_dynamic_chunks_and_locks_2026_9_23_6.json`
+- **回滚点**：`git reset --hard 3959828`
+
 ## [2026-09-23T23:32:00+08:00] fix: 前置 Head Bootstrap 脚本并持久化 Session Token 至 .env (2026.9.23.5)
 - **执行 Agent**：Hermes Agent
 - **操作目标**：彻底消灭侧边栏黑屏与断连问题，保证 Base Path 第一优先级加载与 Token 永不重置

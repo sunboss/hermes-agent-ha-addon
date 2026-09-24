@@ -55,6 +55,7 @@ COPY patches/ /opt/hermes-ha-patches/
 RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ha_ws_url.py
 RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/pty_auth_bypass.py || true
 RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/head_bootstrap_patch.py || true
+RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ingress_chunk_path.py || true
 
 # 拷贝 nginx 配置（对齐 Node-RED 标准反代架构）
 COPY rootfs/etc/nginx/nginx.conf /etc/nginx/nginx.conf
