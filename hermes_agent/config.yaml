@@ -1,6 +1,6 @@
 name: "Hermes Agent"
 description: "Home Assistant add-on for Hermes Agent with Ingress UI and direct dashboard access."
-version: "2026.9.23.7"
+version: "2026.9.23.8"
 slug: "hermes_agent"
 init: false
 startup: "application"
