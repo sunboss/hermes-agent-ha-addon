@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-09-24T01:10:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "deploy",
+  "summary": "HA Ingress 侧边栏黑屏、刷新 404、主界面无限转圈（Loading...）及对话终端不显示的完整故障复盘与根因修复存档（Release 2026.9.24.1）",
+  "root_cause_postmortem": [
+    {
+      "symptom_1": "侧边栏首次点开完全黑屏，React Root 节点为空",
+      "error_cause": "Home Assistant Ingress 将插件放置在受限的跨源/沙箱 iframe 中运行，部分浏览器上下文下 `navigator.locks` (Web Locks API) 为 undefined，导致前端状态同步库在初始化阶段直接抛错中断渲染。",
+      "fix_detail": "在 `web_server_dashboard.py` 的 `bootstrap_script` 中注入 `navigator.locks` 兼容 Polyfill：当 `navigator.locks` 不存在时自动提供基于 `Promise.resolve` 的轻量实现。"
+    },
+    {
+      "symptom_2": "能显示左侧深青色菜单栏，但点击 CHAT 终端白屏，控制台报 `Unable to preload CSS` 与 `Failed to fetch dynamically imported module`",
+      "error_cause": "Vite 打包生成的 `react-vendor-*.js` 中，动态模块与按需 CSS 的路径构造函数被硬编码为 `Xt = function(e) { return '/' + e }`，无视 `<base>` 标签和当前路径，直接向 HA Core 根路径 `http://<ha-ip>/assets/ChatPage-*.js` 发起请求并触发 404。",
+      "fix_detail": "编写 `hermes_agent/patches/ingress_chunk_path.py`，在构建期与运行期修补 `react-vendor-*.js` 中的 `Xt(e)` 函数，使其自动读取并前置 `window.__HERMES_BASE_PATH__`（即 `/api/hassio_ingress/<token>`），同时监听并抑制非致命的 `vite:preloadError`。"
+    },
+    {
+      "symptom_3": "进入侧边栏后一旦按 F5 刷新或通过书签打开 `/app/1037d332_hermes_agent`，页面直接显示纯文本 `404: Not Found`",
+      "error_cause": "Home Assistant Supervisor 的 Ingress 网关路由严格要求根请求必须携带末尾斜杠 `/api/hassio_ingress/<token>/`。而 Hermes 前端在加载后同步 `?profile=default` 参数时，调用 `history.replaceState` 将 URL 改写成了 `/api/hassio_ingress/<token>?profile=default`（剥离了 `<token>` 后的 `/`）。一旦刷新，浏览器向 HA 请求无斜杠 URL，被 HA 路由直接判定为 404。",
+      "fix_detail": "在 `bootstrap_script` 中注入 `history.pushState` 与 `history.replaceState` 拦截代理：当检测到目标 URL 等于 `base` 或以 `base + '?'` 开头时，强制补齐斜杠转化为 `base + '/?'`，确保任何时候刷新均命中合法 Ingress 路由。"
+    },
+    {
+      "symptom_4": "侧边栏打开后菜单可见，但右侧主区域一直显示 `⠋ Loading...` 转圈，且容器内旧进程 CPU 占用高达 120%",
+      "error_cause": "1) `configure.py` 在 `/config/.hermes/.env` 中持久化的 Session Token 为 `hermes-ha-addon-persistent-session-token-v1`，而 `nginx.conf` 中硬编码注入的 `X-Hermes-Session-Token` 误写成了 `ha-addon-persistent-session-token-2026`，Nginx 反向代理覆盖了前端传来的正确 Header，导致后端对 `/api/sessions`、`/api/models`、`/api/status` 全部返回 `401 Unauthorized`，前端陷入无限重试转圈；2) 容器内旧 `hermes dashboard` 进程因权限原因未被 `pkill` 清理，残留僵尸线程持续空转消耗 120% CPU。",
+      "fix_detail": "1) 将 `nginx.conf`（8099 Ingress 端口与 9119 局域网直连端口）中的 `X-Hermes-Session-Token` 统一对齐为 `[REDACTED_PERSISTENT_SESSION_TOKEN]`（与 `configure.py` 完全一致）；2) 清理残留进程并重启容器，Dashboard 进程 CPU 占用回落至 0.0%，`/api/sessions` 响应时间降至 36ms。"
+    }
+  ],
+  "commands": [
+    "patch /opt/hermes/hermes_cli/web_server_dashboard.py (navigator.locks + history slash guard)",
+    "patch /opt/hermes/hermes_cli/web_dist/assets/react-vendor-*.js (Xt dynamic base path)",
+    "align X-Hermes-Session-Token in /etc/nginx/nginx.conf and reload nginx",
+    "git commit & push 2026.9.24.1"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "api_sessions_probe": "HTTP 200 OK in 0.036345s via 127.0.0.1:8099",
+    "dashboard_cpu": "0.0% idle after container restart",
+    "rendered_status_text": "Gateway Status: Running | Active Sessions: 0 | v0.21.4",
+    "xterm_terminal_rendered": "Nous Research · Messenger of the Digital Gods",
+    "f5_reload_verified": "HTTP 200 OK with trailing slash preserved (/api/hassio_ingress/<token>/?profile=default)",
+    "screenshots": [
+      "/tmp/hermes_app_url_verified.png",
+      "/tmp/hermes_sessions_loaded_verified.png"
+    ]
+  },
+  "rollback_point": "git revert c344f71",
+  "next_steps": [
+    "后续任何前端构建升级均由 Dockerfile 自动执行 patches/ingress_chunk_path.py，无需人工介入",
+    "保持 configure.py 与 nginx.conf 中的 Session Token 常量严格同步"
+  ]
+}

@@ -1,5 +1,26 @@
 # Operations Log
 
+## [2026-09-24T01:10:00+08:00] fix: HA Ingress 侧边栏黑屏、刷新 404 与无限转圈故障根治与复盘存档 (2026.9.24.1)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：彻底复盘并根治 Home Assistant 侧边栏及 Ingress 下 4 大并发疑难杂症：1) Web Locks 缺失导致的挂载白屏；2) Vite 动态 chunk 绝对路径 404；3) 路由重写剥离斜杠导致的刷新 404；4) Nginx Header 与配置持久化 Token 不一致导致的 API 401 无限转圈。
+- **故障排查与核心复盘**：
+  1. **【转圈与 CPU 120% 根因】**：排查发现侧边栏主界面停留在 `⠋ Loading...`，是因为前端请求 `/api/sessions`、`/api/models` 时均返回 `HTTP 401 Unauthorized`。根因是 `hermes_agent/rootfs/etc/nginx/nginx.conf` 中写死透传的 `X-Hermes-Session-Token` 为 `ha-addon-persistent-session-token-2026`，而 `configure.py` 写入持久化 `.env` 的真实 Token 为 `hermes-ha-addon-persistent-session-token-v1`。Nginx 将前端正确的 Header 强行覆盖篡改，导致 Dashboard 拒绝所有 API 请求。修复：统一将 `nginx.conf` 8099 与 9119 的 Token 透传对齐为持久化真实 Token。
+  2. **【刷新 404 根因】**：访问 `/app/1037d332_hermes_agent` 首次能进入，但 F5 刷新或通过书签访问必报 `404: Not Found`。根因是 React Router 在加载后通过 `replaceState` 附加 `?profile=default` 参数时，将 Ingress 路由末尾斜杠剥离为 `/api/hassio_ingress/<token>?profile=default`。HA Ingress 严格要求结尾带 `/`，缺少斜杠即返回 404。修复：在 `web_server_dashboard.py` 中注入 `history.pushState` / `replaceState` 代理，当目标 URL 以 `base + '?'` 开头时强制补齐斜杠为 `base + '/?'`。
+  3. **【动态 Chunk 404 根因】**：点击 CHAT 导航链接终端空白。根因是 Vite 打包后的 `Xt(e)` 函数写死 `return '/' + e`，动态 import 的 `ChatPage-*.js` 与按需 CSS 被发往 HA 根路径触发 404。修复：通过 `patches/ingress_chunk_path.py` 修补 `Xt(e)` 函数，动态前置 `window.__HERMES_BASE_PATH__`。
+  4. **【首次挂载黑屏根因】**：iframe 沙箱环境未提供 `navigator.locks`。修复：注入轻量级 `navigator.locks` Promise 兼容 polyfill。
+- **验证证据（真实回读与浏览器自动化）**：
+  - Ingress 8099 代理回读：`curl http://127.0.0.1:8099/api/sessions?profile=default` 返回 **HTTP 200 OK**，耗时仅 **0.036s**；
+  - 容器进程状态：清理旧僵尸线程并重启后，Dashboard CPU 占用稳定在 **0.0%**；
+  - 真实 Chrome 浏览器渲染回读：页面成功呈现 `Gateway Status: Running | Active Sessions: 0 | v0.21.4`，转圈完全消失；
+  - CHAT 终端挂载回读：xterm 终端实时输出 `Hermes Agent - Nous Research · Messenger of the Digital Gods`；
+  - F5 连续刷新测试：`window.location.reload()` 3 次，页面均正常维持在当前会话状态，再无任何 404；
+  - 截图存档：`/tmp/hermes_app_url_verified.png`、`/tmp/hermes_sessions_loaded_verified.png`。
+- **关联归档**：`ops/history/20260924_011000_complete_postmortem_and_release_2026_9_24_1.json`
+- **回滚点**：`git reset --hard fa0f535`
+- **下个 AI 接入要点**：
+  - 后续任何针对 Hermes 前端构建产物的修改，均在 `hermes_agent/patches/ingress_chunk_path.py` 中扩展；
+  - 严禁擅自修改 `nginx.conf` 与 `configure.py` 中的 Session Token 字面量常量，二者必须保持绝对一致。
+
 ## [2026-09-24T00:23:45+08:00] fix: 彻底解决 HA Ingress 下侧边栏黑屏与对话卡死 (2026.9.23.6)
 - **执行 Agent**：Hermes Agent
 - **操作目标**：彻底解决 Ingress 环境下 React 根节点挂载死锁（Web Locks 缺失）、Vite 动态按需加载 chunk/CSS 绝对路径 404，以及跨域 Session Token 鉴权问题
