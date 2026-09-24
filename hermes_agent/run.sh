@@ -4,15 +4,17 @@
 # Layout:
 #   /config                  — addon_config:rw mount
 #                              host: /addon_configs/<slug>_hermes_agent/
-#   /config/.hermes          — HERMES_HOME (sessions, config.yaml, memories...)
+#   /config/.hermes          — HERMES_HOME (sessions, config.yaml, memories, skills...)
 #   /opt/hermes              — upstream install (HERMES_INSTALL_DIR)
-#   /opt/hermes-ha-scripts   — build-time + runtime helper scripts
+#   /opt/hermes-ha-scripts   — runtime configuration scripts
+#   /opt/hermes-ha-patches   — Ingress / PTY / WebSocket patches
 #
-# Architecture (aligned with Node-RED):
-#   nginx (port 8099 Ingress + port 9119 LAN)
-#     └─> hermes dashboard (127.0.0.1:9120)
-#           └─> hermes gateway
-#
+# Architecture:
+#   tini (PID 1)
+#     ├─> nginx (port 8099 Ingress + port 9119 LAN)
+#     ├─> hermes dashboard (127.0.0.1:9120)
+#     └─> hermes gateway (foreground)
+
 set -euo pipefail
 
 export CONFIG_PATH=/data/options.json
@@ -29,22 +31,9 @@ mkdir -p /data "${ADDON_STATE_ROOT}" "${HERMES_HOME}"
 # ── 权限降级（root → hermes user）────────────────────────────────────────
 if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; then
   python3 /opt/hermes-ha-scripts/configure.py
-
-  if [ -f /opt/hermes-ha-patches/pty_auth_bypass.py ]; then
-    python3 /opt/hermes-ha-patches/pty_auth_bypass.py || true
-  fi
-
-  if [ -f /opt/hermes-ha-patches/head_bootstrap_patch.py ]; then
-    python3 /opt/hermes-ha-patches/head_bootstrap_patch.py || true
-  fi
-
-  if [ -f /opt/hermes-ha-scripts/bake-version.py ]; then
-    python3 /opt/hermes-ha-scripts/bake-version.py || true
-  fi
-
-  if [ -f /opt/hermes-ha-scripts/patch-web-dist.py ]; then
-    python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html || true
-  fi
+  python3 /opt/hermes-ha-patches/pty_auth_bypass.py || true
+  python3 /opt/hermes-ha-patches/ingress_chunk_path.py || true
+  python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html || true
 
   chown -R hermes:hermes "${ADDON_STATE_ROOT}" /tmp/nginx_* 2>/dev/null || \
     echo "[run.sh] WARNING: chown failed; continuing" >&2
@@ -64,19 +53,12 @@ if [ "$(id -u)" = "0" ] && [ "${HERMES_ADDON_PRIVILEGE_DROPPED:-}" != "1" ]; the
   exit 1
 fi
 
-# ── 渲染配置文件与补丁注入 ──────────────────────────────────
+# ── 非 root 启动兜底检查 ──────────────────────────────────────────────────
 if [ "${HERMES_ADDON_CONFIGURED:-}" != "1" ]; then
   python3 /opt/hermes-ha-scripts/configure.py
-  if [ -f /opt/hermes-ha-scripts/bake-version.py ]; then
-    python3 /opt/hermes-ha-scripts/bake-version.py || true
-  fi
-  if [ -f /opt/hermes-ha-scripts/patch-web-dist.py ]; then
-    python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html || true
-  fi
 fi
 
-# ── 生成或固定持久化的 Dashboard 会话 Token ─────────────────────────────
-# 彻底解决 HA Ingress / 侧边栏环境下前端与 PTY 握手时 token_mismatch 被拒问题
+# ── 固定持久化的 Dashboard 会话 Token（与 nginx.conf 完全一致）─────────────
 export HERMES_DASHBOARD_SESSION_TOKEN="${HERMES_DASHBOARD_SESSION_TOKEN:-hermes-ha-addon-persistent-session-token-v1}"
 
 set -a
@@ -113,11 +95,11 @@ else
   tail -F /tmp/nginx_error.log &
 fi
 
-# ── 同步技能库 ────────────────────────────────────────────────────────────
+# ── 增量同步内置技能库（保留用户自定义技能）──────────────────────────────
 if [ -f "${HERMES_INSTALL_DIR}/tools/skills_sync.py" ]; then
   python3 "${HERMES_INSTALL_DIR}/tools/skills_sync.py" || true
 fi
 
-# ── 启动 hermes gateway（前台，保持容器存活）─────────────────────────────
+# ── 启动 hermes gateway（前台运行）──────────────────────────────────────
 echo "[run.sh] Starting Hermes Agent gateway (HERMES_HOME=${HERMES_HOME})..."
 exec hermes gateway run

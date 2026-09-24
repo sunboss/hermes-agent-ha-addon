@@ -1,5 +1,16 @@
 # Operations Log
 
+## [2026-09-24T01:25:00+08:00] refactor: 全面清除冗余代码并引入 tini 根除僵尸进程 (2026.9.24.2)
+- **执行 Agent**：Hermes Agent
+- **操作目标**：全量代码审计，清除历史遗留死代码，合并碎片化补丁，解决容器缺少 PID 1 init 进程导致的僵尸进程（`<defunct>`）积压隐患。
+- **核心变更**：
+  1. **清理冗余文件**：彻底移除 `hermes_agent/hermes_ui/`（11 个早期自建前端 wrapper 文件）、`scripts/bake-version.py`、`scripts/install-ttyd.sh` 及 `patches/head_bootstrap_patch.py`，工程文件由 33 个精简至 19 个；
+  2. **补丁合并**：将 `<head>` 顶端注入、Web Locks polyfill、History 斜杠代理与 Vite `Xt()` chunk 路径修复统一整合进 `patches/ingress_chunk_path.py`；
+  3. **引入 `tini`**：在 `Dockerfile` 中安装 `tini` 并设为 `ENTRYPOINT ["/usr/bin/tini", "--", "/run.sh"]`，自动回收孤儿与僵尸进程；
+  4. **完善 `run.sh`**：在 root 启动流中同步调用 `ingress_chunk_path.py`，并移除已废弃的 `bake-version.py` 调用。
+- **关联归档**：`ops/history/20260924_012500_refactor_cleanup_and_tini_2026_9_24_2.json`
+- **回滚点**：`git reset --hard bd5ebcb`
+
 ## [2026-09-24T01:10:00+08:00] fix: HA Ingress 侧边栏黑屏、刷新 404 与无限转圈故障根治与复盘存档 (2026.9.24.1)
 - **执行 Agent**：Hermes Agent
 - **操作目标**：彻底复盘并根治 Home Assistant 侧边栏及 Ingress 下 4 大并发疑难杂症：1) Web Locks 缺失导致的挂载白屏；2) Vite 动态 chunk 绝对路径 404；3) 路由重写剥离斜杠导致的刷新 404；4) Nginx Header 与配置持久化 Token 不一致导致的 API 401 无限转圈。

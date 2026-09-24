@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-09-24T01:25:00+08:00",
+  "agent": "Hermes Agent",
+  "action_type": "deploy",
+  "summary": "全面清理废弃冗余代码（删除 hermes_ui/、旧构建脚本），合并单一补丁链，并在 Dockerfile 中引入 tini 根治僵尸进程积压隐患 (2026.9.24.2)",
+  "commands": [
+    "rm -rf hermes_agent/hermes_ui hermes_agent/scripts/bake-version.py hermes_agent/scripts/install-ttyd.sh hermes_agent/patches/head_bootstrap_patch.py",
+    "merge patches into ingress_chunk_path.py",
+    "add tini to Dockerfile ENTRYPOINT",
+    "git commit & push 2026.9.24.2"
+  ],
+  "result_status": "success",
+  "verification_evidence": {
+    "files_reduced": "From 33 files down to 19 clean files in hermes_agent/",
+    "tini_integrated": true,
+    "version": "2026.9.24.2"
+  },
+  "rollback_point": "git revert HEAD",
+  "next_steps": [
+    "保持单一补丁入口 ingress_chunk_path.py 维护"
+  ]
+}

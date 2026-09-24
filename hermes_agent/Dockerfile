@@ -1,4 +1,4 @@
-ARG BUILD_VERSION="2026.9.22.21"
+ARG BUILD_VERSION="2026.9.24.2"
 ARG BUILD_FROM="nousresearch/hermes-agent:v2026.9.21"
 
 FROM ${BUILD_FROM}
@@ -28,8 +28,8 @@ LABEL \
   io.hass.url="https://github.com/sunboss/hermes-agent-ha-addon" \
   io.hass.arch="aarch64|amd64"
 
-# 安装 nginx（对齐 Node-RED 架构）
-RUN apt-get update && apt-get install -y --no-install-recommends nginx && \
+# 安装 nginx 与 tini（tini 作为 PID 1 自动回收孤儿/僵尸进程）
+RUN apt-get update && apt-get install -y --no-install-recommends nginx tini && \
     rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
@@ -47,26 +47,18 @@ RUN set -eux; \
       >/etc/profile.d/hermes.sh; \
     chmod 644 /etc/profile.d/hermes.sh
 
-# 拷贝辅助脚本
+# 拷贝精简后的辅助脚本与补丁
 COPY --chmod=0755 scripts/ /opt/hermes-ha-scripts/
-
-# 拷贝 WebSocket URL 与 PTY Auth / Head Bootstrap 补丁
 COPY patches/ /opt/hermes-ha-patches/
+
+# 在镜像构建期直接应用全部补丁
 RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ha_ws_url.py
-RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/pty_auth_bypass.py || true
-RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/head_bootstrap_patch.py || true
-RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ingress_chunk_path.py || true
+RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/pty_auth_bypass.py
+RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-patches/ingress_chunk_path.py
+RUN /opt/hermes/.venv/bin/python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html
 
-# 拷贝 nginx 配置（对齐 Node-RED 标准反代架构）
+# 拷贝 nginx 与启动脚本
 COPY rootfs/etc/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --chmod=0755 run.sh /run.sh
 
-# 拷贝启动脚本（不再需要 hermes_ui/server.py 和 native_proxy.py）
-COPY run.sh /run.sh
-RUN chmod a+x /run.sh
-
-# 烘焙版本号与补丁前端静态资源
-COPY hermes_ui/version.json /opt/hermes-ha-ui/version.json
-RUN python3 /opt/hermes-ha-scripts/bake-version.py || true
-RUN python3 /opt/hermes-ha-scripts/patch-web-dist.py /opt/hermes/hermes_cli/web_dist/index.html || true
-
-ENTRYPOINT ["/run.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/run.sh"]

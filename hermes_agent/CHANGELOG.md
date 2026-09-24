@@ -1,5 +1,12 @@
 # Changelog / 更新日志
 
+## [2026.9.24.2] - 2026-09-24
+- **架构重构与垃圾代码彻底清理（瘦身减重）**：
+  1. **彻底清理废弃模块**：移除早期自建的 `hermes_ui/` 目录（11 个历史死代码文件）、废弃的 `bake-version.py` 与 `install-ttyd.sh`；
+  2. **合并补丁链**：将 `head_bootstrap_patch.py` 完全融入 `ingress_chunk_path.py`，实现单一职责、单点维护；
+  3. **引入 `tini` 作为 PID 1**：在 Dockerfile 中集成轻量级 init 进程 `tini`，毫秒级自动收割退出子进程，彻底消灭孤儿/僵尸进程（`<defunct>`）与进程泄漏隐患；
+  4. **完善 `run.sh` 启动流**：补全运行时补丁链条调用，确保任何热启动环境均具备完整的 Ingress 与路由防护。
+
 ## [2026.9.24.1] - 2026-09-24
 - **Root-Cause Fix for Ingress API 401 & UI Spinning**:
   1. Aligned `X-Hermes-Session-Token` in Nginx (8099 & 9119) with the actual persistent token (`hermes-ha-addon-persistent-session-token-v1`), eliminating 401 errors on `/api/sessions`, `/api/models`, and `/api/status` that caused the dashboard to hang on infinite `Loading...` spinners.
