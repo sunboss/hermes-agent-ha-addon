@@ -1,5 +1,8 @@
 # Changelog / 更新日志
 
+## [2026.9.23.7] - 2026-09-24
+- **Root-Cause Fix for Ingress Refresh 404**: Injected `history.pushState` / `replaceState` proxy to prevent React Router from stripping the trailing slash before `?profile=default` (`/api/hassio_ingress/<token>/?profile=default`), eliminating Home Assistant Ingress `404: Not Found` upon browser refresh or bookmark opening.
+
 ## [2026.9.23.6] - 2026-09-24
 
 ### Fixed
