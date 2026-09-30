@@ -27,8 +27,8 @@
 - **数据持久化安全**：遵循 Home Assistant 标准 `addon_config:rw` 规范，所有模型配置、会话记录与 API 凭据持久保存在 `/config/.hermes/`。
 
 **当前版本**：
-- Add-on: `2026.9.22.7`
-- Upstream Hermes: `v2026.9.21`
+- Add-on: `2026.9.30.1`
+- Upstream Hermes: `v2026.9.24`
 
 ### 快速安装步骤
 1. 在 Home Assistant 中进入 **配置 (Settings) -> 加载项 (Add-ons) -> 加载项商店 (Add-on Store)**；
@@ -53,8 +53,8 @@ This repository provides an official `Hermes Agent` add-on tailored for Home Ass
 - **Safe Data Persistence**: Uses Home Assistant's standard `addon_config:rw` storage layout; all sessions, skills, and configurations persist under `/config/.hermes/`.
 
 **Current Versions**:
-- Add-on: `2026.9.22.7`
-- Upstream Hermes: `v2026.9.21`
+- Add-on: `2026.9.30.1`
+- Upstream Hermes: `v2026.9.24`
 
 ### Quick Installation
 1. Navigate to **Settings -> Add-ons -> Add-on Store** in Home Assistant;

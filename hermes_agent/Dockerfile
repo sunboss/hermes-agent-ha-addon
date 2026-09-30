@@ -1,5 +1,5 @@
-ARG BUILD_VERSION="2026.9.24.2"
-ARG BUILD_FROM="nousresearch/hermes-agent:v2026.9.21"
+ARG BUILD_VERSION="2026.9.30.1"
+ARG BUILD_FROM="nousresearch/hermes-agent:v2026.9.24"
 
 FROM ${BUILD_FROM}
 
