@@ -17,13 +17,12 @@ jobs:
 
       - name: Python syntax check
         run: |
-          python3 -m py_compile hermes_agent/hermes_ui/server.py
-          python3 -m py_compile hermes_agent/hermes_ui/auth_bridge.py
-          python3 -m py_compile hermes_agent/hermes_ui/provider_shim.py
           python3 -m py_compile hermes_agent/scripts/_fetch.py
-          python3 -m py_compile hermes_agent/scripts/bake-version.py
           python3 -m py_compile hermes_agent/scripts/configure.py
+          python3 -m py_compile hermes_agent/scripts/patch-web-dist.py
           python3 -m py_compile hermes_agent/patches/ha_ws_url.py
+          python3 -m py_compile hermes_agent/patches/ingress_chunk_path.py
+          python3 -m py_compile hermes_agent/patches/pty_auth_bypass.py
 
       - name: YAML syntax check
         run: |
